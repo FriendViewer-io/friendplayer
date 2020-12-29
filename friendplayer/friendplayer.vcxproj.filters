@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\decoder">
+      <UniqueIdentifier>{d81a6631-b7af-4f42-a0df-f9a9d3da1784}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\encoder">
+      <UniqueIdentifier>{1e98ef97-dd58-480b-88ac-55cab8b03429}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common">
+      <UniqueIdentifier>{4202d40f-7d7b-424a-9000-8871d6f7e371}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="friendviewer_main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="decoder\AppDecD3D.cpp">
+      <Filter>Source Files\decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="encoder\DDAImpl.cpp">
+      <Filter>Source Files\encoder</Filter>
+    </ClCompile>
+    <ClCompile Include="decoder\NvDecoder.cpp">
+      <Filter>Source Files\decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="encoder\NvEncoder.cpp">
+      <Filter>Source Files\encoder</Filter>
+    </ClCompile>
+    <ClCompile Include="encoder\NvEncoderD3D11.cpp">
+      <Filter>Source Files\encoder</Filter>
+    </ClCompile>
+    <ClCompile Include="encoder\main.cpp">
+      <Filter>Source Files\encoder</Filter>
+    </ClCompile>
+    <ClCompile Include="common\udp_epic.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="decoder\Streamer.cpp">
+      <Filter>Source Files\decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="common\Log.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="decoder\AppDecUtils.h">
+      <Filter>Source Files\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="encoder\DDAImpl.h">
+      <Filter>Source Files\encoder</Filter>
+    </ClInclude>
+    <ClInclude Include="decoder\FFmpegDemuxer.h">
+      <Filter>Source Files\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="decoder\FramePresenterD3D.h">
+      <Filter>Source Files\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="decoder\FramePresenterD3D11.h">
+      <Filter>Source Files\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="common\Log.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="decoder\NvDecoder.h">
+      <Filter>Source Files\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="encoder\NvEncoder.h">
+      <Filter>Source Files\encoder</Filter>
+    </ClInclude>
+    <ClInclude Include="encoder\NvEncoderD3D11.h">
+      <Filter>Source Files\encoder</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ColorSpace.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="encoder\Defs.h">
+      <Filter>Source Files\encoder</Filter>
+    </ClInclude>
+    <ClInclude Include="common\udp_epic.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="decoder\Streamer.h">
+      <Filter>Source Files\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="common\NvCodecUtils.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="common\ColorSpace.cu">
+      <Filter>Source Files\common</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>
