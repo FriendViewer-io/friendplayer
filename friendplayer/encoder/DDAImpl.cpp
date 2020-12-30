@@ -61,7 +61,7 @@ HRESULT DDAImpl::Init()
     }
     /// Once we have the DXGI Adapter, we enumerate the attached display outputs, and select which one we want to capture
     /// This sample application always captures the primary display output, enumerated at index 0.
-    if (FAILED(hr = pAdapter->EnumOutputs(0, &pOutput)))
+    if (FAILED(hr = pAdapter->EnumOutputs(monitor_idx, &pOutput)))
     {
         CLEAN_RETURN(hr);
     }
@@ -166,3 +166,47 @@ int DDAImpl::Cleanup()
 
     return 0;
 }
+
+//void DDAImpl::CaptureFrameLoop() {
+//    using namespace std::chrono_literals;
+//    while (true) {
+//        {
+//            std::lock_guard<std::mutex> lck(capture_m);
+//            if (waiting_for_capture) {
+//                if (cur_capture != nullptr) {
+//                    cur_capture->Release();
+//                }
+//                cur_capture = nullptr;
+//                HRESULT hr = GetCapturedFrame(&cur_capture, 0);
+//                if (FAILED(hr)) {
+//                    // check for the system crasher
+//                    if (hr != DXGI_ERROR_WAIT_TIMEOUT) {
+//                        if (pResource) {
+//                            pDup->ReleaseFrame();
+//                            SAFE_RELEASE(pResource);
+//                        }
+//                        width = height = 0;
+//                        SAFE_RELEASE(pDup);
+//                        hr = Init();
+//                        if (FAILED(hr)) {
+//                            // attempt re-init later, but exit now
+//                            exit(1);
+//                        }
+//                        hr = GetCapturedFrame(&cur_capture, 0);
+//                    }
+//                }
+//                
+//            }
+//        }
+//        std::this_thread::sleep_for(1ms);
+//    }
+//}
+//
+//bool DDAImpl::CopyAndMarkDirty(ID3D11Texture2D* out_tex) {
+//    std::lock_guard<std::mutex> lck(capture_m);
+//    if (waiting_for_capture) {
+//        return false;
+//    }
+//    pCtx->CopySubresourceRegion(out_tex, D3D11CalcSubresource(0, 0, 1), 0, 0, 0, last_saved_capture, 0, nullptr);
+//    return true;
+//}

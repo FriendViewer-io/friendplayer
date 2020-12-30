@@ -29,13 +29,14 @@
 #include <list>
 #include <condition_variable>
 #include <fstream>
+#include "common/Log.h"
 
 #ifdef __cuda_cuda_h__
 inline bool check(CUresult e, int iLine, const char* szFile) {
     if (e != CUDA_SUCCESS) {
         const char* szErrName = NULL;
         cuGetErrorName(e, &szErrName);
-        //LOG(FATAL) << "CUDA driver API error " << szErrName << " at line " << iLine << " in file " << szFile;
+        LOG_ERROR("CUDA driver API error %s at line %d in file %s", szErrName, iLine, szFile);
         return false;
     }
     return true;
@@ -43,9 +44,9 @@ inline bool check(CUresult e, int iLine, const char* szFile) {
 #endif
 
 #ifdef __CUDA_RUNTIME_H__
-inline bool check(cudaError_t e, int iLine, const char* szFile) {
+inline bool check(cudaError_t e) {
     if (e != cudaSuccess) {
-        //LOG(FATAL) << "CUDA runtime API error " << cudaGetErrorName(e) << " at line " << iLine << " in file " << szFile;
+        LOG_ERROR("CUDA runtime API error %s", cudaGetErrorName(e));
         return false;
     }
     return true;
@@ -53,7 +54,7 @@ inline bool check(cudaError_t e, int iLine, const char* szFile) {
 #endif
 
 #ifdef _NV_ENCODEAPI_H_
-inline bool check(NVENCSTATUS e, int iLine, const char* szFile) {
+inline bool check(NVENCSTATUS e) {
     const char* aszErrName[] = {
         "NV_ENC_SUCCESS",
         "NV_ENC_ERR_NO_ENCODE_DEVICE",
@@ -83,7 +84,7 @@ inline bool check(NVENCSTATUS e, int iLine, const char* szFile) {
         "NV_ENC_ERR_RESOURCE_NOT_MAPPED",
     };
     if (e != NV_ENC_SUCCESS) {
-        //LOG(FATAL) << "NVENC error " << aszErrName[e] << " at line " << iLine << " in file " << szFile;
+        LOG_ERROR("NVENC error %s", aszErrName[e]);
         return false;
     }
     return true;
@@ -91,11 +92,11 @@ inline bool check(NVENCSTATUS e, int iLine, const char* szFile) {
 #endif
 
 #ifdef _WINERROR_
-inline bool check(HRESULT e, int iLine, const char* szFile) {
+inline bool check(HRESULT e) {
     if (e != S_OK) {
         std::stringstream stream;
         stream << std::hex << std::uppercase << e;
-        //LOG(FATAL) << "HRESULT error 0x" << stream.str() << " at line " << iLine << " in file " << szFile;
+        LOG_ERROR("HRESULT error 0x%s", stream.str());
         return false;
     }
     return true;
@@ -103,24 +104,22 @@ inline bool check(HRESULT e, int iLine, const char* szFile) {
 #endif
 
 #if defined(__gl_h_) || defined(__GL_H__)
-inline bool check(GLenum e, int iLine, const char* szFile) {
+inline bool check(GLenum e) {
     if (e != 0) {
-        //LOG(ERROR) << "GLenum error " << e << " at line " << iLine << " in file " << szFile;
+        LOG_ERROR("GLenum error %d", e);
         return false;
     }
     return true;
 }
 #endif
 
-inline bool check(int e, int iLine, const char* szFile) {
+inline bool check(int e) {
     if (e < 0) {
-        //LOG(ERROR) << "General error " << e << " at line " << iLine << " in file " << szFile;
+        LOG_ERROR("General error %d", e);
         return false;
     }
     return true;
 }
-
-#define ck(call) check(call, __LINE__, __FILE__)
 
 /**
 * @brief Wrapper class around std::thread

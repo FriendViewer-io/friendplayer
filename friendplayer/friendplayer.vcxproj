@@ -11,12 +11,12 @@
     <ClCompile Include="common\udp_epic.cpp" />
     <ClCompile Include="decoder\AppDecD3D.cpp" />
     <ClCompile Include="decoder\NvDecoder.cpp" />
-    <ClCompile Include="decoder\Streamer.cpp" />
     <ClCompile Include="encoder\DDAImpl.cpp" />
     <ClCompile Include="encoder\main.cpp" />
     <ClCompile Include="encoder\NvEncoder.cpp" />
     <ClCompile Include="encoder\NvEncoderD3D11.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
+    <ClCompile Include="Streamer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\ColorSpace.h" />
@@ -28,11 +28,11 @@
     <ClInclude Include="decoder\FramePresenterD3D.h" />
     <ClInclude Include="decoder\FramePresenterD3D11.h" />
     <ClInclude Include="decoder\NvDecoder.h" />
-    <ClInclude Include="decoder\Streamer.h" />
     <ClInclude Include="encoder\DDAImpl.h" />
     <ClInclude Include="encoder\Defs.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
     <ClInclude Include="encoder\NvEncoderD3D11.h" />
+    <ClInclude Include="Streamer.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="common\ColorSpace.cu" />
@@ -80,6 +80,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)dependencies\include;%CUDA_PATH%\include;$(SolutionDir)dependencies\include\cuvid_interface;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -90,7 +91,8 @@
       <AdditionalDependencies>cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /s /y /I $(SolutionDir)dependencies\x64\bin\ $(OutputPath)</Command>
+      <Command>xcopy /s /y /I $(SolutionDir)dependencies\x64\bin\ $(OutputPath)
+xcopy /y $(OutputPath)$(TargetName).$(OutputType) %USERPROFILE%\Dropbox\dumb\$(TargetName).$(OutputType)</Command>
     </PostBuildEvent>
     <CudaCompile />
   </ItemDefinitionGroup>

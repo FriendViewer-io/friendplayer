@@ -3,6 +3,8 @@
 #include <iostream>
 #include <WinSock2.h>
 
+#include "common/Log.h"
+
 template <size_t sz>
 struct FrameChunk {
     uint32_t frame_num;
@@ -119,12 +121,9 @@ void UDPSocketReceiver::sync() {
     sendto(socket_, dumb, 4, 0, (struct sockaddr *) target_addr, sockaddr_len);
 }
 
-uint32_t UDPSocketReceiver::get_frame(uint8_t* out_buf, uint32_t timeout_ms) {
-    LARGE_INTEGER t_start, t_end, freq;
-    QueryPerformanceFrequency(&freq);
+bool UDPSocketReceiver::get_frame(uint8_t* out_buf, uint32_t* buf_size, uint32_t* current_frame_num, uint32_t timeout_ms) {
 
     uint32_t final_read_size;
-    QueryPerformanceCounter(&t_start);
     std::unique_lock<std::mutex> lock(mutex);
     //std::cout << "Calling get_frame" << std::endl;
     if (frame_buffer[current_frame_index].frame_info.frame_num == 0)
@@ -134,20 +133,20 @@ uint32_t UDPSocketReceiver::get_frame(uint8_t* out_buf, uint32_t timeout_ms) {
      [this] () -> bool {
         return frame_buffer[current_frame_index].frame_info.current_read_size == frame_buffer[current_frame_index].frame_info.frame_size;
     });
-    QueryPerformanceCounter(&t_end);
-    long long micros_elapsed = (1000000 * (t_end.QuadPart - t_start.QuadPart)) / freq.QuadPart;
-    //std::cout << "Size = " << frame_buffer[current_frame_index].frame_info.current_read_size << "Lock and CV time = " << micros_elapsed << " us" << std::endl;
 
     if (is_frame_complete) {
-        //std::cout << "Received frame #" << frame_buffer[current_frame_index].frame_info.frame_num << " size = " << frame_buffer[current_frame_index].frame_info.current_read_size << std::endl;
+        LOG_TRACE("Received frame {}", frame_buffer[current_frame_index].frame_info.frame_num);
         memcpy(out_buf, frame_buffer[current_frame_index].frame_data.data(), frame_buffer[current_frame_index].frame_info.frame_size);
-        final_read_size = frame_buffer[current_frame_index].frame_info.frame_size;
-    } else {
+    } else if (frame_buffer[current_frame_index].frame_info.current_read_size > 0) {
         // memcpy size here is wrong, it should be max chunk offset for size instead
         memcpy(out_buf, frame_buffer[current_frame_index].frame_data.data(), frame_buffer[current_frame_index].frame_info.current_read_size);
-        final_read_size = frame_buffer[current_frame_index].frame_info.current_read_size;
-        //std::cout << "garbage! " << frame_buffer[current_frame_index].frame_info.current_read_size << std::endl;
+        LOG_ERROR("Full packet not found for frame {} got {} but expected {}", frame_buffer[current_frame_index].frame_info.frame_num, frame_buffer[current_frame_index].frame_info.current_read_size, frame_buffer[current_frame_index].frame_info.frame_size);
+    } else {
+        LOG_ERROR("Completely missed packets for frame {}", frame_buffer[current_frame_index].frame_info.frame_num);
     }
+
+    *buf_size = frame_buffer[current_frame_index].frame_info.current_read_size;
+    *current_frame_num = frame_buffer[current_frame_index].frame_info.frame_num;
 
     frame_buffer[current_frame_index].frame_info.frame_num += frame_buffer.size();
     frame_buffer[current_frame_index].frame_info.frame_size = -1;
@@ -156,7 +155,7 @@ uint32_t UDPSocketReceiver::get_frame(uint8_t* out_buf, uint32_t timeout_ms) {
     current_frame_index++;
     current_frame_index %= frame_buffer.size();
 
-    return final_read_size;
+    return is_frame_complete;
 }
 
 // wait until timeout or receives a full frame
@@ -176,7 +175,7 @@ void UDPSocketReceiver::read_frames() {
         std::lock_guard<std::mutex> lock(mutex);
         current_frame_num = frame_buffer[current_frame_index].frame_info.frame_num;
         uint32_t frame_num = ((uint32_t*) read_buffer)[0];
-        std::cout << "Received " << recv_len << " bytes frame number " << frame_num << std::endl;
+        //LOG_TRACE("Received {} bytes frame number {}", recv_len, frame_num);
         if (current_frame_num > frame_num) {
             continue;
         } else if (frame_num >= current_frame_num + frame_buffer.size()) {
@@ -186,7 +185,7 @@ void UDPSocketReceiver::read_frames() {
                 frame_buffer[i].frame_info.current_read_size = 0;
             }
             current_frame_index = 0;
-            std::cout << "Decoder lagging behind? Jumping from " << current_frame_num << " to " << frame_num << std::endl;
+            LOG_WARNING("Decoder lagging behind? Jumping from frame {} to {} ", current_frame_num, frame_num);
             current_frame_num = frame_num;
         }
         uint32_t frame_index = (current_frame_index + (frame_num - current_frame_num)) % frame_buffer.size();
@@ -210,11 +209,11 @@ void UDPSocketReceiver::read_frames() {
         if (frame_buffer[frame_index].frame_info.current_read_size == frame_buffer[frame_index].frame_info.frame_size) {
             QueryPerformanceCounter(&t_end[frame_index]);
             long long micros_elapsed = (1000000 * (t_end[frame_index].QuadPart - t_start[frame_index].QuadPart)) / freq.QuadPart;
-            std::cout << "Finished frame in " << micros_elapsed << " size of " << frame_buffer[frame_index].frame_info.current_read_size << std::endl;
+            LOG_TRACE("Finished frame {} in {}us with a size of {}", frame_buffer[frame_index].frame_info.frame_num, micros_elapsed, frame_buffer[frame_index].frame_info.current_read_size);
             t_start[frame_index].QuadPart = 0;
         }
         // If the current frame is complete notify the receiver
-        if (current_frame_num == frame_num && frame_buffer[current_frame_index].frame_info.current_read_size == frame_buffer[current_frame_index].frame_info.frame_size) {
+        if (current_frame_index == frame_index && frame_buffer[current_frame_index].frame_info.current_read_size == frame_buffer[current_frame_index].frame_info.frame_size) {
             //std::cout << "Packet time = " << micros_elapsed << " us" << std::endl;
             //std::cout << "Average bitrate = " << (total_recv / micros_elapsed) << std::endl;
             //std::cout << "Done with frame " << current_frame_num << std::endl;

@@ -75,11 +75,11 @@ public:
         }
 
         D3D11_MAPPED_SUBRESOURCE mappedTexture;
-        ck(pContext->Map(pStagingTexture, 0, D3D11_MAP_WRITE, 0, &mappedTexture));
+        check(pContext->Map(pStagingTexture, 0, D3D11_MAP_WRITE, 0, &mappedTexture));
         memcpy(mappedTexture.pData, pData, min(nWidth * nHeight * 4, nBytes));
         pContext->Unmap(pStagingTexture, 0);
         pContext->CopyResource(pBackBuffer, pStagingTexture);
-        ck(pSwapChain->Present(0, 0));
+        check(pSwapChain->Present(0, 0));
         mtx.unlock();
         return true;
     }
@@ -105,6 +105,23 @@ public:
         }
         mtx.unlock();
         return true;
+    }
+
+    virtual void HandleResize(WPARAM wParam, int width, int height) {
+        if (wParam == SIZE_RESTORED) {
+            mtx.lock();
+            double starting_ratio = static_cast<double>(nWidth) / nHeight;
+            
+            // Keep aspect ratio
+            if (starting_ratio * height > width) {
+                height = width / starting_ratio;
+            }
+            if (width / starting_ratio > height) {
+                width = starting_ratio * height;
+            }
+            //pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+            mtx.unlock();
+        }
     }
 
 private:
@@ -154,21 +171,45 @@ private:
         sc.Windowed = TRUE;
 
         ID3D11Device* pDevice = NULL;
-        ck(D3D11CreateDeviceAndSwapChain(GetAdapterByContext(cuContext), D3D_DRIVER_TYPE_UNKNOWN,
+        check(D3D11CreateDeviceAndSwapChain(GetAdapterByContext(cuContext), D3D_DRIVER_TYPE_UNKNOWN,
             NULL, 0, NULL, 0, D3D11_SDK_VERSION, &sc, &pSwapChain, &pDevice, NULL, &pContext));
-        ck(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer));
+        check(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer));
+
 
         D3D11_TEXTURE2D_DESC td;
         pBackBuffer->GetDesc(&td);
         td.BindFlags = 0;
         td.Usage = D3D11_USAGE_STAGING;
         td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        ck(pDevice->CreateTexture2D(&td, NULL, &pStagingTexture));
+        check(pDevice->CreateTexture2D(&td, NULL, &pStagingTexture));
 
-        ck(cuCtxPushCurrent(cuContext));
-        ck(cuGraphicsD3D11RegisterResource(&cuResource, pBackBuffer, CU_GRAPHICS_REGISTER_FLAGS_NONE));
-        ck(cuGraphicsResourceSetMapFlags(cuResource, CU_GRAPHICS_MAP_RESOURCE_FLAGS_WRITE_DISCARD));
-        ck(cuCtxPopCurrent(NULL));
+
+        // Map cuda frame buffer to swapchain backbuffer
+        check(cuCtxPushCurrent(cuContext));
+        check(cuGraphicsD3D11RegisterResource(&cuResource, pBackBuffer, CU_GRAPHICS_REGISTER_FLAGS_NONE));
+        check(cuGraphicsResourceSetMapFlags(cuResource, CU_GRAPHICS_MAP_RESOURCE_FLAGS_WRITE_DISCARD));
+        check(cuCtxPopCurrent(NULL));
+/*
+        // trying to keep aspect ratio within window
+        pDevice->CreateRenderTargetView(pBackBuffer, NULL, &pRenderTargetView);
+        pDevice->CreateDepthStencilView(pStagingTexture, NULL, &pStencilView);
+
+        pContext->OMSetRenderTargets(1, &pRenderTargetView, pStencilView);
+        
+        D3D11_VIEWPORT vp;
+        vp.TopLeftX = 50;
+        vp.TopLeftY = 0;
+        vp.Width = nWidth - 50;
+        vp.Height = nHeight;
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        pContext->RSSetViewports(1, &vp);*/
+        D3D11_VIEWPORT screenViewport = CD3D11_VIEWPORT(
+            50.0f,
+            0.0f,
+            static_cast<float>(nWidth - 200),
+            static_cast<float>(nHeight));
+        pContext->RSSetViewports(1, &screenViewport);
 
         bReady = true;
         MSG msg = { 0 };
@@ -181,9 +222,9 @@ private:
 
         mtx.lock();
         bReady = false;
-        ck(cuCtxPushCurrent(cuContext));
-        ck(cuGraphicsUnregisterResource(cuResource));
-        ck(cuCtxPopCurrent(NULL));
+        check(cuCtxPushCurrent(cuContext));
+        check(cuGraphicsUnregisterResource(cuResource));
+        check(cuCtxPopCurrent(NULL));
         pStagingTexture->Release();
         pBackBuffer->Release();
         pContext->Release();
@@ -201,16 +242,16 @@ private:
     */
     static IDXGIAdapter* GetAdapterByContext(CUcontext cuContext) {
         CUdevice cuDeviceTarget;
-        ck(cuCtxPushCurrent(cuContext));
-        ck(cuCtxGetDevice(&cuDeviceTarget));
-        ck(cuCtxPopCurrent(NULL));
+        check(cuCtxPushCurrent(cuContext));
+        check(cuCtxGetDevice(&cuDeviceTarget));
+        check(cuCtxPopCurrent(NULL));
 
         IDXGIFactory1* pFactory = NULL;
-        ck(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&pFactory));
+        check(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&pFactory));
         IDXGIAdapter* pAdapter = NULL;
         for (unsigned i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; i++) {
             CUdevice cuDevice;
-            ck(cuD3D11GetDevice(&cuDevice, pAdapter));
+            check(cuD3D11GetDevice(&cuDevice, pAdapter));
             if (cuDevice == cuDeviceTarget) {
                 pFactory->Release();
                 return pAdapter;
@@ -233,4 +274,6 @@ private:
     HANDLE hTimer;
     HANDLE hTimerQueue;
     HANDLE hPresentEvent;
+    ID3D11RenderTargetView *pRenderTargetView;
+    ID3D11DepthStencilView *pStencilView;
 };

@@ -454,6 +454,8 @@ int NvDecoder::ReconfigureDecoder(CUVIDEOFORMAT* pVideoFormat)
     CUDA_DRVAPI_CALL(cuCtxPopCurrent(NULL));
     STOP_TIMER("Session Reconfigure Time: ");
 
+    //LOG_INFO(GetVideoInfo());
+
     return nDecodeSurface;
 }
 

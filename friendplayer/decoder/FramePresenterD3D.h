@@ -23,7 +23,9 @@ public:
     *   @param  nWidth - Width of D3D Surface
     *   @param  nHeight - Height of D3D Surface
     */
-    FramePresenterD3D(CUcontext cuContext, int nWidth, int nHeight) : cuContext(cuContext), nWidth(nWidth), nHeight(nHeight) {}
+    FramePresenterD3D(CUcontext cuContext, int nWidth, int nHeight) : cuContext(cuContext), nWidth(nWidth), nHeight(nHeight) {
+        self = this;
+    }
     /**
     *   @brief  FramePresenterD3D destructor.
     */
@@ -46,11 +48,11 @@ protected:
     *   @return hwndMain - handle to the created window
     */
     static HWND CreateAndShowWindow(int nWidth, int nHeight) {
-        double r = max(nWidth / 1280.0, nHeight / 720.0);
+        /*double r = max(nWidth / 1280.0, nHeight / 720.0);
         if (r > 1.0) {
             nWidth = (int)(nWidth / r);
             nHeight = (int)(nHeight / r);
-        }
+        }*/
 
         static char szAppName[] = "D3DPresenter";
         WNDCLASS wndclass;
@@ -91,10 +93,10 @@ protected:
     *   @param  nPitch  - pitch of the BGRA surface. Typically width in pixels * number of bytes per pixel
     */
     void CopyDeviceFrame(unsigned char* dpBgra, int nPitch) {
-        ck(cuCtxPushCurrent(cuContext));
-        ck(cuGraphicsMapResources(1, &cuResource, 0));
+        check(cuCtxPushCurrent(cuContext));
+        check(cuGraphicsMapResources(1, &cuResource, 0));
         CUarray dstArray;
-        ck(cuGraphicsSubResourceGetMappedArray(&dstArray, cuResource, 0, 0));
+        check(cuGraphicsSubResourceGetMappedArray(&dstArray, cuResource, 0, 0));
 
         CUDA_MEMCPY2D m = { 0 };
         m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
@@ -104,11 +106,13 @@ protected:
         m.dstArray = dstArray;
         m.WidthInBytes = nWidth * 4;
         m.Height = nHeight;
-        ck(cuMemcpy2D(&m));
+        check(cuMemcpy2D(&m));
 
-        ck(cuGraphicsUnmapResources(1, &cuResource, 0));
-        ck(cuCtxPopCurrent(NULL));
+        check(cuGraphicsUnmapResources(1, &cuResource, 0));
+        check(cuCtxPopCurrent(NULL));
     }
+
+    virtual void HandleResize(WPARAM wParam, int width, int height) = 0;
 
 private:
     /**
@@ -128,6 +132,9 @@ private:
         case WM_CLOSE:
             PostQuitMessage(0);
             return 0;
+        case WM_SIZE:
+            self->HandleResize(wParam, lParam & 0xFFFF, (lParam >> 16) & 0xFFFF);
+            break;
         }
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
@@ -136,4 +143,5 @@ protected:
     int nWidth = 0, nHeight = 0;
     CUcontext cuContext = NULL;
     CUgraphicsResource cuResource = NULL;
+    inline static FramePresenterD3D* self = nullptr;
 };

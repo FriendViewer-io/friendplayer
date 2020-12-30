@@ -62,8 +62,8 @@ public:
     void init_connection(const char* ip, short port);
 
 // wait until timeout or receives a full frame
-    uint32_t get_frame(uint8_t* out_buf, uint32_t timeout_ms);
-// ?
+    bool get_frame(uint8_t* out_buf, uint32_t* buf_size, uint32_t* current_frame_num, uint32_t timeout_ms);
+// worker thread
     void read_frames();
 
 

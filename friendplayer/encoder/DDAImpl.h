@@ -32,6 +32,9 @@
 #include <fstream>
 #include <dxgi1_2.h>
 #include <d3d11_2.h>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 class DDAImpl
 {
@@ -64,7 +67,15 @@ private:
     LARGE_INTEGER qpcFreq = { 0 };
     /// Default constructor
     DDAImpl() {}
-    
+
+    int monitor_idx;
+
+    //std::thread* dxgi_capture_thread;
+    //std::mutex capture_m;
+    //
+    //ID3D11Texture2D* last_capture = nullptr;
+    //ID3D11Texture2D* last_saved_capture = nullptr;
+
 public:
     /// Initialize DDA
     HRESULT Init();
@@ -78,11 +89,15 @@ public:
     /// Return output width to caller
     inline DWORD getHeight() { return height; }
 
+    void CaptureFrameLoop();
+    bool CopyAndMarkDirty(ID3D11Texture2D* out_tex);
+
 public:
     /// Constructor
-    DDAImpl(ID3D11Device *pDev, ID3D11DeviceContext* pDevCtx)
+    DDAImpl(ID3D11Device *pDev, ID3D11DeviceContext* pDevCtx, int monitor_idx)
         :   pD3DDev(pDev)
         ,   pCtx(pDevCtx)
+        ,   monitor_idx(monitor_idx)
     {
         pD3DDev->AddRef();
         pCtx->AddRef();

@@ -48,11 +48,11 @@
     <ClCompile Include="common\udp_epic.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="decoder\Streamer.cpp">
-      <Filter>Source Files\decoder</Filter>
-    </ClCompile>
     <ClCompile Include="common\Log.cpp">
       <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Streamer.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -92,11 +92,11 @@
     <ClInclude Include="common\udp_epic.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="decoder\Streamer.h">
-      <Filter>Source Files\decoder</Filter>
-    </ClInclude>
     <ClInclude Include="common\NvCodecUtils.h">
       <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="Streamer.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -128,11 +128,11 @@ static void getOutputFormatNames(unsigned short nOutputFormatMask, char* OutputF
 static void createCudaContext(CUcontext* cuContext, int iGpu, unsigned int flags)
 {
     CUdevice cuDevice = 0;
-    ck(cuDeviceGet(&cuDevice, iGpu));
+    check(cuDeviceGet(&cuDevice, iGpu));
     char szDeviceName[80];
-    ck(cuDeviceGetName(szDeviceName, sizeof(szDeviceName), cuDevice));
+    check(cuDeviceGetName(szDeviceName, sizeof(szDeviceName), cuDevice));
     std::cout << "GPU in use: " << szDeviceName << std::endl;
-    ck(cuCtxCreate(cuContext, flags, cuDevice));
+    check(cuCtxCreate(cuContext, flags, cuDevice));
 }
 
 /**
@@ -140,9 +140,9 @@ static void createCudaContext(CUcontext* cuContext, int iGpu, unsigned int flags
 */
 static void ShowDecoderCapability()
 {
-    ck(cuInit(0));
+    check(cuInit(0));
     int nGpu = 0;
-    ck(cuDeviceGetCount(&nGpu));
+    check(cuDeviceGetCount(&nGpu));
     std::cout << "Decoder Capability" << std::endl << std::endl;
     const char* aszCodecName[] = { "JPEG", "MPEG1", "MPEG2", "MPEG4", "H264", "HEVC", "HEVC", "HEVC", "HEVC", "HEVC", "HEVC", "VC1", "VP8", "VP9", "VP9", "VP9", "AV1", "AV1", "AV1", "AV1" };
     const char* aszChromaFormat[] = { "4:0:0", "4:2:0", "4:2:2", "4:4:4" };
@@ -189,6 +189,6 @@ static void ShowDecoderCapability()
 
         std::cout << std::endl;
 
-        ck(cuCtxDestroy(cuContext));
+        check(cuCtxDestroy(cuContext));
     }
 }

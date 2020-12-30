@@ -16,6 +16,16 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 #include "common/NvCodecUtils.h"
+#include "common/Log.h"
+#include "common/udp_epic.h"
+
+#include "nvcuvid.h"
+
+// Num frames to count after a frame failure to tell sender to send IDR frame
+// should be low enough to not show frame corruption for too long but not high
+// enough that it will spam IDR frames in the case of continuous failures
+#define IDR_RESEND_FRAME_COUNT 60
+
 
 //---------------------------------------------------------------------------
 //! \file FFmpegDemuxer.h 
@@ -61,16 +71,16 @@ private:
     */
     FFmpegDemuxer(AVFormatContext* fmtc, int64_t timeScale = 1000 /*Hz*/) : fmtc(fmtc) {
         if (!fmtc) {
-            //LOG(ERROR) << "No AVFormatContext provided.";
+            LOG_ERROR("No AVFormatContext provided.");
             return;
         }
 
-        //LOG(INFO) << "Media format: " << fmtc->iformat->long_name << " (" << fmtc->iformat->name << ")";
+        LOG_INFO("Media format: {} ({})", fmtc->iformat->long_name, fmtc->iformat->name);
 
-        ck(avformat_find_stream_info(fmtc, NULL));
+        check(avformat_find_stream_info(fmtc, NULL));
         iVideoStream = av_find_best_stream(fmtc, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
         if (iVideoStream < 0) {
-            //LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__ << " " << "Could not find stream in input file";
+            LOG_ERROR("FFmpeg error: Could not find stream in input file");
             return;
         }
 
@@ -161,9 +171,9 @@ private:
                 //LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__ << " " << "av_bsf_get_by_name() failed";
                 return;
             }
-            ck(av_bsf_alloc(bsf, &bsfc));
+            check(av_bsf_alloc(bsf, &bsfc));
             avcodec_parameters_copy(bsfc->par_in, fmtc->streams[iVideoStream]->codecpar);
-            ck(av_bsf_init(bsfc));
+            check(av_bsf_init(bsfc));
         }
         if (bMp4HEVC) {
             const AVBitStreamFilter* bsf = av_bsf_get_by_name("hevc_mp4toannexb");
@@ -171,9 +181,9 @@ private:
                 //LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__ << " " << "av_bsf_get_by_name() failed";
                 return;
             }
-            ck(av_bsf_alloc(bsf, &bsfc));
+            check(av_bsf_alloc(bsf, &bsfc));
             avcodec_parameters_copy(bsfc->par_in, fmtc->streams[iVideoStream]->codecpar);
-            ck(av_bsf_init(bsfc));
+            check(av_bsf_init(bsfc));
         }
     }
 
@@ -200,7 +210,7 @@ private:
         }
         ctx->pb = avioc;
 
-        ck(avformat_open_input(&ctx, NULL, NULL, NULL));
+        check(avformat_open_input(&ctx, NULL, NULL, NULL));
         return ctx;
     }
 
@@ -213,12 +223,12 @@ private:
         avformat_network_init();
 
         AVFormatContext* ctx = NULL;
-        ck(avformat_open_input(&ctx, szFilePath, NULL, NULL));
+        check(avformat_open_input(&ctx, szFilePath, NULL, NULL));
         return ctx;
     }
 
 public:
-    FFmpegDemuxer(const char* szFilePath, int64_t timescale = 1000 /*Hz*/) : FFmpegDemuxer(CreateFormatContext(szFilePath), timescale) {}
+    //FFmpegDemuxer(const char* szFilePath, int64_t timescale = 1000 /*Hz*/) : FFmpegDemuxer(CreateFormatContext(szFilePath), timescale) {}
     FFmpegDemuxer(DataProvider* pDataProvider) : FFmpegDemuxer(CreateFormatContext(pDataProvider)) { avioc = fmtc->pb; }
     ~FFmpegDemuxer() {
 
@@ -289,8 +299,8 @@ public:
             if (pktFiltered.data) {
                 av_packet_unref(&pktFiltered);
             }
-            ck(av_bsf_send_packet(bsfc, &pkt));
-            ck(av_bsf_receive_packet(bsfc, &pktFiltered));
+            check(av_bsf_send_packet(bsfc, &pkt));
+            check(av_bsf_receive_packet(bsfc, &pktFiltered));
             *ppVideo = pktFiltered.data;
             *pnVideoBytes = pktFiltered.size;
             if (pts)
@@ -337,6 +347,35 @@ public:
     static int ReadPacket(void* opaque, uint8_t* pBuf, int nBuf) {
         return ((DataProvider*)opaque)->GetData(pBuf, nBuf);
     }
+};
+
+class SocketProvider : public FFmpegDemuxer::DataProvider {
+public:
+    SocketProvider(UDPSocketReceiver* udp_sock_, int timeout_ms_) : udp_sock(udp_sock_), timeout_ms(timeout_ms_), send_idr_frame_count(-1), last_frame(0) { }
+
+    virtual int GetData(uint8_t* pBuf, int nBuf) {
+        uint32_t out_size = 0;
+        uint32_t current_frame = 0;
+        // If frame was incomplete or the current frame skipped frames we have corrupted video
+        if (!udp_sock->get_frame(pBuf, &out_size, &current_frame, timeout_ms) || current_frame - last_frame != 1) {
+            send_idr_frame_count = IDR_RESEND_FRAME_COUNT;
+        } else if (send_idr_frame_count >= 0){
+            // Tell sender to send an IDR frame after IDR_RESEND_FRAME_COUNT frames
+            if (send_idr_frame_count == 0) {
+                LOG_INFO("Asking for IDR frame after frame miss");
+
+            }
+            send_idr_frame_count--;
+        }
+        last_frame = current_frame;
+        return out_size;
+    }
+
+private:
+    UDPSocketReceiver* udp_sock;
+    uint32_t timeout_ms;
+    int send_idr_frame_count;
+    uint32_t last_frame;
 };
 
 inline cudaVideoCodec FFmpeg2NvCodecId(AVCodecID id) {
