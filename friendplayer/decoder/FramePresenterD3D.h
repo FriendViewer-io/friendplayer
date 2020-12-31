@@ -112,7 +112,7 @@ protected:
         check(cuCtxPopCurrent(NULL));
     }
 
-    virtual void HandleResize(WPARAM wParam, int width, int height) = 0;
+    virtual void HandleResize(WPARAM wParam, RECT* lParam)= 0;
 
 private:
     /**
@@ -132,8 +132,8 @@ private:
         case WM_CLOSE:
             PostQuitMessage(0);
             return 0;
-        case WM_SIZE:
-            self->HandleResize(wParam, lParam & 0xFFFF, (lParam >> 16) & 0xFFFF);
+        case WM_SIZING:
+            self->HandleResize(wParam, (RECT*) lParam);
             break;
         }
         return DefWindowProc(hwnd, msg, wParam, lParam);

@@ -16,6 +16,7 @@
 #include <d3d11.h>
 #include <cuda.h>
 #include <cudaD3D11.h>
+#include <numeric>
 #include "FramePresenterD3D.h"
 #include "common/NvCodecUtils.h"
 
@@ -107,21 +108,112 @@ public:
         return true;
     }
 
-    virtual void HandleResize(WPARAM wParam, int width, int height) {
-        if (wParam == SIZE_RESTORED) {
-            mtx.lock();
-            double starting_ratio = static_cast<double>(nWidth) / nHeight;
-            
-            // Keep aspect ratio
-            if (starting_ratio * height > width) {
-                height = width / starting_ratio;
-            }
-            if (width / starting_ratio > height) {
-                width = starting_ratio * height;
-            }
-            //pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
-            mtx.unlock();
+    void resize(int edge, RECT& rect)
+    {
+        int size_x_desired = (rect.right - rect.left) - window_adjust_x;
+        int size_y_desired = (rect.bottom - rect.top) - window_adjust_y;
+
+        switch (edge)
+        {
+        case WMSZ_BOTTOM:
+        case WMSZ_TOP:
+        {
+            int size_x = window_adjust_x + (size_y_desired * window_ratio_x) / window_ratio_y;
+            rect.left = (rect.left + rect.right) / 2 - size_x / 2;
+            rect.right = rect.left + size_x;
         }
+        break;
+        case WMSZ_BOTTOMLEFT:
+        {
+            int size_x, size_y;
+
+            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
+            {
+                size_x = rect.right - rect.left;
+                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+            }
+            else
+            {
+                size_y = rect.bottom - rect.top;
+                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+            }
+
+            rect.left = rect.right - size_x;
+            rect.bottom = rect.top + size_y;
+        }
+        break;
+        case WMSZ_BOTTOMRIGHT:
+        {
+            int size_x, size_y;
+
+            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
+            {
+                size_x = rect.right - rect.left;
+                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+            }
+            else
+            {
+                size_y = rect.bottom - rect.top;
+                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+            }
+
+            rect.right = rect.left + size_x;
+            rect.bottom = rect.top + size_y;
+        }
+        break;
+        case WMSZ_LEFT:
+        case WMSZ_RIGHT:
+        {
+            int size_y = window_adjust_y + (size_x_desired * window_ratio_y) / window_ratio_x;
+            rect.top = (rect.top + rect.bottom) / 2 - size_y / 2;
+            rect.bottom = rect.top + size_y;
+        }
+        break;
+        case WMSZ_TOPLEFT:
+        {
+            int size_x, size_y;
+
+            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
+            {
+                size_x = rect.right - rect.left;
+                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+            }
+            else
+            {
+                size_y = rect.bottom - rect.top;
+                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+            }
+
+            rect.left = rect.right - size_x;
+            rect.top = rect.bottom - size_y;
+        }
+        break;
+        case WMSZ_TOPRIGHT:
+        {
+            int size_x, size_y;
+
+            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
+            {
+                size_x = rect.right - rect.left;
+                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+            }
+            else
+            {
+                size_y = rect.bottom - rect.top;
+                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+            }
+
+            rect.right = rect.left + size_x;
+            rect.top = rect.bottom - size_y;
+        }
+        break;
+        }
+    }
+
+    RECT previousRect = { 0 };
+
+    virtual void HandleResize(WPARAM wParam, RECT* lParam) {
+        resize(wParam, *lParam);
     }
 
 private:
@@ -169,6 +261,15 @@ private:
         sc.SampleDesc.Count = 1;
         sc.SampleDesc.Quality = 0;
         sc.Windowed = TRUE;
+
+        window_ratio_x = nWidth / std::gcd(nWidth, nHeight);
+        window_ratio_y = nHeight / std::gcd(nWidth, nHeight);
+
+        RECT rect = { 0, 0, nWidth, nHeight };
+        AdjustWindowRect(&rect, CS_HREDRAW | CS_VREDRAW, FALSE);
+        window_adjust_x = (rect.right - rect.left) - nWidth;
+        window_adjust_y = (rect.bottom - rect.top) - nHeight;
+
 
         ID3D11Device* pDevice = NULL;
         check(D3D11CreateDeviceAndSwapChain(GetAdapterByContext(cuContext), D3D_DRIVER_TYPE_UNKNOWN,
@@ -267,6 +368,11 @@ private:
     bool bQuit = false;
     std::mutex mtx;
     std::thread* pthMsgLoop = NULL;
+
+    double window_ratio_x;
+    double window_ratio_y;
+    double window_adjust_x;
+    double window_adjust_y;
 
     IDXGISwapChain* pSwapChain = NULL;
     ID3D11DeviceContext* pContext = NULL;
