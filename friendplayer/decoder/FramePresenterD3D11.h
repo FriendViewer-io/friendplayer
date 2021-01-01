@@ -108,7 +108,7 @@ public:
         return true;
     }
 
-    void resize(int edge, RECT& rect)
+    void HandleResize(WPARAM edge, RECT& rect)
     {
         int size_x_desired = (rect.right - rect.left) - window_adjust_x;
         int size_y_desired = (rect.bottom - rect.top) - window_adjust_y;
@@ -210,12 +210,6 @@ public:
         }
     }
 
-    RECT previousRect = { 0 };
-
-    virtual void HandleResize(WPARAM wParam, RECT* lParam) {
-        resize(wParam, *lParam);
-    }
-
 private:
     /**
     *   @brief  Launches the windowing functionality
@@ -262,6 +256,7 @@ private:
         sc.SampleDesc.Quality = 0;
         sc.Windowed = TRUE;
 
+        // Determine resizing aspect ratio numbers
         window_ratio_x = nWidth / std::gcd(nWidth, nHeight);
         window_ratio_y = nHeight / std::gcd(nWidth, nHeight);
 
@@ -276,7 +271,7 @@ private:
             NULL, 0, NULL, 0, D3D11_SDK_VERSION, &sc, &pSwapChain, &pDevice, NULL, &pContext));
         check(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer));
 
-
+        // Used for host presenting
         D3D11_TEXTURE2D_DESC td;
         pBackBuffer->GetDesc(&td);
         td.BindFlags = 0;
@@ -290,27 +285,6 @@ private:
         check(cuGraphicsD3D11RegisterResource(&cuResource, pBackBuffer, CU_GRAPHICS_REGISTER_FLAGS_NONE));
         check(cuGraphicsResourceSetMapFlags(cuResource, CU_GRAPHICS_MAP_RESOURCE_FLAGS_WRITE_DISCARD));
         check(cuCtxPopCurrent(NULL));
-/*
-        // trying to keep aspect ratio within window
-        pDevice->CreateRenderTargetView(pBackBuffer, NULL, &pRenderTargetView);
-        pDevice->CreateDepthStencilView(pStagingTexture, NULL, &pStencilView);
-
-        pContext->OMSetRenderTargets(1, &pRenderTargetView, pStencilView);
-        
-        D3D11_VIEWPORT vp;
-        vp.TopLeftX = 50;
-        vp.TopLeftY = 0;
-        vp.Width = nWidth - 50;
-        vp.Height = nHeight;
-        vp.MinDepth = 0.0f;
-        vp.MaxDepth = 1.0f;
-        pContext->RSSetViewports(1, &vp);*/
-        D3D11_VIEWPORT screenViewport = CD3D11_VIEWPORT(
-            50.0f,
-            0.0f,
-            static_cast<float>(nWidth - 200),
-            static_cast<float>(nHeight));
-        pContext->RSSetViewports(1, &screenViewport);
 
         bReady = true;
         MSG msg = { 0 };

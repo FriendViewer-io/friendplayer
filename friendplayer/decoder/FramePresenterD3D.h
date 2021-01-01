@@ -63,7 +63,7 @@ protected:
         wndclass.hInstance = (HINSTANCE)GetModuleHandle(NULL);
         wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
         wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wndclass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+        wndclass.hbrBackground = NULL;
         wndclass.lpszMenuName = NULL;
         wndclass.lpszClassName = szAppName;
         RegisterClass(&wndclass);
@@ -112,7 +112,7 @@ protected:
         check(cuCtxPopCurrent(NULL));
     }
 
-    virtual void HandleResize(WPARAM wParam, RECT* lParam)= 0;
+    virtual void HandleResize(WPARAM wParam, RECT& lParam)= 0;
 
 private:
     /**
@@ -133,7 +133,7 @@ private:
             PostQuitMessage(0);
             return 0;
         case WM_SIZING:
-            self->HandleResize(wParam, (RECT*) lParam);
+            self->HandleResize(wParam, *(RECT*) lParam);
             break;
         }
         return DefWindowProc(hwnd, msg, wParam, lParam);
