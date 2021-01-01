@@ -32,8 +32,8 @@ public:
     *   @param  nWidth - Width of D3D surface
     *   @param  nHeight - Height of D3D surface
     */
-    FramePresenterD3D11(CUcontext cuContext, int nWidth, int nHeight) :
-        FramePresenterD3D(cuContext, nWidth, nHeight)
+    FramePresenterD3D11(CUcontext cuContext, int nWidth, int nHeight, int windowWidth = 0, int windowHeight = 0) :
+        FramePresenterD3D(cuContext, nWidth, nHeight, windowWidth, windowHeight)
     {
         pthMsgLoop = new std::thread(ThreadProc, this);
         while (!bReady) {
@@ -241,7 +241,7 @@ private:
     *          with cuda.
     */
     void Run() {
-        HWND hwndMain = CreateAndShowWindow(nWidth, nHeight);
+        HWND hwndMain = CreateAndShowWindow(nWindowWidth, nWindowHeight);
 
         DXGI_SWAP_CHAIN_DESC sc = { 0 };
         sc.BufferCount = 1;

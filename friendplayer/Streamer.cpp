@@ -241,19 +241,15 @@ bool Streamer::InitDecode(uint32_t frame_timeout_ms) {
     LOG_TRACE("Syncing");
     udp_socket->sync(); 
     LOG_TRACE("Creating decoder");
-    Dim scale;
-    scale.w = 1920;
-    scale.h = 1080;
-    decoder = new NvDecoder(cuda_context, true, FFmpeg2NvCodecId(demuxer->GetVideoCodec()), true, false, NULL, &scale, scale.w, scale.h, 1000);
+    decoder = new NvDecoder(cuda_context, true, FFmpeg2NvCodecId(demuxer->GetVideoCodec()), true, false, NULL, NULL, 0, 0, 1000);
     int nRGBWidth = (demuxer->GetWidth() + 1) & ~1;
     LOG_TRACE("Allocating CUDA frame");
-    if (!check(cuMemAlloc(&cuda_frame, /*nRGBWidth * demuxer->GetHeight()*/scale.w * scale.h * 4))) {
-        //cuDe
+    if (!check(cuMemAlloc(&cuda_frame, nRGBWidth * demuxer->GetHeight() * 4))) {
         LOG_CRITICAL("Failed to allocate cuda frame memory");
         return false;
     }
     LOG_TRACE("Creating FramePresenterType");
-    presenter = new FramePresenterD3D11(cuda_context, scale.w, scale.h);//presenter = new FramePresenterD3D11(cuda_context, nRGBWidth, demuxer->GetHeight());
+    presenter = new FramePresenterD3D11(cuda_context, nRGBWidth, demuxer->GetHeight());
     LOG_TRACE("Finished initializing streamer as decoder");
 
     return true;
@@ -293,7 +289,7 @@ void Streamer::PresentVideo() {
     int iMatrix = 0;
     int64_t timestamp = 0;
     LARGE_INTEGER counter;
-    int nRGBWidth = 1920;//(demuxer->GetWidth() + 1) & ~1;
+    int nRGBWidth = (demuxer->GetWidth() + 1) & ~1;
 
     for (int i = 0; i < num_frames; i++)
     {
@@ -333,6 +329,6 @@ void Streamer::PresentVideo() {
             continue;
         LOG_TRACE("Displaying frame for {}", delay);
 
-        presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4, 0);
+        presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4, delay);
     }
 }

@@ -23,8 +23,14 @@ public:
     *   @param  nWidth - Width of D3D Surface
     *   @param  nHeight - Height of D3D Surface
     */
-    FramePresenterD3D(CUcontext cuContext, int nWidth, int nHeight) : cuContext(cuContext), nWidth(nWidth), nHeight(nHeight) {
+    FramePresenterD3D(CUcontext cuContext, int nWidth, int nHeight, int windowWidth = 0, int windowHeight = 0) : cuContext(cuContext), nWidth(nWidth), nHeight(nHeight), nWindowWidth(windowWidth), nWindowHeight(windowHeight) {
         self = this;
+        // Start out at 75% of current resolution size
+        if (!windowWidth && !windowHeight) {
+            float aspect_ratio = static_cast<float>(nWidth) / nHeight;
+            nWindowWidth = static_cast<int>(GetSystemMetrics(SM_CXSCREEN) * 0.75f);
+            nWindowHeight = static_cast<int>(nWindowWidth / aspect_ratio);
+        }
     }
     /**
     *   @brief  FramePresenterD3D destructor.
@@ -47,12 +53,7 @@ protected:
     *   @param  nHeight  - Height of the window
     *   @return hwndMain - handle to the created window
     */
-    static HWND CreateAndShowWindow(int nWidth, int nHeight) {
-        /*double r = max(nWidth / 1280.0, nHeight / 720.0);
-        if (r > 1.0) {
-            nWidth = (int)(nWidth / r);
-            nHeight = (int)(nHeight / r);
-        }*/
+    static HWND CreateAndShowWindow(int width, int height) {
 
         static char szAppName[] = "D3DPresenter";
         WNDCLASS wndclass;
@@ -69,10 +70,10 @@ protected:
         RegisterClass(&wndclass);
 
         RECT rc{
-            (GetSystemMetrics(SM_CXSCREEN) - nWidth) / 2,
-            (GetSystemMetrics(SM_CYSCREEN) - nHeight) / 2,
-            (GetSystemMetrics(SM_CXSCREEN) + nWidth) / 2,
-            (GetSystemMetrics(SM_CYSCREEN) + nHeight) / 2
+            (GetSystemMetrics(SM_CXSCREEN) - width) / 2,
+            (GetSystemMetrics(SM_CYSCREEN) - height) / 2,
+            (GetSystemMetrics(SM_CXSCREEN) + width) / 2,
+            (GetSystemMetrics(SM_CYSCREEN) + height) / 2
         };
         AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
@@ -141,6 +142,7 @@ private:
 
 protected:
     int nWidth = 0, nHeight = 0;
+    int nWindowWidth, nWindowHeight;
     CUcontext cuContext = NULL;
     CUgraphicsResource cuResource = NULL;
     inline static FramePresenterD3D* self = nullptr;
