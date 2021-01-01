@@ -14,7 +14,6 @@ int main(int argc, char** argv) {
 
     Streamer streamer;
 
-
     bool is_sender = strcmp(argv[1], "streamer") == 0;
     streamer.InitConnection(argv[2], atoi(argv[3]), is_sender);
     if (is_sender) {
@@ -41,9 +40,18 @@ int main(int argc, char** argv) {
             return 1;
         }
         while (true) {
+            auto frame_start = std::chrono::system_clock::now();
+            auto last_now = frame_start;
             streamer.Demux();
+            auto demux_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
+            last_now = std::chrono::system_clock::now();
             streamer.Decode();
+            auto decode_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
+            last_now = std::chrono::system_clock::now();
             streamer.PresentVideo();
+            auto present_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
+            auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - frame_start);
+            LOG_TRACE("Elapsed times: {:>10}={:>8}+{:>8}+{:>8}", elapsed.count(), demux_elapsed.count(), decode_elapsed.count(), present_elapsed.count());
         }
 
     }

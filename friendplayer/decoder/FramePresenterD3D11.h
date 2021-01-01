@@ -92,7 +92,7 @@ public:
             return false;
         }
         CopyDeviceFrame(dpBgra, nPitch);
-        if (!CreateTimerQueueTimer(&hTimer, hTimerQueue,
+        /*if (!CreateTimerQueueTimer(&hTimer, hTimerQueue,
             (WAITORTIMERCALLBACK)PresentRoutine, this, (DWORD)delay, 0, 0))
         {
             std::cout << "Problem in createtimer" << std::endl;
@@ -103,7 +103,8 @@ public:
         if (hTimer)
         {
             DeleteTimerQueueTimer(hTimerQueue, hTimer, nullptr);
-        }
+        }*/
+        pSwapChain->Present(1, 0);
         mtx.unlock();
         return true;
     }
