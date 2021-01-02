@@ -1,34 +1,8 @@
-/*
- * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of NVIDIA CORPORATION nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 #include "encoder/Defs.h"
 #include "encoder/DDAImpl.h"
+#include "encoder/NvEncoderNew.h"
 #include <iomanip>
+#include "common/Log.h"
 
 /// Initialize DDA
 HRESULT DDAImpl::Init()
@@ -104,7 +78,11 @@ HRESULT DDAImpl::GetCapturedFrame(ID3D11Texture2D **ppTex2D, int wait)
         pResource = nullptr;
     }
 
-    hr = pDup->AcquireNextFrame(wait, &frameInfo, &pResource);
+    auto start_tm = std::chrono::system_clock::now();
+    auto wait_tm = std::chrono::milliseconds(wait);
+
+    hr = pDup->AcquireNextFrame(0, &frameInfo, &pResource);
+
     if (FAILED(hr))
     {
         if (hr == DXGI_ERROR_WAIT_TIMEOUT)
@@ -124,7 +102,6 @@ HRESULT DDAImpl::GetCapturedFrame(ID3D11Texture2D **ppTex2D, int wait)
     if (frameInfo.AccumulatedFrames == 0 || frameInfo.LastPresentTime.QuadPart == 0)
     {
         // No image update, only cursor moved.
-        ofs << "frameNo: " << frameno << " | Accumulated: " << frameInfo.AccumulatedFrames << "MouseOnly?" << frameInfo.LastMouseUpdateTime.QuadPart << std::endl;
         RETURN_ERR(DXGI_ERROR_WAIT_TIMEOUT);
     }
 
@@ -143,7 +120,6 @@ HRESULT DDAImpl::GetCapturedFrame(ID3D11Texture2D **ppTex2D, int wait)
     LONGLONG interval = pts.QuadPart - lastPTS.QuadPart;
 
     //printf(__FUNCTION__": %d : Accumulated Frames %u PTS Interval %lld PTS %lld\n", frameno, frameInfo.AccumulatedFrames,  interval * 1000, frameInfo.LastPresentTime.QuadPart);
-    ofs << "frameNo: " << frameno << " | Accumulated: "<< frameInfo.AccumulatedFrames <<" | PTS: " << frameInfo.LastPresentTime.QuadPart << " | PTSInterval: "<< (interval)*1000<<std::endl;
     lastPTS = pts; // store microsec value
     frameno += frameInfo.AccumulatedFrames;
     return hr;
@@ -167,46 +143,51 @@ int DDAImpl::Cleanup()
     return 0;
 }
 
-//void DDAImpl::CaptureFrameLoop() {
-//    using namespace std::chrono_literals;
-//    while (true) {
-//        {
-//            std::lock_guard<std::mutex> lck(capture_m);
-//            if (waiting_for_capture) {
-//                if (cur_capture != nullptr) {
-//                    cur_capture->Release();
-//                }
-//                cur_capture = nullptr;
-//                HRESULT hr = GetCapturedFrame(&cur_capture, 0);
-//                if (FAILED(hr)) {
-//                    // check for the system crasher
-//                    if (hr != DXGI_ERROR_WAIT_TIMEOUT) {
-//                        if (pResource) {
-//                            pDup->ReleaseFrame();
-//                            SAFE_RELEASE(pResource);
-//                        }
-//                        width = height = 0;
-//                        SAFE_RELEASE(pDup);
-//                        hr = Init();
-//                        if (FAILED(hr)) {
-//                            // attempt re-init later, but exit now
-//                            exit(1);
-//                        }
-//                        hr = GetCapturedFrame(&cur_capture, 0);
-//                    }
-//                }
-//                
-//            }
-//        }
-//        std::this_thread::sleep_for(1ms);
-//    }
-//}
-//
-//bool DDAImpl::CopyAndMarkDirty(ID3D11Texture2D* out_tex) {
-//    std::lock_guard<std::mutex> lck(capture_m);
-//    if (waiting_for_capture) {
-//        return false;
-//    }
-//    pCtx->CopySubresourceRegion(out_tex, D3D11CalcSubresource(0, 0, 1), 0, 0, 0, last_saved_capture, 0, nullptr);
-//    return true;
-//}
+void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
+   using namespace std::chrono_literals;
+   while (true) {
+        if (cur_capture != nullptr) {
+            cur_capture->Release();
+        }
+        cur_capture = nullptr;
+        HRESULT hr = GetCapturedFrame(&cur_capture, 0);
+        if (FAILED(hr)) {
+            // check for the system crasher
+            if (hr != DXGI_ERROR_WAIT_TIMEOUT) {
+                if (pResource) {
+                    pDup->ReleaseFrame();
+                    SAFE_RELEASE(pResource);
+                }
+                width = height = 0;
+                SAFE_RELEASE(pDup);
+                hr = Init();
+                if (FAILED(hr)) {
+                    // attempt re-init later, but exit now
+                    exit(1);
+                }
+                hr = GetCapturedFrame(&cur_capture, 0);
+            }
+        }
+        if (SUCCEEDED(hr)) {
+            encoder->Lock();
+            NvEncInputFrame* input = encoder->GetStagingFrame();
+
+            input->input_ptr->AddRef();
+            D3D11_QUERY_DESC q;
+            q.Query = D3D11_QUERY_EVENT;
+            q.MiscFlags = 0;
+            ID3D11Query* query_inst;
+            auto hr = pD3DDev->CreateQuery(&q, &query_inst);
+            pCtx->CopySubresourceRegion(input->input_ptr, D3D11CalcSubresource(0, 0, 1), 0, 0, 0, cur_capture, 0, nullptr);
+            pCtx->End(query_inst);
+            uint64_t data;
+
+            while (pCtx->GetData(query_inst, nullptr, 0, 0) == S_FALSE) {
+            }
+            input->input_ptr->Release();
+            query_inst->Release();
+            encoder->PostSwap();
+            encoder->Unlock();
+        }
+   }
+}

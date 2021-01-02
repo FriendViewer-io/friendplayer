@@ -6,7 +6,7 @@
 
 #include "nvEncodeAPI.h"
 
-class NvEncoderD3D11;
+class NvEncoderNew;
 class ID3D11Device;
 class ID3D11DeviceContext;
 class ID3D11Texture2D;
@@ -26,7 +26,7 @@ public:
 
     bool InitEncode();
     void Encode(bool send_idr);
-    void CaptureFrame(int wait_ms);
+//    void CaptureFrame(int wait_ms);
 
     bool InitDecode(uint32_t frame_timeout_ms);
     void Demux();
@@ -61,7 +61,7 @@ private:
     NV_ENC_INITIALIZE_PARAMS init_params;
     NV_ENC_CONFIG enc_cfg;
 
-    std::unique_ptr<NvEncoderD3D11> nvenc;
+    std::unique_ptr<NvEncoderNew> nvenc;
     std::unique_ptr<DDAImpl> dxgi_provider;
 
     ID3D11Texture2D* cur_frame = nullptr;

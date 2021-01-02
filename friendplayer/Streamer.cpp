@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 #include <iostream>
+#include <d3d11_4.h>
 
 // Common
 #include "common/Log.h"
@@ -19,7 +20,7 @@
 // Encoder
 #include "nvEncodeAPI.h"
 #include "encoder/DDAImpl.h"
-#include "encoder/NvEncoderD3D11.h"
+#include "encoder/NvEncoderNew.h"
 
 namespace {
 template<typename T>
@@ -52,7 +53,7 @@ bool Streamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD w, D
     init_params.maxEncodeHeight = init_params.encodeHeight = h;
 
     try { 
-        nvenc->CreateDefaultEncoderParams(&init_params, NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_P7_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
+        nvenc->CreateDefaultEncoderParams(&init_params, NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_P1_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
     } catch (...) {
         LOG_CRITICAL("Failed to create encoder init params!");
         return false;
@@ -107,6 +108,12 @@ bool Streamer::InitEncode() {
         LOG_CRITICAL("Failed to create D3D11 device, HRESULT=0x{:#x}", hr);
         return false;
     }
+
+    ID3D11Multithread* mt_obj;
+    d3d_dev_ptr->QueryInterface(__uuidof(ID3D11Multithread), (void**)&mt_obj);
+    mt_obj->SetMultithreadProtected(TRUE);
+    mt_obj->Release();
+
     LOG_INFO("Successfully created D3D11 device");
     d3d_dev = dx_unique_ptr<ID3D11Device>(d3d_dev_ptr, DxDeleter<ID3D11Device>);
     d3d_ctx = dx_unique_ptr<ID3D11DeviceContext>(d3d_ctx_ptr, DxDeleter<ID3D11DeviceContext>);
@@ -128,7 +135,7 @@ bool Streamer::InitEncode() {
 
     // InitEnc
     NV_ENC_BUFFER_FORMAT fmt = NV_ENC_BUFFER_FORMAT_ARGB;
-    nvenc = std::make_unique<NvEncoderD3D11>(d3d_dev.get(), width, height, fmt, 0);
+    nvenc = std::make_unique<NvEncoderNew>(d3d_dev.get(), width, height);
 
     if (!InitEncoderParams(60, 2000000, width, height)) {
         nvenc.release();
@@ -145,17 +152,38 @@ bool Streamer::InitEncode() {
         LOG_CRITICAL("Failed to create encoder!");
         return false;
     }
+    dxgi_provider->StartCapture(nvenc.get());
 }
 
 void Streamer::Encode(bool send_idr) {
+    using namespace std::chrono_literals;
     auto begin_time = std::chrono::system_clock::now();
     NV_ENC_PIC_PARAMS params = {};
     if (send_idr || encoder_frame_num == 60) {
         params.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
     }
     std::vector<std::vector<uint8_t>> packets;
-    nvenc->EncodeFrame(packets, &params);
-    
+    auto wait_time = 4ms;
+    while (begin_time + wait_time > std::chrono::system_clock::now() &&
+            !nvenc->SwapReady());
+
+    nvenc->Lock();
+    if (!nvenc->SwapReady()) {
+        LOG_INFO("Re-encoding frame");
+    }
+    nvenc->Swap();
+    nvenc->Unlock();
+
+    auto pre_enc = std::chrono::system_clock::now();
+    nvenc->EncodeActiveFrame(packets, &params);
+    auto post_enc = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - pre_enc);
+    if (post_enc.count() > 30000) {
+        LOG_CRITICAL("VERY SLOW ENCODE: {} us", post_enc.count());
+    } else if (post_enc.count() > 20000) {
+        LOG_WARNING("SLOW ENCODE: {} us", post_enc.count());
+    }
+
+
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time);
     LOG_TRACE("Successfully encoded frame#{} and retrieved {} packets, {} microseconds elapsed", encoder_frame_num, packets.size(), elapsed_time.count());
 
@@ -167,50 +195,6 @@ void Streamer::Encode(bool send_idr) {
         udp_socket->sync();
     }
     encoder_frame_num++;
-}
-
-void Streamer::CaptureFrame(int wait_ms) {
-    ID3D11Texture2D* tex = nullptr;
-    auto begin_time = std::chrono::system_clock::now();
-
-    HRESULT hr = dxgi_provider->GetCapturedFrame(&tex, wait_ms);
-
-    auto capture_time = std::chrono::system_clock::now() - begin_time;
-    LOG_TRACE("Capture time: {}", std::chrono::duration_cast<std::chrono::microseconds>(capture_time).count());
-
-    if (FAILED(hr) && hr != DXGI_ERROR_WAIT_TIMEOUT) {
-        LOG_CRITICAL("DXGI critical error");
-        exit(0);
-        return;
-    }
-
-    if (hr != DXGI_ERROR_WAIT_TIMEOUT) {
-        DxDeleter<ID3D11Texture2D>(cur_frame);
-        cur_frame = nullptr;
-
-        const NvEncInputFrame* cur_input = nvenc->GetNextInputFrame();
-        cur_frame = reinterpret_cast<ID3D11Texture2D*>(cur_input->inputPtr);
-
-        d3d_ctx->CopySubresourceRegion(cur_frame, D3D11CalcSubresource(0, 0, 1), 0, 0, 0, tex, 0, nullptr);
-        DxDeleter<ID3D11Texture2D>(tex);
-        tex = nullptr;
-        auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time);
-        LOG_TRACE("Timeout on frame#{}, copied from previous frame, {} microseconds elapsed", encoder_frame_num,  elapsed_time.count());
-    } else {
-        const NvEncInputFrame* cur_input = nvenc->GetNextInputFrame();
-        const NvEncInputFrame* prev_input = nvenc->GetPrevInputFrame();
-
-        cur_frame = reinterpret_cast<ID3D11Texture2D*>(cur_input->inputPtr);
-        ID3D11Texture2D* prev_frame = reinterpret_cast<ID3D11Texture2D*>(prev_input->inputPtr);
-
-        d3d_ctx->CopySubresourceRegion(cur_frame, D3D11CalcSubresource(0, 0, 1), 0, 0, 0, prev_frame, 0, nullptr);
-
-        DxDeleter<ID3D11Texture2D>(prev_frame);
-
-        auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time);
-        LOG_TRACE("Successfully captured frame#{}, {} microseconds elapsed", encoder_frame_num,  elapsed_time.count());
-    }
-    cur_frame->AddRef();
 }
 
 bool Streamer::InitDecode(uint32_t frame_timeout_ms) {

@@ -36,6 +36,8 @@
 #include <mutex>
 #include <atomic>
 
+class NvEncoderNew;
+
 class DDAImpl
 {
     ///  Thin wrapper around IDXGIOutputDuplication interface
@@ -59,22 +61,16 @@ private:
     DWORD height = 0;
     /// Running count of no. of accumulated desktop updates
     int frameno = 0;
-    /// output file stream to dump timestamps
-    std::ofstream ofs;
     /// DXGI_OUTDUPL_FRAME_INFO::latPresentTime from the last Acquired frame
     LARGE_INTEGER lastPTS = { 0 };
     /// Clock frequency from QueryPerformaceFrequency()
     LARGE_INTEGER qpcFreq = { 0 };
     /// Default constructor
     DDAImpl() {}
-
+    
     int monitor_idx;
-
-    //std::thread* dxgi_capture_thread;
-    //std::mutex capture_m;
-    //
-    //ID3D11Texture2D* last_capture = nullptr;
-    //ID3D11Texture2D* last_saved_capture = nullptr;
+    std::thread* dxgi_capture_thread;
+    ID3D11Texture2D* cur_capture = nullptr;
 
 public:
     /// Initialize DDA
@@ -89,8 +85,10 @@ public:
     /// Return output width to caller
     inline DWORD getHeight() { return height; }
 
-    void CaptureFrameLoop();
-    bool CopyAndMarkDirty(ID3D11Texture2D* out_tex);
+    void CaptureFrameLoop(NvEncoderNew* encoder);
+    void StartCapture(NvEncoderNew* encoder) {
+        dxgi_capture_thread = new std::thread(&DDAImpl::CaptureFrameLoop, this, encoder);
+    }
 
 public:
     /// Constructor
@@ -101,7 +99,6 @@ public:
     {
         pD3DDev->AddRef();
         pCtx->AddRef();
-        ofs = std::ofstream("PresentTSLog.txt");
         QueryPerformanceFrequency(&qpcFreq);
     }
     /// Destructor. Release all resources before destroying the object

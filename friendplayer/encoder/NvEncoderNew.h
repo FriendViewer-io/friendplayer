@@ -22,15 +22,30 @@ struct NvEncInputFrame {
 class NvEncoderNew
 {
 public:
-    NvEncoderNew(ID3D11Device* device, uint32_t width, uint32_t height, NV_ENC_BUFFER_FORMAT buffer_fmt);
+    NvEncoderNew(ID3D11Device* device, uint32_t width, uint32_t height);
 
+    int GetActiveFrameNumber() const { return active_input_frame; }
     bool CreateEncoder(const NV_ENC_INITIALIZE_PARAMS* init_params);
     void DestroyEncoder();
     bool Reconfigure(const NV_ENC_RECONFIGURE_PARAMS *reconfig_arams);
 
-    const NvEncInputFrame* GetActiveFrame();
-    const NvEncInputFrame* GetStagingFrame();
-    void Swap();
+    NvEncInputFrame* GetActiveFrame();
+    NvEncInputFrame* GetStagingFrame();
+    void Swap() { 
+        if (should_swap) {
+            active_input_frame++;
+            active_input_frame %= 2;
+            should_swap = false;
+        }
+    }
+    bool SwapReady() {
+        return should_swap.load();
+    }
+    void PostSwap() {
+        should_swap = true;
+    }
+    void Lock() { swap_m.lock(); }
+    void Unlock() { swap_m.unlock(); }
 
     void EncodeActiveFrame(std::vector<std::vector<uint8_t>> &packets_out, NV_ENC_PIC_PARAMS *pic_params = nullptr);
 
@@ -64,18 +79,15 @@ public:
     static uint32_t GetWidthInBytes(const NV_ENC_BUFFER_FORMAT bufferFormat, const uint32_t width);
 
 protected:
-    void RegisterInputResources(std::vector<void*> inputframes, NV_ENC_INPUT_RESOURCE_TYPE eResourceType,
-        int width, int height, int pitch, NV_ENC_BUFFER_FORMAT bufferFormat, bool bReferenceFrame = false);
+    void RegisterInputResources();
     void UnregisterInputResources();
-    NV_ENC_REGISTERED_PTR RegisterResource(void *pBuffer, int width, int height,
-        int pitch, NV_ENC_BUFFER_FORMAT buffer_fmt, NV_ENC_BUFFER_USAGE buffer_usage = NV_ENC_INPUT_IMAGE);
+    NV_ENC_REGISTERED_PTR RegisterResource(void *buf, int w, int h, int pitch, NV_ENC_BUFFER_FORMAT buffer_format);
 
     uint32_t GetMaxEncodeWidth() const { return max_enc_width; }
     uint32_t GetMaxEncodeHeight() const { return max_enc_height; }
     NV_ENC_BUFFER_FORMAT GetPixelFormat() const { return buffer_fmt; }
 
-    void* GetCompletionEvent() { 
-        return (m_vpCompletionEvent.size() == m_nEncoderBuffer) ? m_vpCompletionEvent[eventIdx] : nullptr; }
+    void* GetCompletionEvent() { return completion_events[active_input_frame];}
 
     NVENCSTATUS DoEncode(NV_ENC_INPUT_PTR input_buffer, NV_ENC_OUTPUT_PTR output_buffer, NV_ENC_PIC_PARAMS *in_params = nullptr);
 
@@ -86,43 +98,35 @@ protected:
 private:
     bool LoadNvEncApi();
 
-    void GetEncodedPacket(std::vector<NV_ENC_OUTPUT_PTR> &vOutputBuffer, std::vector<std::vector<uint8_t>> &vPacket, bool bOutputDelay);
-
+    void GetEncodedPacket(std::vector<std::vector<uint8_t>> &output_packets);
     void InitializeBitstreamBuffer();
-
     void DestroyBitstreamBuffer();
-
-    void InitializeMVOutputBuffer();
-
-    void DestroyMVOutputBuffer();
-
     void DestroyHWEncoder();
-
     void FlushEncoder();
 
-protected:
+private:
     void* encoder_ptr = nullptr;
     NV_ENCODE_API_FUNCTION_LIST nvenc_fns;
     std::array<NvEncInputFrame, 2> input_frames;
     std::array<NV_ENC_REGISTERED_PTR, 2> registered_resources;
-    std::array<NV_ENC_REGISTERED_PTR, 2> registered_resources_for_reference;
-    std::array<NV_ENC_INPUT_PTR, 2> m_vMappedInputBuffers;
-    std::array<void*, 2> m_vpCompletionEvent;
-
+    std::array<NV_ENC_INPUT_PTR, 2> mapped_input_buffers;
+    std::array<void*, 2> completion_events;
+    std::array<NV_ENC_OUTPUT_PTR, 2> bitstream_output;
     int active_input_frame = 0;
-    int32_t got_packets = 0;
+    std::atomic<bool> should_swap = false;
 
 private:
     uint32_t width;
     uint32_t height;
     NV_ENC_BUFFER_FORMAT buffer_fmt;
     ID3D11Device* device;
+    ID3D11DeviceContext* device_ctx;
     NV_ENC_DEVICE_TYPE dev_type;
     NV_ENC_INITIALIZE_PARAMS init_params = {};
     NV_ENC_CONFIG encode_cfg = {};
     bool encoder_initialized = false;
-    std::vector<NV_ENC_OUTPUT_PTR> m_vBitstreamOutputBuffer;
-    std::vector<NV_ENC_OUTPUT_PTR> m_vMVDataOutputBuffer;
+    
     uint32_t max_enc_width = 0;
     uint32_t max_enc_height = 0;
+    std::mutex swap_m;
 };

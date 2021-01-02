@@ -15,6 +15,7 @@
     <ClCompile Include="encoder\main.cpp" />
     <ClCompile Include="encoder\NvEncoder.cpp" />
     <ClCompile Include="encoder\NvEncoderD3D11.cpp" />
+    <ClCompile Include="encoder\NvEncoderNew.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
     <ClCompile Include="Streamer.cpp" />
   </ItemGroup>
@@ -32,6 +33,7 @@
     <ClInclude Include="encoder\Defs.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
     <ClInclude Include="encoder\NvEncoderD3D11.h" />
+    <ClInclude Include="encoder\NvEncoderNew.h" />
     <ClInclude Include="Streamer.h" />
   </ItemGroup>
   <ItemGroup>
