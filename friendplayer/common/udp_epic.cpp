@@ -110,7 +110,7 @@ void UDPSocketReceiver::init_connection(const char* ip, short port) {
 
     int send_buffer = 256 * 1024;    // 64 KB
     int send_buffer_sizeof = sizeof(int);
-    setsockopt(socket_, SOL_SOCKET, SO_SNDBUF, (char*)&send_buffer, send_buffer_sizeof);
+    setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, (char*)&send_buffer, send_buffer_sizeof);
 
     current_frame_index = 0;
 }
