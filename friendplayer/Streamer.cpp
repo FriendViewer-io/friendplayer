@@ -223,7 +223,7 @@ bool Streamer::InitDecode(uint32_t frame_timeout_ms) {
     LOG_TRACE("Creating demuxer");
     demuxer = new FFmpegDemuxer(stream_provider);
     LOG_TRACE("Syncing");
-    udp_socket->sync(); 
+    udp_socket->sync();
     LOG_TRACE("Creating decoder");
     decoder = new NvDecoder(cuda_context, true, FFmpeg2NvCodecId(demuxer->GetVideoCodec()), true, false, NULL, NULL, 0, 0, 1000);
     int nRGBWidth = (demuxer->GetWidth() + 1) & ~1;
@@ -261,8 +261,13 @@ void Streamer::Demux() {
 }
 
 void Streamer::Decode() {
-    num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE, video_packet_ts);
-    LOG_TRACE("Decoded {} frames with {} bytes", num_frames, video_packet_size);
+    if (video_packet_size > 0) {
+        num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE, video_packet_ts);
+        LOG_TRACE("Decoded {} frames with {} bytes", num_frames, video_packet_size);
+    } else {
+        num_frames = 0;
+        LOG_INFO("Skipping decode because there were no video bytes");
+    }
 }
 
 void Streamer::PresentVideo() {
