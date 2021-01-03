@@ -290,7 +290,7 @@ private:
         bReady = true;
         MSG msg = { 0 };
         while (!bQuit && msg.message != WM_QUIT) {
-            if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
+            if (GetMessage(&msg, 0, 0, 0)) {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
             }
