@@ -3,6 +3,7 @@
 #include "encoder/NvEncoderNew.h"
 #include <iomanip>
 #include "common/Log.h"
+#include "common/Timer.h"
 
 /// Initialize DDA
 HRESULT DDAImpl::Init()
@@ -145,6 +146,8 @@ int DDAImpl::Cleanup()
 
 void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
    using namespace std::chrono_literals;
+   Timer capture_timer;
+   capture_timer.Start(2000);
    while (true) {
         if (cur_capture != nullptr) {
             cur_capture->Release();
@@ -189,5 +192,6 @@ void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
             encoder->PostSwap();
             encoder->Unlock();
         }
+        capture_timer.Synchronize();
    }
 }

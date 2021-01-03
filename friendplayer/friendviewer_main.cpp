@@ -1,14 +1,7 @@
 #include "common/Log.h"
+#include "common/Timer.h"
 #include "Streamer.h"
-#include <atomic>
-#include <mmiscapi2.h>
-#pragma comment(lib, "winmm.lib")
 
-HANDLE wake_event;
-
-void CALLBACK TimerCB(UINT uTimerID, UINT uMsg, DWORD_PTR dwUser, DWORD_PTR dw1, DWORD_PTR dw2) {
-    SetEvent(wake_event);
-}
 
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
@@ -21,6 +14,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    Timer timer;
     Streamer streamer;
 
     bool is_sender = strcmp(argv[1], "streamer") == 0;
@@ -30,12 +24,12 @@ int main(int argc, char** argv) {
             LOG_CRITICAL("InitEncode failed");
             return 1;
         }
-        int framenum = 0;
 
+        int framenum = 0;
+        timer.Start(16666);
         bool end_pressed = false;
-        std::mutex sender_mtx;
-        wake_event = CreateEvent(NULL, TRUE, FALSE, NULL);
-        timeSetEvent(10, 0, &TimerCB, 0, TIME_PERIODIC);
+        auto capture_start = std::chrono::system_clock::now();
+
         while (true) {
             auto frame_start = std::chrono::system_clock::now();
             auto last_now = frame_start;
@@ -49,15 +43,21 @@ int main(int argc, char** argv) {
             end_pressed = end_state;
             streamer.Encode(send_idr);
             auto encode_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
-            //std::this_thread::sleep_until(frame_start + 16666us);
-            std::unique_lock<std::mutex> lck(sender_mtx);
 
-            if (WaitForSingleObject(wake_event, INFINITE) != WAIT_OBJECT_0) {
-                return 0;
+            if (!timer.Synchronize()) {
+                LOG_WARNING("Timer failed to wait for event");
             }
-            ResetEvent(wake_event);
+            if (framenum == 0) {
+                timer.ResetCadence();
+            }
+
+            framenum++;
 
             auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - frame_start);
+            auto total_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - capture_start);
+
+            LOG_INFO("Capturing at approx {} frames/sec", (static_cast<double>(framenum) / static_cast<double>(total_elapsed.count())) * 1000000.0);
+
             if (elapsed.count() > 20000) {
                 //LOG_WARNING("Elapsed times: {} {} {}", capture_elapsed.count(), encode_elapsed.count(), elapsed.count());
             } else {
@@ -85,13 +85,4 @@ int main(int argc, char** argv) {
         }
 
     }
-
-
-
-    
-    LOG_INFO("info log");
-    LOG_WARNING("info log");
-    LOG_ERROR("info log");
-    LOG_CRITICAL("info log");
-    LOG_TRACE("trace log");
 }

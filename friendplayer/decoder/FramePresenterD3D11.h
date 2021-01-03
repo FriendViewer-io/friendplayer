@@ -262,7 +262,7 @@ private:
         window_ratio_y = nHeight / std::gcd(nWidth, nHeight);
 
         RECT rect = { 0, 0, nWidth, nHeight };
-        AdjustWindowRect(&rect, CS_HREDRAW | CS_VREDRAW, FALSE);
+        AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
         window_adjust_x = (rect.right - rect.left) - nWidth;
         window_adjust_y = (rect.bottom - rect.top) - nHeight;
 

@@ -36,7 +36,7 @@ void UDPSocketSender::init_connection(const char* ip, short port) {
 
 void UDPSocketSender::sync() {
     char dumb[4];
-    //int ret=recvfrom(socket_, dumb, 4, 0, (struct sockaddr *)target_addr, &sockaddr_len);
+    int ret=recvfrom(socket_, dumb, 4, 0, (struct sockaddr *)target_addr, &sockaddr_len);
 }
 
 void UDPSocketSender::start_backend() {

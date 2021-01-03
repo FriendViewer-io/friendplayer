@@ -57,6 +57,9 @@
     <ClCompile Include="encoder\NvEncoderNew.cpp">
       <Filter>Source Files\encoder</Filter>
     </ClCompile>
+    <ClCompile Include="common\Timer.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="decoder\AppDecUtils.h">
@@ -103,6 +106,12 @@
     </ClInclude>
     <ClInclude Include="encoder\NvEncoderNew.h">
       <Filter>Source Files\encoder</Filter>
+    </ClInclude>
+    <ClInclude Include="Crypto.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\Timer.h">
+      <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

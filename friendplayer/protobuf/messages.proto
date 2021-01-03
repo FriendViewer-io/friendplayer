@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+message VideoFrame {
+    uint32 chunk_id = 1;
+    bytes data = 2;
+}
+include <cryptopp/randpool.h>
+#
+message AudioFrame {
+    uint32 chunk_id = 1;
+    bytes data = 2;
+}
+
+message HostDataFrame {
+    uint32 frame_id = 1;
+    uint32 frame_size = 2;
+    uint32 stream_point = 3;
+    oneof DataFrame {
+        VideoFrame video = 3;
+        AudioFrame audio = 4;
+    }
+}
+
+message KeyboardFrame {
+
+}
+
+message MouseFrame {
+    enum MouseButtons{
+        MOUSE_L = 1;
+        MOUSE_MIDDLE = 2;
+    R  = 3;
+        MOUSE_X1 = 4;
+        MOUSE_X2 = 5;
+    }
+    MouseButtons button = 1;
+    bool pressed = 2; //true if clicked, false if not
+}
+
+message ControllerFrame {
+    uint32 sequence_num = 1;
+    uint32 w_buttons = 2;
+    uint32 b_left_trigger = 3;
+    uint32 b_right_trigger = 4;
+    uint32 s_thumb_LX = 5;
+    uint32 s_thumb_LY = 6;
+    uint32 s_thumb_RX = 7;
+    uint32 s_thumb_RY = 8;
+}
+
+message RequestToHost {
+    enum RequestType {
+        SEND_IDR = 0;
+        MUTE_AUDIO = 1;
+        PLAY_AUDIO = 2;
+    }
+    RequestType type = 1;
+}
+
+message PeerDataFrame {
+    uint32 frame_id = 1;
+    uint32 frame_size = 2;
+    oneof DataFrame {
+        KeyboardFrame keyboard = 3;
+        MouseFrame mouse = 4;
+        ControllerFrame controller = 5;
+        RequestToHost host_request = 6;
+    }
+}
+
+
+message ClientState {
+    enum {
+        READY_FOR_PPS_SPS_IDR = 0;
+        READY_FOR_VIDEO = 1;
+        HEARTBEAT = 2;
+        DISCONNECTING = 3;
+    }
+}
