@@ -156,7 +156,8 @@ bool AudioStreamer::BeginEncode(const uint8_t* data, uint32_t size) {
     av_samples_alloc(&resample_buffer, NULL, stream_format->nChannels, num_output_samples, AV_SAMPLE_FMT_FLT, 0);
     resample_size = swr_convert(context, &resample_buffer, num_output_samples, &data, num_input_samples);
     LOG_INFO("Encoder: Number of samples = {}", resample_size);
-    resample_size *= stream_format->nChannels * stream_format->wBitsPerSample / 8;
+    // 16-bit PCM = nChannels * 2
+    resample_size *= stream_format->nChannels * 2;
     LOG_INFO("Encoder: Total resample size = {}", resample_size);
 
     return true;
