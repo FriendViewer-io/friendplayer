@@ -7,6 +7,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="audio\AudioStreamer.cpp" />
     <ClCompile Include="common\Log.cpp" />
     <ClCompile Include="common\Timer.cpp" />
     <ClCompile Include="common\udp_epic.cpp" />
@@ -21,6 +22,7 @@
     <ClCompile Include="Streamer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="audio\AudioStreamer.h" />
     <ClInclude Include="common\ColorSpace.h" />
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
@@ -94,7 +96,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)dependencies\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /s /y /I $(SolutionDir)dependencies\x64\bin\ $(OutputPath)

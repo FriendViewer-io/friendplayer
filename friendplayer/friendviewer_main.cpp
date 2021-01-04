@@ -1,7 +1,7 @@
 #include "common/Log.h"
 #include "common/Timer.h"
 #include "Streamer.h"
-
+#include "audio/AudioStreamer.h"
 
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
@@ -9,6 +9,39 @@ int main(int argc, char** argv) {
     LogOptions opt = { false };
     Log::init_stdout_logging(opt);
 
+    char* a = new char[1996800];
+    AudioStreamer audio(3*1276);
+    AudioStreamer recv(3 * 1276);
+    FILE* fp = fopen("float_output", "rb");
+    FILE* fpo = fopen("audio_decoded_test", "wb");
+    audio.InitEncoder(64000);
+    recv.InitDecoder(48000, 2);
+    fread(a, 1, 1996800, fp);
+    if (!audio.BeginEncode((uint8_t*)a, 1996800)) {
+        LOG_ERROR("ASFSDF");
+        return 1;
+    }
+
+    uint8_t* output = new uint8_t[10000];
+    uint32_t out_size = 1;
+    while (out_size > 0) {
+        if (!audio.EncodeAudio(output, &out_size)) {
+            LOG_ERROR("er");
+            break;
+        }
+        uint8_t* decoded;
+        uint32_t decoded_out = 0;
+        if (!recv.DecodeAudio(output, out_size, &decoded, &decoded_out)) {
+            LOG_ERROR("ASBVFDS");
+            return 1;
+        }
+        fwrite(decoded, 1, decoded_out, fpo);
+        recv.EndDecode();
+    }
+    audio.EndEncode();
+    recv.EndDecode();
+    fclose(fpo);
+    /*
     if (argc != 4) {
         LOG_CRITICAL("Incorrect number of args - %s <streamer/client> ip <port>", argv[0]);
         return 1;
@@ -84,5 +117,7 @@ int main(int argc, char** argv) {
             LOG_TRACE("Elapsed times: {:>10}={:>8}+{:>8}+{:>8}", elapsed.count(), demux_elapsed.count(), decode_elapsed.count(), present_elapsed.count());
         }
 
-    }
+    }*/
+
+
 }
