@@ -27,27 +27,32 @@ HRESULT DDAImpl::Init()
     /// To create a DDA object given a D3D11 device, we must first get to the DXGI Adapter associated with that device
     if (FAILED(hr = pD3DDev->QueryInterface(__uuidof(IDXGIDevice2), (void**)&pDevice)))
     {
+        LOG_CRITICAL("bad1");
         CLEAN_RETURN(hr);
     }
 
     if (FAILED(hr = pDevice->GetParent(__uuidof(IDXGIAdapter), (void**)&pAdapter)))
     {
+        LOG_CRITICAL("bad2");
         CLEAN_RETURN(hr);
     }
     /// Once we have the DXGI Adapter, we enumerate the attached display outputs, and select which one we want to capture
     /// This sample application always captures the primary display output, enumerated at index 0.
     if (FAILED(hr = pAdapter->EnumOutputs(monitor_idx, &pOutput)))
     {
+        LOG_CRITICAL("bad3");
         CLEAN_RETURN(hr);
     }
 
     if (FAILED(hr = pOutput->QueryInterface(__uuidof(IDXGIOutput1), (void**)&pOut1)))
     {
+        LOG_CRITICAL("bad4");
         CLEAN_RETURN(hr);
     }
     /// Ask DXGI to create an instance of IDXGIOutputDuplication for the selected output. We can now capture this display output
     if (FAILED(hr = pOut1->DuplicateOutput(pDevice, &pDup)))
     {
+        LOG_CRITICAL("bad5");
         CLEAN_RETURN(hr);
     }
 
@@ -57,6 +62,7 @@ HRESULT DDAImpl::Init()
 
     height = outDesc.ModeDesc.Height;
     width = outDesc.ModeDesc.Width;
+    ready_for_capture = true;
     CLEAN_RETURN(hr);
 }
 
@@ -140,6 +146,7 @@ int DDAImpl::Cleanup()
     SAFE_RELEASE(pDup);
     SAFE_RELEASE(pCtx);
     SAFE_RELEASE(pD3DDev);
+    ready_for_capture = false;
 
     return 0;
 }
@@ -148,12 +155,19 @@ void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
    using namespace std::chrono_literals;
    Timer capture_timer;
    capture_timer.Start(2000);
-   while (true) {
+   for(;; capture_timer.Synchronize()) {
+       HRESULT hr;
+        if (!ready_for_capture) {
+            hr = Init();
+            if (FAILED(hr)) {
+                continue;
+            }
+        }
         if (cur_capture != nullptr) {
             cur_capture->Release();
         }
         cur_capture = nullptr;
-        HRESULT hr = GetCapturedFrame(&cur_capture, 0);
+        hr = GetCapturedFrame(&cur_capture, 0);
         if (FAILED(hr)) {
             // check for the system crasher
             if (hr != DXGI_ERROR_WAIT_TIMEOUT) {
@@ -161,14 +175,13 @@ void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
                     pDup->ReleaseFrame();
                     SAFE_RELEASE(pResource);
                 }
+                ready_for_capture = false;
                 width = height = 0;
                 SAFE_RELEASE(pDup);
                 hr = Init();
-                if (FAILED(hr)) {
-                    // attempt re-init later, but exit now
-                    exit(1);
+                if (SUCCEEDED(hr)) {
+                    hr = GetCapturedFrame(&cur_capture, 0);
                 }
-                hr = GetCapturedFrame(&cur_capture, 0);
             }
         }
         if (SUCCEEDED(hr)) {
@@ -192,6 +205,5 @@ void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
             encoder->PostSwap();
             encoder->Unlock();
         }
-        capture_timer.Synchronize();
    }
 }

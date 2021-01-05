@@ -71,6 +71,7 @@ private:
     int monitor_idx;
     std::thread* dxgi_capture_thread;
     ID3D11Texture2D* cur_capture = nullptr;
+    bool ready_for_capture = false;
 
 public:
     /// Initialize DDA
