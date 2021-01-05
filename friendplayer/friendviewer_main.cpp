@@ -1,47 +1,70 @@
+#include <winsock2.h>
+
 #include "common/Log.h"
 #include "common/Timer.h"
 #include "Streamer.h"
 #include "audio/AudioStreamer.h"
 
+void audio_thread(bool is_sender, short port, char* ip) {
+    WSAData wsa_data;
+    WSAStartup(MAKEWORD(2,2), &wsa_data);
+
+    AudioStreamer audio_streamer;
+
+    // streamer.InitConnection(argv[2], atoi(argv[3]), is_sender);
+    if (is_sender) {
+        SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        struct sockaddr_in addr = { 0 };
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        addr.sin_addr.S_un.S_addr = INADDR_ANY;
+        bind(s, (struct sockaddr*)(&addr), sizeof(struct sockaddr_in));
+
+        listen(s, SOMAXCONN);
+        SOCKET natsock = accept(s, nullptr, nullptr);
+
+        audio_streamer.InitEncoder(64000);
+
+        while (true) {
+            std::vector<uint8_t> raw_frame_in, enc_frame;
+            audio_streamer.CaptureAudio(raw_frame_in);
+            if (raw_frame_in.size() == 0) { continue; }
+            audio_streamer.EncodeAudio(raw_frame_in, enc_frame);
+            int sz = enc_frame.size();
+            LOG_TRACE("Send size: {} bytes", sz);
+            send(natsock, (char*)&sz, 4, 0);
+            send(natsock, (char*)enc_frame.data(), enc_frame.size(), 0);
+        }
+    } else {
+        audio_streamer.InitDecoder();
+        
+        SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        struct sockaddr_in addr = { 0 };
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        addr.sin_addr.S_un.S_addr = inet_addr(ip);
+
+        connect(s, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+
+        while (true) {
+            int incoming_sz;
+            recv(s, (char*)&incoming_sz, 4, 0);
+
+            std::vector<uint8_t> raw_frame_out, enc_frame;
+            enc_frame.resize(incoming_sz);
+            recv(s, (char*)enc_frame.data(), incoming_sz, 0);
+
+            audio_streamer.DecodeAudio(enc_frame, raw_frame_out);
+            audio_streamer.PlayAudio(raw_frame_out);
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
 
-    LogOptions opt = { false };
-    Log::init_stdout_logging(opt);
+    Log::init_stdout_logging(LogOptions{false});
 
-    char* a = new char[1996800];
-    AudioStreamer audio(3*1276);
-    AudioStreamer recv(3 * 1276);
-    FILE* fp = fopen("float_output", "rb");
-    FILE* fpo = fopen("audio_decoded_test", "wb");
-    audio.InitEncoder(64000);
-    recv.InitDecoder(48000, 2);
-    fread(a, 1, 1996800, fp);
-    if (!audio.BeginEncode((uint8_t*)a, 1996800)) {
-        LOG_ERROR("ASFSDF");
-        return 1;
-    }
-
-    uint8_t* output = new uint8_t[10000];
-    uint32_t out_size = 1;
-    while (out_size > 0) {
-        if (!audio.EncodeAudio(output, &out_size)) {
-            LOG_ERROR("er");
-            break;
-        }
-        uint8_t* decoded;
-        uint32_t decoded_out = 0;
-        if (!recv.DecodeAudio(output, out_size, &decoded, &decoded_out)) {
-            LOG_ERROR("ASBVFDS");
-            return 1;
-        }
-        fwrite(decoded, 1, decoded_out, fpo);
-        recv.EndDecode();
-    }
-    audio.EndEncode();
-    recv.EndDecode();
-    fclose(fpo);
-    /*
     if (argc != 4) {
         LOG_CRITICAL("Incorrect number of args - %s <streamer/client> ip <port>", argv[0]);
         return 1;
@@ -52,6 +75,8 @@ int main(int argc, char** argv) {
 
     bool is_sender = strcmp(argv[1], "streamer") == 0;
     streamer.InitConnection(argv[2], atoi(argv[3]), is_sender);
+    std::thread aud_th(audio_thread, is_sender, atoi(argv[3]), argv[2]);
+    
     if (is_sender) {
         if (!streamer.InitEncode()) {
             LOG_CRITICAL("InitEncode failed");
@@ -89,7 +114,7 @@ int main(int argc, char** argv) {
             auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - frame_start);
             auto total_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - capture_start);
 
-            LOG_INFO("Capturing at approx {} frames/sec", (static_cast<double>(framenum) / static_cast<double>(total_elapsed.count())) * 1000000.0);
+            LOG_TRACE("Capturing at approx {} frames/sec", (static_cast<double>(framenum) / static_cast<double>(total_elapsed.count())) * 1000000.0);
 
             if (elapsed.count() > 20000) {
                 //LOG_WARNING("Elapsed times: {} {} {}", capture_elapsed.count(), encode_elapsed.count(), elapsed.count());
@@ -117,7 +142,5 @@ int main(int argc, char** argv) {
             LOG_TRACE("Elapsed times: {:>10}={:>8}+{:>8}+{:>8}", elapsed.count(), demux_elapsed.count(), decode_elapsed.count(), present_elapsed.count());
         }
 
-    }*/
-
-
+    }
 }

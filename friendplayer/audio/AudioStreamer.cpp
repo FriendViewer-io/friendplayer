@@ -2,7 +2,7 @@
 
 #include "common/Log.h"
 
-AudioStreamer::AudioStreamer(uint16_t max_packet_size) : max_packet_size(max_packet_size) {
+AudioStreamer::AudioStreamer() {
     
 }
 
@@ -45,6 +45,45 @@ inline AVSampleFormat GetSampleFormat(const WAVEFORMATEX* wave_format)
     return AV_SAMPLE_FMT_NONE;
 }
 
+bool AudioStreamer::InitRender() {
+    LPBYTE buffer;
+    uint32_t frames;
+    IAudioClient* client_tmp;
+    WAVEFORMATEX* wfex;
+    if (FAILED(device_->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
+        reinterpret_cast<void**>(&client_tmp)))) {
+        return false;
+    }
+
+    if (FAILED(client_tmp->GetMixFormat(&wfex))) {
+        return false;
+    }
+
+    if (FAILED(client_tmp->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 83333, 0, wfex, nullptr))) {
+        return false;
+    }
+
+    if (FAILED(client_tmp->GetBufferSize(&frames))) {
+        return false;
+    }
+
+    if (FAILED(client_tmp->GetService(__uuidof(IAudioRenderClient),
+        reinterpret_cast<void**>(&render_)))) {
+        return false;
+    }
+
+    if (FAILED(render_->GetBuffer(frames, &buffer))) {
+        return false;
+    }
+
+    memset(buffer, 0, frames * wfex->nBlockAlign);
+    if (FAILED(render_->ReleaseBuffer(frames, 0))) {
+        return false;
+    }
+
+    return SUCCEEDED(client_tmp->Start());
+}
+
 bool AudioStreamer::InitEncoder(uint32_t bitrate) {
     int err;
 
@@ -68,11 +107,37 @@ bool AudioStreamer::InitEncoder(uint32_t bitrate) {
         return false;
     }
 
-    if (FAILED(client_->GetMixFormat(&stream_format))) {
+    if (FAILED(client_->GetMixFormat(&system_format))) {
+        return false;
+    }
+    
+    receive_signal_ = CreateEvent(nullptr, false, false, nullptr);
+    stop_signal_ = CreateEvent(nullptr, false, false, nullptr);
+
+    if (FAILED(client_->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_LOOPBACK, 83333, 0, system_format, nullptr))) {
+        return false;
+    }
+    uint32_t frames;
+
+    if (FAILED(client_->GetBufferSize(&frames))) {
         return false;
     }
 
-	encoder = opus_encoder_create(stream_format->nSamplesPerSec, stream_format->nChannels, OPUS_APPLICATION_AUDIO, &err);
+    if (!InitRender()) {
+        return false;
+    }
+
+    if (FAILED(client_->GetService(__uuidof(IAudioCaptureClient),
+        reinterpret_cast<void**>(&capture_)))) {
+        return false;
+    }
+    if (FAILED(client_->SetEventHandle(receive_signal_))) {
+        return false;
+    }
+
+    client_->Start();
+
+	encoder = opus_encoder_create(ENCODED_SAMPLE_RATE, ENCODED_CHANNEL_COUNT, OPUS_APPLICATION_RESTRICTED_LOWDELAY, &err);
     if (err < 0) {
         LOG_ERROR("Failed to create opus encoder: {}", err);
         return false;
@@ -84,21 +149,56 @@ bool AudioStreamer::InitEncoder(uint32_t bitrate) {
         return false;
     }
 
-    frame_size = static_cast<uint16_t>(stream_format->nSamplesPerSec / 100);
-    max_frame_size = frame_size * 3;
-
-    codec_buffer.resize(frame_size * stream_format->nChannels);
-
     context = swr_alloc_set_opts(
-        nullptr, av_get_default_channel_layout(stream_format->nChannels), AV_SAMPLE_FMT_S16, stream_format->nSamplesPerSec,
-        av_get_default_channel_layout(stream_format->nChannels), GetSampleFormat(stream_format), stream_format->nSamplesPerSec,
-        0, 0);
+        nullptr, av_get_default_channel_layout(ENCODED_CHANNEL_COUNT), AV_SAMPLE_FMT_S16, ENCODED_SAMPLE_RATE,
+        av_get_default_channel_layout(system_format->nChannels), GetSampleFormat(system_format), system_format->nSamplesPerSec,
+        0, nullptr);
     swr_init(context);
+
+    resample_size = static_cast<int>(av_rescale_rnd(swr_get_delay(context, system_format->nSamplesPerSec) + OPUS_FRAME_SIZE,
+        ENCODED_SAMPLE_RATE, system_format->nSamplesPerSec, AV_ROUND_UP));
+    av_samples_alloc(&resample_buffer, nullptr, ENCODED_CHANNEL_COUNT, resample_size, AV_SAMPLE_FMT_S16, 0);
 
     return true;
 }
 
-bool AudioStreamer::InitDecoder(uint32_t sample_rate, uint32_t num_channels) {
+bool AudioStreamer::WaitForCapture(HANDLE* signals) {
+    auto ret = WaitForMultipleObjects(2, signals, false, 10);
+    if (!(ret == WAIT_OBJECT_0 || ret == WAIT_TIMEOUT)) {
+        LOG_WARNING("Unknown error HRESULT={}", ret);
+    }
+    return ret == WAIT_OBJECT_0 || ret == WAIT_TIMEOUT;
+}
+
+bool AudioStreamer::CaptureAudio(std::vector<uint8_t>& raw_out) {
+    raw_out.clear();
+    HANDLE signals[] = { receive_signal_, stop_signal_ };
+
+    if (!WaitForCapture(signals)) {
+        return false;
+    }
+
+    uint32_t capture_size = 0;
+    LPBYTE buffer;
+    uint32_t frames;
+    DWORD flags;
+    uint64_t pos, ts;
+
+    while (true) {
+        auto ret = capture_->GetNextPacketSize(&capture_size);
+        if (!capture_size) {
+            break;
+        }
+        LOG_TRACE("Retrieved packet of size {}", capture_size);
+
+        capture_->GetBuffer(&buffer, &frames, &flags, &pos, &ts);
+        raw_out.insert(raw_out.end(), buffer, buffer + (frames * system_format->nBlockAlign));
+        capture_->ReleaseBuffer(frames);
+    }
+    return true;
+}
+
+bool AudioStreamer::InitDecoder() {
     int err;
 
     if (FAILED(CoInitialize(nullptr))) {
@@ -121,107 +221,100 @@ bool AudioStreamer::InitDecoder(uint32_t sample_rate, uint32_t num_channels) {
         return false;
     }
 
-    if (FAILED(client_->GetMixFormat(&stream_format))) {
+    if (FAILED(client_->GetMixFormat(&system_format))) {
         return false;
     }
 
-    decode_sample_rate = sample_rate;
-    decode_num_channels = num_channels;
-    decoder = opus_decoder_create(sample_rate, num_channels, &err);
+    if (FAILED(client_->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 1000000, 0, system_format, nullptr))) {
+        return false;
+    }
+
+    if (FAILED(client_->GetService(__uuidof(IAudioRenderClient), reinterpret_cast<void**>(&render_)))) {
+        return false;
+    }
+    
+    client_->Start();
+
+    decoder = opus_decoder_create(ENCODED_SAMPLE_RATE, ENCODED_CHANNEL_COUNT, &err);
     if (err < 0) {
         LOG_ERROR("Failed to create opus decoder: {}", err);
         return false;
     }
 
-    frame_size = static_cast<uint16_t>(sample_rate / 100);
-    max_frame_size = frame_size * 3;
-
-    codec_buffer.resize(frame_size * num_channels);
-    output_buffer.resize(max_packet_size);
-
     context = swr_alloc_set_opts(
-        nullptr, av_get_default_channel_layout(stream_format->nChannels), GetSampleFormat(stream_format), stream_format->nSamplesPerSec,
-        av_get_default_channel_layout(num_channels), AV_SAMPLE_FMT_S16, sample_rate,
-        0, 0);
+        nullptr, av_get_default_channel_layout(system_format->nChannels), GetSampleFormat(system_format), system_format->nSamplesPerSec,
+        av_get_default_channel_layout(ENCODED_CHANNEL_COUNT), AV_SAMPLE_FMT_S16, ENCODED_SAMPLE_RATE,
+        0, nullptr);
     swr_init(context);
+
+    resample_size = static_cast<int>(av_rescale_rnd(swr_get_delay(context, ENCODED_SAMPLE_RATE) + OPUS_FRAME_SIZE,
+        system_format->nSamplesPerSec, ENCODED_SAMPLE_RATE, AV_ROUND_UP));
 }
 
-bool AudioStreamer::BeginEncode(const uint8_t* data, uint32_t size) {
-    output_offset = 0;
-    
-    uint32_t num_input_samples = size / (stream_format->nChannels * stream_format->wBitsPerSample / 8);
-    int num_output_samples;
-    num_output_samples = av_rescale_rnd(swr_get_delay(context, stream_format->nSamplesPerSec) + num_input_samples,
-        stream_format->nSamplesPerSec, stream_format->nSamplesPerSec, AV_ROUND_UP);
-    av_samples_alloc(&resample_buffer, NULL, stream_format->nChannels, num_output_samples, AV_SAMPLE_FMT_FLT, 0);
-    resample_size = swr_convert(context, &resample_buffer, num_output_samples, &data, num_input_samples);
-    LOG_INFO("Encoder: Number of samples = {}", resample_size);
-    // 16-bit PCM = nChannels * 2
-    resample_size *= stream_format->nChannels * 2;
-    LOG_INFO("Encoder: Total resample size = {}", resample_size);
-
-    return true;
-}
-
-bool AudioStreamer::EncodeAudio(uint8_t* out, uint32_t* packet_size) {
+bool AudioStreamer::EncodeAudio(const std::vector<uint8_t>& raw_in, std::vector<uint8_t>& enc_out) {
     opus_int32 encoded_size = 0;
-    *packet_size = 0;
-    *out = 0;
-    if (output_offset >= resample_size) {
-        return true;
-    }
-    for (int i = 0; i < stream_format->nChannels * frame_size; ++i) {
-        codec_buffer[i] = resample_buffer[i * 2 + 1 + output_offset] << 8 | resample_buffer[i * 2 + output_offset];
+    
+    const uint8_t* cvt_in[] = {raw_in.data()};
+    swr_convert(context, &resample_buffer, OPUS_FRAME_SIZE, cvt_in, OPUS_FRAME_SIZE);
+    
+    int max_output_per_frame = 1275;
+    if (enc_out.size() != max_output_per_frame) {
+        enc_out.resize(max_output_per_frame);
     }
 
-    encoded_size = opus_encode(encoder, codec_buffer.data(), frame_size, out, max_packet_size);
+    encoded_size = opus_encode(encoder, reinterpret_cast<opus_int16*>(resample_buffer), OPUS_FRAME_SIZE,
+        enc_out.data(), max_output_per_frame);
     if (encoded_size < 0) {
         LOG_ERROR("Encode failed: {}", opus_strerror(encoded_size));
         return false;
     }
-    *packet_size = encoded_size;
-    output_offset += stream_format->nChannels * frame_size;
+    enc_out.resize(encoded_size);
 
     return true;
 }
 
-void AudioStreamer::EndEncode() {
-    //LOG_INFO("Total size of output = {}", offset);
-    av_freep(&resample_buffer);
-}
+bool AudioStreamer::DecodeAudio(const std::vector<uint8_t>& enc_in, std::vector<uint8_t>& raw_out) {
+    if (decode_output_buffer.size() != SAMPLES_PER_OPUS_FRAME) {
+        decode_output_buffer.resize(SAMPLES_PER_OPUS_FRAME);
+    }
 
-bool AudioStreamer::DecodeAudio(uint8_t* data, uint32_t size, uint8_t** out, uint32_t* out_size_samples) {
-
-    uint32_t num_input_samples = size / (decode_num_channels * 2);
-    resample_size = av_rescale_rnd(swr_get_delay(context, decode_sample_rate) + num_input_samples,
-        stream_format->nSamplesPerSec, decode_sample_rate, AV_ROUND_UP);
-    av_samples_alloc(&resample_buffer, NULL, 2, resample_size, AV_SAMPLE_FMT_S16, 0);
-
-    int num_samples = opus_decode(decoder, data, size, codec_buffer.data(), max_frame_size, 0);
-    LOG_INFO("Decoder: Num samples decoded = {}", num_samples);
+    int num_samples = opus_decode(decoder, enc_in.data(), enc_in.size(),
+        decode_output_buffer.data(), decode_output_buffer.size(), 0);
+    //LOG_INFO("Decoder: Num samples decoded = {}", num_samples);
     if (num_samples < 0) {
         LOG_ERROR("Decode failed: {}", opus_strerror(num_samples));
-        //av_freep(&resample_buffer);
         return false;
     }
+    int system_frame_size = OPUS_FRAME_SIZE * system_format->nChannels * (system_format->wBitsPerSample / 8);
+    raw_out.resize(system_frame_size);
 
-    for (int i = 0; i < decode_num_channels * num_samples; i++) {
-        output_buffer[2 * i] = codec_buffer[i] & 0xFF;
-        output_buffer[2 * i + 1] = (codec_buffer[i] >> 8) & 0xFF;
-    }
-    
-    const uint8_t* in_bufs[] = { output_buffer.data() };
-    *out_size_samples = swr_convert(context, &resample_buffer, resample_size, in_bufs, num_samples);
-    *out = resample_buffer;
-    LOG_INFO("Decoder: Number of samples out = {}", *out_size_samples);
-    //*out_size *= stream_format->nChannels * stream_format->wBitsPerSample / 8;
-    //LOG_INFO("Total size = {}", *size);
+    uint8_t* raw_out_in[] = {raw_out.data()};
+    const uint8_t* opus_out_in[] = {reinterpret_cast<uint8_t*>(decode_output_buffer.data())};
+    swr_convert(context, raw_out_in, OPUS_FRAME_SIZE, opus_out_in, OPUS_FRAME_SIZE);
+
+    LOG_TRACE("num samples: {}", num_samples);
 
     return true;
 }
 
+void AudioStreamer::PlayAudio(const std::vector<uint8_t>& raw_out) {
+    UINT pad_amt, buf_sz, avail_sz;
+    
+    client_->GetCurrentPadding(&pad_amt);
+    client_->GetBufferSize(&buf_sz);
 
-void AudioStreamer::EndDecode() {
-    av_freep(&resample_buffer);
-    //LOG_INFO("Total size of output = {}", offset);
+    avail_sz = buf_sz - pad_amt;
+    UINT write_sz = raw_out.size() / system_format->nBlockAlign;
+
+    LOG_INFO("Current buffer size and padding size: {} {}", buf_sz, pad_amt);
+
+    BYTE* buf = nullptr;
+    while (buf == nullptr) {
+        auto result = render_->GetBuffer(write_sz, &buf);
+    }
+
+    std::copy(raw_out.begin(), raw_out.begin() +
+        (write_sz * system_format->nBlockAlign), buf);
+
+    render_->ReleaseBuffer(write_sz, 0);
 }

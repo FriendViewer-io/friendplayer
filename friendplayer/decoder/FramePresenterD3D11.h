@@ -104,7 +104,7 @@ public:
         {
             DeleteTimerQueueTimer(hTimerQueue, hTimer, nullptr);
         }*/
-        pSwapChain->Present(1, 0);
+        pSwapChain->Present(0, 0);
         mtx.unlock();
         return true;
     }

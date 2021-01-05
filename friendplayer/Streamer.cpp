@@ -169,7 +169,7 @@ void Streamer::Encode(bool send_idr) {
 
     nvenc->Lock();
     if (!nvenc->SwapReady()) {
-        LOG_INFO("Re-encoding frame");
+        LOG_TRACE("Re-encoding frame");
     }
     nvenc->Swap();
     nvenc->Unlock();

@@ -14,43 +14,51 @@ extern "C" {
 
 class AudioStreamer {
 public:
-	AudioStreamer(uint16_t max_packet_size);
+	inline static constexpr int ENCODED_SAMPLE_RATE = 48000;
+	inline static constexpr int ENCODED_CHANNEL_COUNT = 2;
+	inline static constexpr int OPUS_FRAME_SIZE = ENCODED_SAMPLE_RATE / 100;
+	inline static constexpr int OPUS_MAX_FRAME_SIZE = OPUS_FRAME_SIZE;
 
+	// sizeof(s16) * stereo
+	inline static constexpr int BYTES_PER_FRAME = 2 * ENCODED_CHANNEL_COUNT;
+	inline static constexpr int BYTES_PER_OPUS_FRAME = OPUS_FRAME_SIZE * BYTES_PER_FRAME;
+	inline static constexpr int SAMPLES_PER_OPUS_FRAME = BYTES_PER_OPUS_FRAME / 2;
+
+	AudioStreamer();
+
+	bool InitRender();
 	bool InitEncoder(uint32_t bitrate);
-	bool InitDecoder(uint32_t sample_rate, uint32_t num_channels);
+	bool InitDecoder();
 
-	bool BeginEncode(const uint8_t* data, uint32_t size);
-	bool EncodeAudio(uint8_t* out, uint32_t* packet_size);
-	void EndEncode();
+	bool WaitForCapture(HANDLE* signals);
+	bool CaptureAudio(std::vector<uint8_t>& raw_out);
 
-	bool DecodeAudio(uint8_t* data, uint32_t size, uint8_t** out, uint32_t* out_size_samples);
-	void EndDecode();
+	void PlayAudio(const std::vector<uint8_t>& raw_in);
 
+	bool EncodeAudio(const std::vector<uint8_t>& raw_in, std::vector<uint8_t>& enc_out);
+	bool DecodeAudio(const std::vector<uint8_t>& enc_in, std::vector<uint8_t>& raw_out);
+
+	
 private:
+
 
 	IMMDevice* device_;
 	IAudioClient* client_;
 	IAudioCaptureClient* capture_;
 	// Feed in empty sound during no capture
 	IAudioRenderClient* render_;
+	HANDLE receive_signal_;
+    HANDLE stop_signal_;
 
 	OpusEncoder* encoder;
 	OpusDecoder* decoder;
-	WAVEFORMATEX* stream_format;
+	WAVEFORMATEX* system_format;
 
 	SwrContext* context;
-	std::vector<opus_int16> codec_buffer;
-	std::vector<uint8_t> output_buffer;
-	uint32_t output_offset;
 	
+	int resample_size;
+	
+	std::vector<opus_int16> decode_output_buffer;
 	uint8_t* resample_buffer;
-	uint32_t resample_size;
-
-	uint16_t frame_size;
-	uint16_t max_frame_size;
-	uint16_t max_packet_size;
-
-	opus_int32 decode_sample_rate;
-	opus_int32 decode_num_channels;
 };
 
