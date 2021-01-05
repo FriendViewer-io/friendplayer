@@ -1,4 +1,3 @@
-#include "encoder/Defs.h"
 #include "encoder/DDAImpl.h"
 #include "encoder/NvEncoder.h"
 #include <iomanip>
@@ -125,7 +124,9 @@ HRESULT DDAImpl::GetCapturedFrame(ID3D11Texture2D **ppTex2D, int wait)
         return hr;
     }
 
-    LARGE_INTEGER pts = frameInfo.LastPresentTime;  MICROSEC_TIME(pts, qpcFreq);
+    LARGE_INTEGER pts = frameInfo.LastPresentTime;
+    pts.QuadPart *= 1000000;
+    pts.QuadPart /= qpcFreq.QuadPart;
     LONGLONG interval = pts.QuadPart - lastPTS.QuadPart;
 
     //printf(__FUNCTION__": %d : Accumulated Frames %u PTS Interval %lld PTS %lld\n", frameno, frameInfo.AccumulatedFrames,  interval * 1000, frameInfo.LastPresentTime.QuadPart);

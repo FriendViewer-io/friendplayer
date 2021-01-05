@@ -7,6 +7,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="common\Crypto.cpp" />
     <ClCompile Include="common\Log.cpp" />
     <ClCompile Include="common\Timer.cpp" />
     <ClCompile Include="common\udp_epic.cpp" />
@@ -19,17 +20,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\ColorSpace.h" />
+    <ClInclude Include="common\Crypto.h" />
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
     <ClInclude Include="common\Timer.h" />
     <ClInclude Include="common\udp_epic.h" />
-    <ClInclude Include="Crypto.h" />
     <ClInclude Include="decoder\FFmpegDemuxer.h" />
     <ClInclude Include="decoder\FramePresenterD3D.h" />
     <ClInclude Include="decoder\FramePresenterD3D11.h" />
     <ClInclude Include="decoder\NvDecoder.h" />
     <ClInclude Include="encoder\DDAImpl.h" />
-    <ClInclude Include="encoder\Defs.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
     <ClInclude Include="streamer\AudioStreamer.h" />
     <ClInclude Include="streamer\VideoStreamer.h" />

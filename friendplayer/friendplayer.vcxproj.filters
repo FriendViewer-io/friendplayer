@@ -54,6 +54,9 @@
     <ClCompile Include="encoder\NvEncoder.cpp">
       <Filter>Source Files\encoder</Filter>
     </ClCompile>
+    <ClCompile Include="common\Crypto.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
@@ -83,9 +86,6 @@
     <ClInclude Include="common\NvCodecUtils.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="Crypto.h">
-      <Filter>Source Files\common</Filter>
-    </ClInclude>
     <ClInclude Include="common\Timer.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
@@ -98,8 +98,8 @@
     <ClInclude Include="encoder\NvEncoder.h">
       <Filter>Source Files\encoder</Filter>
     </ClInclude>
-    <ClInclude Include="encoder\Defs.h">
-      <Filter>Source Files\encoder</Filter>
+    <ClInclude Include="common\Crypto.h">
+      <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
