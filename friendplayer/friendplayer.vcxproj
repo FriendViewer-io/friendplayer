@@ -7,11 +7,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="audio\AudioStreamer.cpp" />
     <ClCompile Include="common\Log.cpp" />
     <ClCompile Include="common\Timer.cpp" />
     <ClCompile Include="common\udp_epic.cpp" />
-    <ClCompile Include="decoder\AppDecD3D.cpp" />
     <ClCompile Include="decoder\NvDecoder.cpp" />
     <ClCompile Include="encoder\DDAImpl.cpp" />
     <ClCompile Include="encoder\main.cpp" />
@@ -19,10 +17,10 @@
     <ClCompile Include="encoder\NvEncoderD3D11.cpp" />
     <ClCompile Include="encoder\NvEncoderNew.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
-    <ClCompile Include="Streamer.cpp" />
+    <ClCompile Include="streamer\AudioStreamer.cpp" />
+    <ClCompile Include="streamer\VideoStreamer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="audio\AudioStreamer.h" />
     <ClInclude Include="common\ColorSpace.h" />
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
@@ -39,7 +37,8 @@
     <ClInclude Include="encoder\NvEncoder.h" />
     <ClInclude Include="encoder\NvEncoderD3D11.h" />
     <ClInclude Include="encoder\NvEncoderNew.h" />
-    <ClInclude Include="Streamer.h" />
+    <ClInclude Include="streamer\AudioStreamer.h" />
+    <ClInclude Include="streamer\VideoStreamer.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="common\ColorSpace.cu" />

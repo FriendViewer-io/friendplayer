@@ -22,16 +22,13 @@
     <Filter Include="Source Files\common">
       <UniqueIdentifier>{4202d40f-7d7b-424a-9000-8871d6f7e371}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\audio">
+    <Filter Include="Source Files\streamers">
       <UniqueIdentifier>{05817dc1-0fcb-4e33-8803-93c91ef1ed31}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="friendviewer_main.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="decoder\AppDecD3D.cpp">
-      <Filter>Source Files\decoder</Filter>
     </ClCompile>
     <ClCompile Include="encoder\DDAImpl.cpp">
       <Filter>Source Files\encoder</Filter>
@@ -54,17 +51,17 @@
     <ClCompile Include="common\Log.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="Streamer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="encoder\NvEncoderNew.cpp">
       <Filter>Source Files\encoder</Filter>
     </ClCompile>
     <ClCompile Include="common\Timer.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="audio\AudioStreamer.cpp">
-      <Filter>Source Files\audio</Filter>
+    <ClCompile Include="streamer\AudioStreamer.cpp">
+      <Filter>Source Files\streamers</Filter>
+    </ClCompile>
+    <ClCompile Include="streamer\VideoStreamer.cpp">
+      <Filter>Source Files\streamers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -107,9 +104,6 @@
     <ClInclude Include="common\NvCodecUtils.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="Streamer.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="encoder\NvEncoderNew.h">
       <Filter>Source Files\encoder</Filter>
     </ClInclude>
@@ -119,8 +113,11 @@
     <ClInclude Include="common\Timer.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="audio\AudioStreamer.h">
-      <Filter>Source Files\audio</Filter>
+    <ClInclude Include="streamer\AudioStreamer.h">
+      <Filter>Source Files\streamers</Filter>
+    </ClInclude>
+    <ClInclude Include="streamer\VideoStreamer.h">
+      <Filter>Source Files\streamers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,4 +1,4 @@
-#include "Streamer.h"
+#include "VideoStreamer.h"
 
 #include <cuda.h>
 #include <iostream>
@@ -31,19 +31,19 @@ void DxDeleter(T* dx_obj) {
 }
 }
 
-Streamer::Streamer() 
+VideoStreamer::VideoStreamer()
     : d3d_dev(nullptr, DxDeleter<ID3D11Device>),
-      d3d_ctx(nullptr, DxDeleter<ID3D11DeviceContext>),
-      dxgi_tex(nullptr, DxDeleter<ID3D11Texture2D>),
-      nvenc_buf(nullptr, DxDeleter<ID3D11Texture2D>) {
+    d3d_ctx(nullptr, DxDeleter<ID3D11DeviceContext>),
+    dxgi_tex(nullptr, DxDeleter<ID3D11Texture2D>),
+    nvenc_buf(nullptr, DxDeleter<ID3D11Texture2D>) {
     QueryPerformanceFrequency(&counter_freq);
 }
 
-Streamer::~Streamer() {
+VideoStreamer::~VideoStreamer() {
     check(cuMemFree(cuda_frame));
 }
 
-bool Streamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD w, DWORD h) {
+bool VideoStreamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD w, DWORD h) {
     LOG_INFO("Initializing NVENC for {}x{} video @ {} frames/second with bitrate {} bits/second", w, h, frames_per_sec, avg_bitrate);
     memset(&init_params, 0, sizeof(NV_ENC_INITIALIZE_PARAMS));
     memset(&enc_cfg, 0, sizeof(NV_ENC_CONFIG));
@@ -52,15 +52,16 @@ bool Streamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD w, D
     init_params.maxEncodeWidth = init_params.encodeWidth = w;
     init_params.maxEncodeHeight = init_params.encodeHeight = h;
 
-    try { 
+    try {
         nvenc->CreateDefaultEncoderParams(&init_params, NV_ENC_CODEC_H264_GUID, NV_ENC_PRESET_P1_GUID, NV_ENC_TUNING_INFO_ULTRA_LOW_LATENCY);
-    } catch (...) {
+    }
+    catch (...) {
         LOG_CRITICAL("Failed to create encoder init params!");
         return false;
     }
     init_params.frameRateNum = frames_per_sec;
     init_params.frameRateDen = 1;
-    
+
     enc_cfg.gopLength = NVENC_INFINITE_GOPLENGTH;
     enc_cfg.frameIntervalP = 1;
     enc_cfg.encodeCodecConfig.h264Config.idrPeriod = NVENC_INFINITE_GOPLENGTH;
@@ -75,8 +76,8 @@ bool Streamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD w, D
     return true;
 }
 
-bool Streamer::InitEncode() {
-    LOG_INFO("Called Streamer::InitEncode");
+bool VideoStreamer::InitEncode() {
+    LOG_INFO("Called VideoStreamer::InitEncode");
     // InitDXGI
     HRESULT hr = S_OK;
     D3D_DRIVER_TYPE driver_types[] = {
@@ -148,14 +149,15 @@ bool Streamer::InitEncode() {
     LOG_INFO("Creating NVENC encoder");
     try {
         nvenc->CreateEncoder(&init_params);
-    } catch (...) {
+    }
+    catch (...) {
         LOG_CRITICAL("Failed to create encoder!");
         return false;
     }
     dxgi_provider->StartCapture(nvenc.get());
 }
 
-void Streamer::Encode(bool send_idr) {
+void VideoStreamer::Encode(bool send_idr) {
     using namespace std::chrono_literals;
     auto begin_time = std::chrono::system_clock::now();
     NV_ENC_PIC_PARAMS params = {};
@@ -165,7 +167,7 @@ void Streamer::Encode(bool send_idr) {
     std::vector<std::vector<uint8_t>> packets;
     auto wait_time = 4ms;
     while (begin_time + wait_time > std::chrono::system_clock::now() &&
-            !nvenc->SwapReady());
+        !nvenc->SwapReady());
 
     nvenc->Lock();
     if (!nvenc->SwapReady()) {
@@ -179,7 +181,8 @@ void Streamer::Encode(bool send_idr) {
     auto post_enc = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - pre_enc);
     if (post_enc.count() > 30000) {
         LOG_CRITICAL("VERY SLOW ENCODE: {} us", post_enc.count());
-    } else if (post_enc.count() > 20000) {
+    }
+    else if (post_enc.count() > 20000) {
         LOG_WARNING("SLOW ENCODE: {} us", post_enc.count());
     }
 
@@ -197,7 +200,7 @@ void Streamer::Encode(bool send_idr) {
     encoder_frame_num++;
 }
 
-bool Streamer::InitDecode(uint32_t frame_timeout_ms) {
+bool VideoStreamer::InitDecode(uint32_t frame_timeout_ms) {
 
     LOG_INFO("Initializing decoder");
     if (!check(cuInit(0))) {
@@ -208,10 +211,12 @@ bool Streamer::InitDecode(uint32_t frame_timeout_ms) {
         char szDeviceName[80];
         if (check(cuDeviceGetName(szDeviceName, sizeof(szDeviceName), cuDevice))) {
             LOG_INFO("GPU in use: {}", szDeviceName);
-        } else {
+        }
+        else {
             LOG_WARNING("Could not find GPU device name");
         }
-    } else {
+    }
+    else {
         LOG_WARNING("Could not find GPU device");
     }
     if (!check(cuCtxCreate(&cuda_context, CU_CTX_SCHED_BLOCKING_SYNC, cuDevice))) {
@@ -239,11 +244,12 @@ bool Streamer::InitDecode(uint32_t frame_timeout_ms) {
     return true;
 }
 
-bool Streamer::InitConnection(const char* ip, unsigned short port, bool is_sender) {
+bool VideoStreamer::InitConnection(const char* ip, unsigned short port, bool is_sender) {
     if (is_sender) {
         LOG_INFO("Initializing server on port {}", port);
         udp_socket = new UDPSocketSender();
-    } else {
+    }
+    else {
         LOG_INFO("Initializing connection to {}:{}", ip, port);
         udp_socket = new UDPSocketReceiver();
     }
@@ -256,21 +262,22 @@ bool Streamer::InitConnection(const char* ip, unsigned short port, bool is_sende
     return true;
 }
 
-void Streamer::Demux() {
+void VideoStreamer::Demux() {
     demuxer->Demux(&video_packet, &video_packet_size, &video_packet_ts);
 }
 
-void Streamer::Decode() {
+void VideoStreamer::Decode() {
     if (video_packet_size > 0) {
         num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE, video_packet_ts);
         LOG_TRACE("Decoded {} frames with {} bytes", num_frames, video_packet_size);
-    } else {
+    }
+    else {
         num_frames = 0;
         LOG_INFO("Skipping decode because there were no video bytes");
     }
 }
 
-void Streamer::PresentVideo() {
+void VideoStreamer::PresentVideo() {
     
     uint8_t* pFrame;
     static uint64_t firstPts = 0, startTime = 0;

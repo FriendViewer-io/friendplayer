@@ -2,8 +2,8 @@
 
 #include "common/Log.h"
 #include "common/Timer.h"
-#include "Streamer.h"
-#include "audio/AudioStreamer.h"
+#include "streamer/VideoStreamer.h"
+#include "streamer/AudioStreamer.h"
 
 void audio_thread(bool is_sender, short port, char* ip) {
     WSAData wsa_data;
@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
     }
 
     Timer timer;
-    Streamer streamer;
+    VideoStreamer streamer;
 
     bool is_sender = strcmp(argv[1], "streamer") == 0;
     streamer.InitConnection(argv[2], atoi(argv[3]), is_sender);

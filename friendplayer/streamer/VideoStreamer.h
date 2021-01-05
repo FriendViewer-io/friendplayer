@@ -19,10 +19,10 @@ class FramePresenterD3D11;
 
 class UDPSocket;
 
-class Streamer {
+class VideoStreamer {
 public:
-    Streamer();
-    ~Streamer();
+    VideoStreamer();
+    ~VideoStreamer();
 
     bool InitEncode();
     void Encode(bool send_idr);
