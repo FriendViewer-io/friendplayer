@@ -1,9 +1,9 @@
-#include "encoder/NvEncoderNew.h"
+#include "encoder/NvEncoder.h"
 
 #include <D3D9Types.h>
 #include "common/Log.h"
 
-NvEncoderNew::NvEncoderNew(ID3D11Device* device, uint32_t width, uint32_t height) :
+NvEncoder::NvEncoder(ID3D11Device* device, uint32_t width, uint32_t height) :
     device(device), 
     dev_type(NV_ENC_DEVICE_TYPE_DIRECTX),
     width(width),
@@ -30,7 +30,7 @@ NvEncoderNew::NvEncoderNew(ID3D11Device* device, uint32_t width, uint32_t height
     nvenc_fns.nvEncOpenEncodeSessionEx(&params, &encoder_ptr);
 }
 
-bool NvEncoderNew::LoadNvEncApi() {
+bool NvEncoder::LoadNvEncApi() {
 
     uint32_t version = 0;
     uint32_t current_version = (NVENCAPI_MAJOR_VERSION << 4) | NVENCAPI_MINOR_VERSION;
@@ -45,11 +45,11 @@ bool NvEncoderNew::LoadNvEncApi() {
     return true;
 }
 
-NvEncoderNew::~NvEncoderNew() {
+NvEncoder::~NvEncoder() {
     DestroyHWEncoder();
 }
 
-bool NvEncoderNew::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* init_params, GUID codec_guid, GUID preset_guid, NV_ENC_TUNING_INFO tuning_info) {
+bool NvEncoder::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* init_params, GUID codec_guid, GUID preset_guid, NV_ENC_TUNING_INFO tuning_info) {
     if (!encoder_ptr) {
         LOG_CRITICAL("Encoder Initialization failed");
         return false;
@@ -114,7 +114,7 @@ bool NvEncoderNew::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* init_par
     return true;
 }
 
-bool NvEncoderNew::CreateEncoder(const NV_ENC_INITIALIZE_PARAMS* encoder_params) {
+bool NvEncoder::CreateEncoder(const NV_ENC_INITIALIZE_PARAMS* encoder_params) {
     if (!encoder_ptr) {
         LOG_CRITICAL("Encoder Initialization failed");
         return false;
@@ -175,7 +175,7 @@ bool NvEncoderNew::CreateEncoder(const NV_ENC_INITIALIZE_PARAMS* encoder_params)
     return true;
 }
 
-void NvEncoderNew::DestroyEncoder() {
+void NvEncoder::DestroyEncoder() {
     if (!encoder_ptr) {
         return;
     }
@@ -183,7 +183,7 @@ void NvEncoderNew::DestroyEncoder() {
     DestroyHWEncoder();
 }
 
-void NvEncoderNew::DestroyHWEncoder() {
+void NvEncoder::DestroyHWEncoder() {
     if (!encoder_ptr) {
         return;
     }
@@ -205,15 +205,15 @@ void NvEncoderNew::DestroyHWEncoder() {
     encoder_initialized = false;
 }
 
-NvEncInputFrame* NvEncoderNew::GetActiveFrame() {
+NvEncInputFrame* NvEncoder::GetActiveFrame() {
     return &input_frames[active_input_frame];
 }
 
-NvEncInputFrame* NvEncoderNew::GetStagingFrame() {
+NvEncInputFrame* NvEncoder::GetStagingFrame() {
     return &input_frames[(active_input_frame + 1) % 2];
 }
 
-void NvEncoderNew::MapResources() {
+void NvEncoder::MapResources() {
     NV_ENC_MAP_INPUT_RESOURCE map_input_resources = { NV_ENC_MAP_INPUT_RESOURCE_VER };
 
     map_input_resources.registeredResource = registered_resources[active_input_frame];
@@ -221,7 +221,7 @@ void NvEncoderNew::MapResources() {
     mapped_input_buffers[active_input_frame] = map_input_resources.mappedResource;
 }
 
-void NvEncoderNew::EncodeActiveFrame(std::vector<std::vector<uint8_t>> &packets_out, NV_ENC_PIC_PARAMS *pic_params) {
+void NvEncoder::EncodeActiveFrame(std::vector<std::vector<uint8_t>> &packets_out, NV_ENC_PIC_PARAMS *pic_params) {
     //LOG_INFO("Encoding on frame idx {}", active_input_frame);
 
     packets_out.clear();
@@ -242,7 +242,7 @@ void NvEncoderNew::EncodeActiveFrame(std::vector<std::vector<uint8_t>> &packets_
     }
 }
 
-void NvEncoderNew::GetSequenceParams(std::vector<uint8_t> &seq_params) {
+void NvEncoder::GetSequenceParams(std::vector<uint8_t> &seq_params) {
     uint8_t spspps_data[1024]; // Assume maximum spspps data is 1KB or less
     memset(spspps_data, 0, sizeof(spspps_data));
     NV_ENC_SEQUENCE_PARAM_PAYLOAD payload = { NV_ENC_SEQUENCE_PARAM_PAYLOAD_VER };
@@ -257,7 +257,7 @@ void NvEncoderNew::GetSequenceParams(std::vector<uint8_t> &seq_params) {
     seq_params.insert(seq_params.end(), &spspps_data[0], &spspps_data[spspps_size]);
 }
 
-NVENCSTATUS NvEncoderNew::DoEncode(NV_ENC_INPUT_PTR input_buffer, NV_ENC_OUTPUT_PTR output_buffer, NV_ENC_PIC_PARAMS *in_params) {
+NVENCSTATUS NvEncoder::DoEncode(NV_ENC_INPUT_PTR input_buffer, NV_ENC_OUTPUT_PTR output_buffer, NV_ENC_PIC_PARAMS *in_params) {
     NV_ENC_PIC_PARAMS pic_params = {};
     if (in_params != nullptr) {
         pic_params = *in_params;
@@ -275,14 +275,14 @@ NVENCSTATUS NvEncoderNew::DoEncode(NV_ENC_INPUT_PTR input_buffer, NV_ENC_OUTPUT_
     return nvStatus; 
 }
 
-void NvEncoderNew::SendEOS() {
+void NvEncoder::SendEOS() {
     NV_ENC_PIC_PARAMS picParams = { NV_ENC_PIC_PARAMS_VER };
     picParams.encodePicFlags = NV_ENC_PIC_FLAG_EOS;
     picParams.completionEvent = GetCompletionEvent();
     nvenc_fns.nvEncEncodePicture(encoder_ptr, &picParams);
 }
 
-void NvEncoderNew::EndEncode(std::vector<std::vector<uint8_t>> &out_packets) {
+void NvEncoder::EndEncode(std::vector<std::vector<uint8_t>> &out_packets) {
     out_packets.clear();
     if (!encoder_initialized) {
         LOG_CRITICAL("Encoder device not initialized");
@@ -293,7 +293,7 @@ void NvEncoderNew::EndEncode(std::vector<std::vector<uint8_t>> &out_packets) {
     GetEncodedPacket(out_packets);
 }
 
-void NvEncoderNew::GetEncodedPacket(std::vector<std::vector<uint8_t>> &packets_out) {
+void NvEncoder::GetEncodedPacket(std::vector<std::vector<uint8_t>> &packets_out) {
     // WaitForCompletionEvent(active_input_frame);
     NV_ENC_LOCK_BITSTREAM lock_bitstream_data = { NV_ENC_LOCK_BITSTREAM_VER };
     lock_bitstream_data.outputBitstream = bitstream_output[active_input_frame];
@@ -313,7 +313,7 @@ void NvEncoderNew::GetEncodedPacket(std::vector<std::vector<uint8_t>> &packets_o
     }
 }
 
-bool NvEncoderNew::Reconfigure(const NV_ENC_RECONFIGURE_PARAMS *reconfigure_params) {
+bool NvEncoder::Reconfigure(const NV_ENC_RECONFIGURE_PARAMS *reconfigure_params) {
     nvenc_fns.nvEncReconfigureEncoder(encoder_ptr, const_cast<NV_ENC_RECONFIGURE_PARAMS*>(reconfigure_params));
 
     memcpy(&init_params, &(reconfigure_params->reInitEncodeParams), sizeof(init_params));
@@ -329,7 +329,7 @@ bool NvEncoderNew::Reconfigure(const NV_ENC_RECONFIGURE_PARAMS *reconfigure_para
     return true;
 }
 
-NV_ENC_REGISTERED_PTR NvEncoderNew::RegisterResource(void *buf, int w, int h, int pitch, NV_ENC_BUFFER_FORMAT buffer_format) {
+NV_ENC_REGISTERED_PTR NvEncoder::RegisterResource(void *buf, int w, int h, int pitch, NV_ENC_BUFFER_FORMAT buffer_format) {
     NV_ENC_REGISTER_RESOURCE register_resource = { NV_ENC_REGISTER_RESOURCE_VER };
     register_resource.resourceType = NV_ENC_INPUT_RESOURCE_TYPE_DIRECTX;
     register_resource.resourceToRegister = buf;
@@ -343,7 +343,7 @@ NV_ENC_REGISTERED_PTR NvEncoderNew::RegisterResource(void *buf, int w, int h, in
     return register_resource.registeredResource;
 }
 
-void NvEncoderNew::RegisterInputResources() {
+void NvEncoder::RegisterInputResources() {
     const int w = max_enc_width, h = max_enc_height, pitch = 0;
 
     ID3D11Texture2D* input_textures[2];
@@ -371,7 +371,7 @@ void NvEncoderNew::RegisterInputResources() {
             NV_ENC_BUFFER_FORMAT_ARGB);
         
         std::vector<uint32_t> chroma_offsets;
-        NvEncoderNew::GetChromaSubPlaneOffsets(buffer_fmt, pitch, height, chroma_offsets);
+        NvEncoder::GetChromaSubPlaneOffsets(buffer_fmt, pitch, height, chroma_offsets);
         NvEncInputFrame &input_frame = input_frames[i];
 
         input_frame.chroma_offsets[0] = 0;
@@ -379,9 +379,9 @@ void NvEncoderNew::RegisterInputResources() {
         for (uint32_t ch = 0; ch < chroma_offsets.size(); ch++) {
             input_frame.chroma_offsets[ch] = chroma_offsets[ch];
         }
-        input_frame.num_chroma_planes = NvEncoderNew::GetNumChromaPlanes(buffer_fmt);
+        input_frame.num_chroma_planes = NvEncoder::GetNumChromaPlanes(buffer_fmt);
         input_frame.pitch = pitch;
-        input_frame.chroma_pitch = NvEncoderNew::GetChromaPitch(buffer_fmt, pitch);
+        input_frame.chroma_pitch = NvEncoder::GetChromaPitch(buffer_fmt, pitch);
         input_frame.buffer_format = buffer_fmt;
         input_frame.resource_type = NV_ENC_INPUT_RESOURCE_TYPE_DIRECTX;
 
@@ -389,12 +389,12 @@ void NvEncoderNew::RegisterInputResources() {
     }
 }
 
-void NvEncoderNew::FlushEncoder() {
+void NvEncoder::FlushEncoder() {
     std::vector<std::vector<uint8_t>> tmp;
     EndEncode(tmp);
 }
 
-void NvEncoderNew::UnregisterInputResources() {
+void NvEncoder::UnregisterInputResources() {
     FlushEncoder();
     
     for (uint32_t i = 0; i < mapped_input_buffers.size(); ++i) {
@@ -429,7 +429,7 @@ void NvEncoderNew::UnregisterInputResources() {
 }
 
 
-void NvEncoderNew::WaitForCompletionEvent(int event_idx) {
+void NvEncoder::WaitForCompletionEvent(int event_idx) {
     NV_ENC_CONFIG cfg = { 0 };
     NV_ENC_INITIALIZE_PARAMS params = { 0 };
     params.encodeConfig = &cfg;
@@ -443,7 +443,7 @@ void NvEncoderNew::WaitForCompletionEvent(int event_idx) {
     }
 }
 
-uint32_t NvEncoderNew::GetWidthInBytes(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t width) {
+uint32_t NvEncoder::GetWidthInBytes(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t width) {
     switch (buffer_fmt) {
     case NV_ENC_BUFFER_FORMAT_NV12:
     case NV_ENC_BUFFER_FORMAT_YV12:
@@ -465,7 +465,7 @@ uint32_t NvEncoderNew::GetWidthInBytes(const NV_ENC_BUFFER_FORMAT buffer_fmt, co
     }
 }
 
-uint32_t NvEncoderNew::GetNumChromaPlanes(const NV_ENC_BUFFER_FORMAT buffer_fmt) {
+uint32_t NvEncoder::GetNumChromaPlanes(const NV_ENC_BUFFER_FORMAT buffer_fmt) {
     switch (buffer_fmt) {
     case NV_ENC_BUFFER_FORMAT_NV12:
     case NV_ENC_BUFFER_FORMAT_YUV420_10BIT:
@@ -487,7 +487,7 @@ uint32_t NvEncoderNew::GetNumChromaPlanes(const NV_ENC_BUFFER_FORMAT buffer_fmt)
     }
 }
 
-uint32_t NvEncoderNew::GetChromaPitch(const NV_ENC_BUFFER_FORMAT buffer_fmt,const uint32_t luma_pitch) {
+uint32_t NvEncoder::GetChromaPitch(const NV_ENC_BUFFER_FORMAT buffer_fmt,const uint32_t luma_pitch) {
     switch (buffer_fmt) {
     case NV_ENC_BUFFER_FORMAT_NV12:
     case NV_ENC_BUFFER_FORMAT_YUV420_10BIT:
@@ -509,7 +509,7 @@ uint32_t NvEncoderNew::GetChromaPitch(const NV_ENC_BUFFER_FORMAT buffer_fmt,cons
     }
 }
 
-void NvEncoderNew::GetChromaSubPlaneOffsets(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t pitch, 
+void NvEncoder::GetChromaSubPlaneOffsets(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t pitch, 
         const uint32_t height, std::vector<uint32_t>& chroma_offsets_out) {
     chroma_offsets_out.clear();
     switch (buffer_fmt) {
@@ -521,7 +521,7 @@ void NvEncoderNew::GetChromaSubPlaneOffsets(const NV_ENC_BUFFER_FORMAT buffer_fm
     case NV_ENC_BUFFER_FORMAT_IYUV:
         chroma_offsets_out.push_back(pitch * height);
         chroma_offsets_out.push_back(chroma_offsets_out[0] + 
-            (NvEncoderNew::GetChromaPitch(buffer_fmt, pitch) * GetChromaHeight(buffer_fmt, height)));
+            (NvEncoder::GetChromaPitch(buffer_fmt, pitch) * GetChromaHeight(buffer_fmt, height)));
         return;
     case NV_ENC_BUFFER_FORMAT_YUV444:
     case NV_ENC_BUFFER_FORMAT_YUV444_10BIT:
@@ -540,7 +540,7 @@ void NvEncoderNew::GetChromaSubPlaneOffsets(const NV_ENC_BUFFER_FORMAT buffer_fm
     }
 }
 
-uint32_t NvEncoderNew::GetChromaHeight(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t luma_height) {
+uint32_t NvEncoder::GetChromaHeight(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t luma_height) {
     switch (buffer_fmt) {
     case NV_ENC_BUFFER_FORMAT_YV12:
     case NV_ENC_BUFFER_FORMAT_IYUV:
@@ -562,7 +562,7 @@ uint32_t NvEncoderNew::GetChromaHeight(const NV_ENC_BUFFER_FORMAT buffer_fmt, co
     }
 }
 
-uint32_t NvEncoderNew::GetChromaWidthInBytes(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t luma_width) {
+uint32_t NvEncoder::GetChromaWidthInBytes(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t luma_width) {
     switch (buffer_fmt) {
     case NV_ENC_BUFFER_FORMAT_YV12:
     case NV_ENC_BUFFER_FORMAT_IYUV:
@@ -588,7 +588,7 @@ uint32_t NvEncoderNew::GetChromaWidthInBytes(const NV_ENC_BUFFER_FORMAT buffer_f
 }
 
 
-int NvEncoderNew::GetCapabilityValue(GUID guid_codec, NV_ENC_CAPS caps_to_query) {
+int NvEncoder::GetCapabilityValue(GUID guid_codec, NV_ENC_CAPS caps_to_query) {
     if (!encoder_ptr) {
         return 0;
     }
@@ -599,7 +599,7 @@ int NvEncoderNew::GetCapabilityValue(GUID guid_codec, NV_ENC_CAPS caps_to_query)
     return v;
 }
 
-int NvEncoderNew::GetFrameSize() const {
+int NvEncoder::GetFrameSize() const {
     switch (GetPixelFormat()) {
     case NV_ENC_BUFFER_FORMAT_YV12:
     case NV_ENC_BUFFER_FORMAT_IYUV:
@@ -623,7 +623,7 @@ int NvEncoderNew::GetFrameSize() const {
     }
 }
 
-void NvEncoderNew::GetInitializeParams(NV_ENC_INITIALIZE_PARAMS* out_initialize_params) {
+void NvEncoder::GetInitializeParams(NV_ENC_INITIALIZE_PARAMS* out_initialize_params) {
     if (!out_initialize_params || !out_initialize_params->encodeConfig) {
         LOG_CRITICAL("Both pInitializeParams and pInitializeParams->encodeConfig can't be NULL");
         return;
@@ -634,7 +634,7 @@ void NvEncoderNew::GetInitializeParams(NV_ENC_INITIALIZE_PARAMS* out_initialize_
     out_initialize_params->encodeConfig = out_encode_config;
 }
 
-void NvEncoderNew::InitializeBitstreamBuffer() {
+void NvEncoder::InitializeBitstreamBuffer() {
     for (int i = 0; i < bitstream_output.size(); i++) {
         NV_ENC_CREATE_BITSTREAM_BUFFER create_bitstream_buffer = { NV_ENC_CREATE_BITSTREAM_BUFFER_VER };
         nvenc_fns.nvEncCreateBitstreamBuffer(encoder_ptr, &create_bitstream_buffer);
@@ -642,7 +642,7 @@ void NvEncoderNew::InitializeBitstreamBuffer() {
     }
 }
 
-void NvEncoderNew::DestroyBitstreamBuffer() {
+void NvEncoder::DestroyBitstreamBuffer() {
     for (uint32_t i = 0; i < bitstream_output.size(); i++) {
         if (bitstream_output[i]) {
             nvenc_fns.nvEncDestroyBitstreamBuffer(encoder_ptr, bitstream_output[i]);

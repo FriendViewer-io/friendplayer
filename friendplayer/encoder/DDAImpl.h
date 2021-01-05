@@ -36,7 +36,7 @@
 #include <mutex>
 #include <atomic>
 
-class NvEncoderNew;
+class NvEncoder;
 
 class DDAImpl
 {
@@ -86,8 +86,8 @@ public:
     /// Return output width to caller
     inline DWORD getHeight() { return height; }
 
-    void CaptureFrameLoop(NvEncoderNew* encoder);
-    void StartCapture(NvEncoderNew* encoder) {
+    void CaptureFrameLoop(NvEncoder* encoder);
+    void StartCapture(NvEncoder* encoder) {
         dxgi_capture_thread = new std::thread(&DDAImpl::CaptureFrameLoop, this, encoder);
     }
 

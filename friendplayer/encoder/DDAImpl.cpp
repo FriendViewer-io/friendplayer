@@ -1,9 +1,11 @@
 #include "encoder/Defs.h"
 #include "encoder/DDAImpl.h"
-#include "encoder/NvEncoderNew.h"
+#include "encoder/NvEncoder.h"
 #include <iomanip>
 #include "common/Log.h"
 #include "common/Timer.h"
+
+#define SAFE_RELEASE(X) if(X){X->Release(); X=nullptr;}
 
 /// Initialize DDA
 HRESULT DDAImpl::Init()
@@ -151,7 +153,7 @@ int DDAImpl::Cleanup()
     return 0;
 }
 
-void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
+void DDAImpl::CaptureFrameLoop(NvEncoder* encoder) {
    using namespace std::chrono_literals;
    Timer capture_timer;
    capture_timer.Start(2000);

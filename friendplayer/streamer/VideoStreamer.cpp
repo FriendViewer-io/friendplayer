@@ -15,12 +15,11 @@
 #include "decoder/NvDecoder.h"
 #include "decoder/FFmpegDemuxer.h"
 #include "decoder/FramePresenterD3D11.h"
-#include "decoder/AppDecUtils.h"
 
 // Encoder
 #include "nvEncodeAPI.h"
 #include "encoder/DDAImpl.h"
-#include "encoder/NvEncoderNew.h"
+#include "encoder/NvEncoder.h"
 
 namespace {
 template<typename T>
@@ -136,7 +135,7 @@ bool VideoStreamer::InitEncode() {
 
     // InitEnc
     NV_ENC_BUFFER_FORMAT fmt = NV_ENC_BUFFER_FORMAT_ARGB;
-    nvenc = std::make_unique<NvEncoderNew>(d3d_dev.get(), width, height);
+    nvenc = std::make_unique<NvEncoder>(d3d_dev.get(), width, height);
 
     if (!InitEncoderParams(60, 2000000, width, height)) {
         nvenc.release();

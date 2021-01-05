@@ -19,10 +19,10 @@ struct NvEncInputFrame {
     NV_ENC_INPUT_RESOURCE_TYPE resource_type;
 };
 
-class NvEncoderNew
+class NvEncoder
 {
 public:
-    NvEncoderNew(ID3D11Device* device, uint32_t width, uint32_t height);
+    NvEncoder(ID3D11Device* device, uint32_t width, uint32_t height);
 
     int GetActiveFrameNumber() const { return active_input_frame; }
     bool CreateEncoder(const NV_ENC_INITIALIZE_PARAMS* init_params);
@@ -67,7 +67,7 @@ public:
 
     void GetSequenceParams(std::vector<uint8_t> &sps);
 
-    ~NvEncoderNew();
+    ~NvEncoder();
 
 public:
     static void GetChromaSubPlaneOffsets(const NV_ENC_BUFFER_FORMAT buffer_fmt, const uint32_t pitch,

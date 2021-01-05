@@ -6,7 +6,7 @@
 
 #include "nvEncodeAPI.h"
 
-class NvEncoderNew;
+class NvEncoder;
 struct ID3D11Device;
 struct ID3D11DeviceContext;
 struct ID3D11Texture2D;
@@ -61,7 +61,7 @@ private:
     NV_ENC_INITIALIZE_PARAMS init_params;
     NV_ENC_CONFIG enc_cfg;
 
-    std::unique_ptr<NvEncoderNew> nvenc;
+    std::unique_ptr<NvEncoder> nvenc;
     std::unique_ptr<DDAImpl> dxgi_provider;
 
     ID3D11Texture2D* cur_frame = nullptr;

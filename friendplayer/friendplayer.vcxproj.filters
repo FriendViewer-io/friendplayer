@@ -36,23 +36,11 @@
     <ClCompile Include="decoder\NvDecoder.cpp">
       <Filter>Source Files\decoder</Filter>
     </ClCompile>
-    <ClCompile Include="encoder\NvEncoder.cpp">
-      <Filter>Source Files\encoder</Filter>
-    </ClCompile>
-    <ClCompile Include="encoder\NvEncoderD3D11.cpp">
-      <Filter>Source Files\encoder</Filter>
-    </ClCompile>
-    <ClCompile Include="encoder\main.cpp">
-      <Filter>Source Files\encoder</Filter>
-    </ClCompile>
     <ClCompile Include="common\udp_epic.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="common\Log.cpp">
       <Filter>Source Files\common</Filter>
-    </ClCompile>
-    <ClCompile Include="encoder\NvEncoderNew.cpp">
-      <Filter>Source Files\encoder</Filter>
     </ClCompile>
     <ClCompile Include="common\Timer.cpp">
       <Filter>Source Files\common</Filter>
@@ -63,11 +51,11 @@
     <ClCompile Include="streamer\VideoStreamer.cpp">
       <Filter>Source Files\streamers</Filter>
     </ClCompile>
+    <ClCompile Include="encoder\NvEncoder.cpp">
+      <Filter>Source Files\encoder</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="decoder\AppDecUtils.h">
-      <Filter>Source Files\decoder</Filter>
-    </ClInclude>
     <ClInclude Include="encoder\DDAImpl.h">
       <Filter>Source Files\encoder</Filter>
     </ClInclude>
@@ -86,26 +74,14 @@
     <ClInclude Include="decoder\NvDecoder.h">
       <Filter>Source Files\decoder</Filter>
     </ClInclude>
-    <ClInclude Include="encoder\NvEncoder.h">
-      <Filter>Source Files\encoder</Filter>
-    </ClInclude>
-    <ClInclude Include="encoder\NvEncoderD3D11.h">
-      <Filter>Source Files\encoder</Filter>
-    </ClInclude>
     <ClInclude Include="common\ColorSpace.h">
       <Filter>Source Files\common</Filter>
-    </ClInclude>
-    <ClInclude Include="encoder\Defs.h">
-      <Filter>Source Files\encoder</Filter>
     </ClInclude>
     <ClInclude Include="common\udp_epic.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="common\NvCodecUtils.h">
       <Filter>Source Files\common</Filter>
-    </ClInclude>
-    <ClInclude Include="encoder\NvEncoderNew.h">
-      <Filter>Source Files\encoder</Filter>
     </ClInclude>
     <ClInclude Include="Crypto.h">
       <Filter>Source Files\common</Filter>
@@ -118,6 +94,12 @@
     </ClInclude>
     <ClInclude Include="streamer\VideoStreamer.h">
       <Filter>Source Files\streamers</Filter>
+    </ClInclude>
+    <ClInclude Include="encoder\NvEncoder.h">
+      <Filter>Source Files\encoder</Filter>
+    </ClInclude>
+    <ClInclude Include="encoder\Defs.h">
+      <Filter>Source Files\encoder</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

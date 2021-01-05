@@ -12,10 +12,7 @@
     <ClCompile Include="common\udp_epic.cpp" />
     <ClCompile Include="decoder\NvDecoder.cpp" />
     <ClCompile Include="encoder\DDAImpl.cpp" />
-    <ClCompile Include="encoder\main.cpp" />
     <ClCompile Include="encoder\NvEncoder.cpp" />
-    <ClCompile Include="encoder\NvEncoderD3D11.cpp" />
-    <ClCompile Include="encoder\NvEncoderNew.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
     <ClCompile Include="streamer\AudioStreamer.cpp" />
     <ClCompile Include="streamer\VideoStreamer.cpp" />
@@ -27,7 +24,6 @@
     <ClInclude Include="common\Timer.h" />
     <ClInclude Include="common\udp_epic.h" />
     <ClInclude Include="Crypto.h" />
-    <ClInclude Include="decoder\AppDecUtils.h" />
     <ClInclude Include="decoder\FFmpegDemuxer.h" />
     <ClInclude Include="decoder\FramePresenterD3D.h" />
     <ClInclude Include="decoder\FramePresenterD3D11.h" />
@@ -35,8 +31,6 @@
     <ClInclude Include="encoder\DDAImpl.h" />
     <ClInclude Include="encoder\Defs.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
-    <ClInclude Include="encoder\NvEncoderD3D11.h" />
-    <ClInclude Include="encoder\NvEncoderNew.h" />
     <ClInclude Include="streamer\AudioStreamer.h" />
     <ClInclude Include="streamer\VideoStreamer.h" />
   </ItemGroup>
