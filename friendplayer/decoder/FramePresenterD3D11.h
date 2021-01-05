@@ -111,15 +111,15 @@ public:
 
     void HandleResize(WPARAM edge, RECT& rect)
     {
-        int size_x_desired = (rect.right - rect.left) - window_adjust_x;
-        int size_y_desired = (rect.bottom - rect.top) - window_adjust_y;
+        int size_x_desired = static_cast<int>((rect.right - rect.left) - window_adjust_x);
+        int size_y_desired = static_cast<int>((rect.bottom - rect.top) - window_adjust_y);
 
         switch (edge)
         {
         case WMSZ_BOTTOM:
         case WMSZ_TOP:
         {
-            int size_x = window_adjust_x + (size_y_desired * window_ratio_x) / window_ratio_y;
+            int size_x = static_cast<int>(window_adjust_x + (size_y_desired * window_ratio_x) / window_ratio_y);
             rect.left = (rect.left + rect.right) / 2 - size_x / 2;
             rect.right = rect.left + size_x;
         }
@@ -131,12 +131,12 @@ public:
             if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
             {
                 size_x = rect.right - rect.left;
-                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
             }
             else
             {
                 size_y = rect.bottom - rect.top;
-                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
             }
 
             rect.left = rect.right - size_x;
@@ -150,12 +150,12 @@ public:
             if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
             {
                 size_x = rect.right - rect.left;
-                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
             }
             else
             {
                 size_y = rect.bottom - rect.top;
-                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
             }
 
             rect.right = rect.left + size_x;
@@ -165,7 +165,7 @@ public:
         case WMSZ_LEFT:
         case WMSZ_RIGHT:
         {
-            int size_y = window_adjust_y + (size_x_desired * window_ratio_y) / window_ratio_x;
+            int size_y = static_cast<int>(window_adjust_y + (size_x_desired * window_ratio_y) / window_ratio_x);
             rect.top = (rect.top + rect.bottom) / 2 - size_y / 2;
             rect.bottom = rect.top + size_y;
         }
@@ -177,12 +177,12 @@ public:
             if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
             {
                 size_x = rect.right - rect.left;
-                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
             }
             else
             {
                 size_y = rect.bottom - rect.top;
-                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
             }
 
             rect.left = rect.right - size_x;
@@ -196,12 +196,12 @@ public:
             if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
             {
                 size_x = rect.right - rect.left;
-                size_y = window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x;
+                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
             }
             else
             {
                 size_y = rect.bottom - rect.top;
-                size_x = window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y;
+                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
             }
 
             rect.right = rect.left + size_x;

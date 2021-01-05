@@ -280,8 +280,8 @@ bool AudioStreamer::DecodeAudio(const std::vector<uint8_t>& enc_in, std::vector<
         decode_output_buffer.resize(SAMPLES_PER_OPUS_FRAME);
     }
 
-    int num_samples = opus_decode(decoder, enc_in.data(), enc_in.size(),
-        decode_output_buffer.data(), decode_output_buffer.size(), 0);
+    int num_samples = opus_decode(decoder, enc_in.data(), static_cast<opus_int32>(enc_in.size()),
+        decode_output_buffer.data(), static_cast<int>(decode_output_buffer.size()), 0);
     //LOG_INFO("Decoder: Num samples decoded = {}", num_samples);
     if (num_samples < 0) {
         LOG_ERROR("Decode failed: {}", opus_strerror(num_samples));
@@ -306,7 +306,7 @@ void AudioStreamer::PlayAudio(const std::vector<uint8_t>& raw_out) {
     client_->GetBufferSize(&buf_sz);
 
     avail_sz = buf_sz - pad_amt;
-    UINT write_sz = raw_out.size() / system_format->nBlockAlign;
+    UINT write_sz = static_cast<UINT>(raw_out.size() / system_format->nBlockAlign);
 
     LOG_INFO("Current buffer size and padding size: {} {}", buf_sz, pad_amt);
 

@@ -7,9 +7,9 @@
 #include "nvEncodeAPI.h"
 
 class NvEncoderNew;
-class ID3D11Device;
-class ID3D11DeviceContext;
-class ID3D11Texture2D;
+struct ID3D11Device;
+struct ID3D11DeviceContext;
+struct ID3D11Texture2D;
 class DDAImpl;
 
 class NvDecoder;

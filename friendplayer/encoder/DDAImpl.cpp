@@ -196,7 +196,6 @@ void DDAImpl::CaptureFrameLoop(NvEncoderNew* encoder) {
             auto hr = pD3DDev->CreateQuery(&q, &query_inst);
             pCtx->CopySubresourceRegion(input->input_ptr, D3D11CalcSubresource(0, 0, 1), 0, 0, 0, cur_capture, 0, nullptr);
             pCtx->End(query_inst);
-            uint64_t data;
 
             while (pCtx->GetData(query_inst, nullptr, 0, 0) == S_FALSE) {
             }
