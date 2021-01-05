@@ -171,6 +171,8 @@ bool NvEncoderNew::CreateEncoder(const NV_ENC_INITIALIZE_PARAMS* encoder_params)
 
     InitializeBitstreamBuffer();
     RegisterInputResources();
+
+    return true;
 }
 
 void NvEncoderNew::DestroyEncoder() {

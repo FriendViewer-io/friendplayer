@@ -249,6 +249,8 @@ bool AudioStreamer::InitDecoder() {
 
     resample_size = static_cast<int>(av_rescale_rnd(swr_get_delay(context, ENCODED_SAMPLE_RATE) + OPUS_FRAME_SIZE,
         system_format->nSamplesPerSec, ENCODED_SAMPLE_RATE, AV_ROUND_UP));
+
+    return true;
 }
 
 bool AudioStreamer::EncodeAudio(const std::vector<uint8_t>& raw_in, std::vector<uint8_t>& enc_out) {

@@ -155,6 +155,8 @@ bool VideoStreamer::InitEncode() {
         return false;
     }
     dxgi_provider->StartCapture(nvenc.get());
+
+    return true;
 }
 
 void VideoStreamer::Encode(bool send_idr) {
