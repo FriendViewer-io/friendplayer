@@ -25,6 +25,9 @@
     <Filter Include="Source Files\streamers">
       <UniqueIdentifier>{05817dc1-0fcb-4e33-8803-93c91ef1ed31}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\protobuf">
+      <UniqueIdentifier>{14a12e76-5b00-422b-900a-3b498cdb696d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="friendviewer_main.cpp">
@@ -56,6 +59,15 @@
     </ClCompile>
     <ClCompile Include="common\Crypto.cpp">
       <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="streamer\InputStreamer.cpp">
+      <Filter>Source Files\streamers</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\client_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\host_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +112,15 @@
     </ClInclude>
     <ClInclude Include="common\Crypto.h">
       <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="streamer\InputStreamer.h">
+      <Filter>Source Files\streamers</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\client_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\host_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
