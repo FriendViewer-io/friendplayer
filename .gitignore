@@ -103,3 +103,6 @@ intermediate/
 .history/
 
 !dependencies/**
+
+**/**.pb.h
+**/**.pb.cc
