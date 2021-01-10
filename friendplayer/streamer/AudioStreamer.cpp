@@ -59,7 +59,7 @@ bool AudioStreamer::InitRender() {
         return false;
     }
 
-    if (FAILED(client_tmp->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 83333, 0, wfex, nullptr))) {
+    if (FAILED(client_tmp->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 20000, 0, wfex, nullptr))) {
         return false;
     }
 
@@ -114,7 +114,7 @@ bool AudioStreamer::InitEncoder(uint32_t bitrate) {
     receive_signal_ = CreateEvent(nullptr, false, false, nullptr);
     stop_signal_ = CreateEvent(nullptr, false, false, nullptr);
 
-    if (FAILED(client_->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_LOOPBACK, 83333, 0, system_format, nullptr))) {
+    if (FAILED(client_->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_LOOPBACK, 20000, 0, system_format, nullptr))) {
         return false;
     }
     uint32_t frames;
@@ -171,29 +171,37 @@ bool AudioStreamer::WaitForCapture(HANDLE* signals) {
 }
 
 bool AudioStreamer::CaptureAudio(std::vector<uint8_t>& raw_out) {
-    raw_out.clear();
     HANDLE signals[] = { receive_signal_, stop_signal_ };
+    static std::vector<uint8_t> wrapover_buf;
 
-    if (!WaitForCapture(signals)) {
-        return false;
+    raw_out = std::move(wrapover_buf);
+    wrapover_buf.clear();
+
+    while(raw_out.size() < 960 * 8) {
+        WaitForCapture(signals);
+
+        uint32_t capture_size = 0;
+        LPBYTE buffer;
+        uint32_t frames;
+        DWORD flags;
+        uint64_t pos, ts;
+
+        while (true) {
+            auto ret = capture_->GetNextPacketSize(&capture_size);
+            if (!capture_size) {
+                break;
+            }
+            LOG_INFO("Retrieved packet of size {}", capture_size);
+
+            capture_->GetBuffer(&buffer, &frames, &flags, &pos, &ts);
+            raw_out.insert(raw_out.end(), buffer, buffer + (frames * system_format->nBlockAlign));
+            capture_->ReleaseBuffer(frames);
+        }
     }
 
-    uint32_t capture_size = 0;
-    LPBYTE buffer;
-    uint32_t frames;
-    DWORD flags;
-    uint64_t pos, ts;
-
-    while (true) {
-        auto ret = capture_->GetNextPacketSize(&capture_size);
-        if (!capture_size) {
-            break;
-        }
-        LOG_TRACE("Retrieved packet of size {}", capture_size);
-
-        capture_->GetBuffer(&buffer, &frames, &flags, &pos, &ts);
-        raw_out.insert(raw_out.end(), buffer, buffer + (frames * system_format->nBlockAlign));
-        capture_->ReleaseBuffer(frames);
+    if (raw_out.size() > 960 * 8) {
+        wrapover_buf.resize(raw_out.size() - 960 * 8);
+        std::copy(raw_out.begin() + 960 * 8, raw_out.end(), wrapover_buf.begin());
     }
     return true;
 }
@@ -259,7 +267,7 @@ bool AudioStreamer::EncodeAudio(const std::vector<uint8_t>& raw_in, std::vector<
     const uint8_t* cvt_in[] = {raw_in.data()};
     swr_convert(context, &resample_buffer, OPUS_FRAME_SIZE, cvt_in, OPUS_FRAME_SIZE);
     
-    int max_output_per_frame = 1275;
+    int max_output_per_frame = 1275 * 3;
     if (enc_out.size() != max_output_per_frame) {
         enc_out.resize(max_output_per_frame);
     }
@@ -308,7 +316,7 @@ void AudioStreamer::PlayAudio(const std::vector<uint8_t>& raw_out) {
     avail_sz = buf_sz - pad_amt;
     UINT write_sz = static_cast<UINT>(raw_out.size() / system_format->nBlockAlign);
 
-    LOG_INFO("Current buffer size and padding size: {} {}", buf_sz, pad_amt);
+    LOG_TRACE("Current buffer size and padding size: {} {}", buf_sz, pad_amt);
 
     BYTE* buf = nullptr;
     while (buf == nullptr) {

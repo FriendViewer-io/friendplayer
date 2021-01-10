@@ -17,15 +17,9 @@ extern "C" {
 }
 #include "common/NvCodecUtils.h"
 #include "common/Log.h"
-#include "common/udp_epic.h"
+#include "common/Socket.h"
 
 #include "nvcuvid.h"
-
-// Num frames to count after a frame failure to tell sender to send IDR frame
-// should be low enough to not show frame corruption for too long but not high
-// enough that it will spam IDR frames in the case of continuous failures
-#define IDR_RESEND_FRAME_COUNT 60
-
 
 //---------------------------------------------------------------------------
 //! \file FFmpegDemuxer.h 
@@ -210,7 +204,11 @@ private:
         }
         ctx->pb = avioc;
 
-        check(avformat_open_input(&ctx, NULL, NULL, NULL));
+        AVDictionary* dict = nullptr;
+        av_dict_set(&dict, "probesize", "100", 0);
+        av_dict_set(&dict, "analyzeduration", "0", 0);
+
+        check(avformat_open_input(&ctx, NULL, NULL, &dict));
         return ctx;
     }
 
@@ -351,31 +349,16 @@ public:
 
 class SocketProvider : public FFmpegDemuxer::DataProvider {
 public:
-    SocketProvider(UDPSocketReceiver* udp_sock_, int timeout_ms_) : udp_sock(udp_sock_), timeout_ms(timeout_ms_), send_idr_frame_count(-1), last_frame(0) { }
+    SocketProvider(std::shared_ptr<ClientSocket> udp_sock_) : udp_sock(udp_sock_) { }
 
     virtual int GetData(uint8_t* pBuf, int nBuf) {
-        uint32_t out_size = 0;
-        uint32_t current_frame = 0;
-        // If frame was incomplete or the current frame skipped frames we have corrupted video
-        if (!udp_sock->get_frame(pBuf, &out_size, &current_frame, timeout_ms) || current_frame - last_frame != 1) {
-            send_idr_frame_count = IDR_RESEND_FRAME_COUNT;
-        } else if (send_idr_frame_count >= 0){
-            // Tell sender to send an IDR frame after IDR_RESEND_FRAME_COUNT frames
-            if (send_idr_frame_count == 0) {
-                LOG_INFO("Asking for IDR frame after frame miss");
-
-            }
-            send_idr_frame_count--;
-        }
-        last_frame = current_frame;
-        return out_size;
+        auto view = std::basic_string_view<uint8_t>(pBuf, nBuf);
+        udp_sock->GetVideoFrame(view);
+        return view.size();
     }
 
 private:
-    UDPSocketReceiver* udp_sock;
-    uint32_t timeout_ms;
-    int send_idr_frame_count;
-    uint32_t last_frame;
+    std::shared_ptr<ClientSocket> udp_sock;
 };
 
 inline cudaVideoCodec FFmpeg2NvCodecId(AVCodecID id) {

@@ -60,31 +60,6 @@ public:
         delete pthMsgLoop;
     }
 
-    /**
-    *   @brief  Presents a frame present in host memory. More specifically, it copies the host surface
-    *           data to a d3d staging texture and then copies it to the swap chain backbuffer for presentation
-    *   @param  pData - pointer to host surface data
-    *   @param  nBytes - number of bytes to copy
-    *   @return true on success
-    *   @return false when the windowing thread is not ready to be served
-    */
-    bool PresentHostFrame(BYTE* pData, int nBytes) {
-        mtx.lock();
-        if (!bReady) {
-            mtx.unlock();
-            return false;
-        }
-
-        D3D11_MAPPED_SUBRESOURCE mappedTexture;
-        check(pContext->Map(pStagingTexture, 0, D3D11_MAP_WRITE, 0, &mappedTexture));
-        memcpy(mappedTexture.pData, pData, min(nWidth * nHeight * 4, nBytes));
-        pContext->Unmap(pStagingTexture, 0);
-        pContext->CopyResource(pBackBuffer, pStagingTexture);
-        check(pSwapChain->Present(0, 0));
-        mtx.unlock();
-        return true;
-    }
-
     bool PresentDeviceFrame(unsigned char* dpBgra, int nPitch, int64_t delay) {
         mtx.lock();
         if (!bReady) {

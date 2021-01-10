@@ -8,8 +8,7 @@
 #include "common/Log.h"
 #include "common/NvCodecUtils.h"
 #include "common/ColorSpace.h"
-#include "common/udp_epic.h"
-#include "common/udp_epic.h"
+#include "protobuf/client_messages.pb.h"
 
 // Decoder
 #include "decoder/NvDecoder.h"
@@ -161,6 +160,7 @@ bool VideoStreamer::InitEncode() {
 void VideoStreamer::Encode(bool send_idr) {
     using namespace std::chrono_literals;
     auto begin_time = std::chrono::system_clock::now();
+    send_idr = send_idr || encoder_frame_num == 0;
     NV_ENC_PIC_PARAMS params = {};
     if (send_idr || encoder_frame_num == 60) {
         params.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
@@ -187,21 +187,23 @@ void VideoStreamer::Encode(bool send_idr) {
         LOG_WARNING("SLOW ENCODE: {} us", post_enc.count());
     }
 
-
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time);
     LOG_TRACE("Successfully encoded frame#{} and retrieved {} packets, {} microseconds elapsed", encoder_frame_num, packets.size(), elapsed_time.count());
 
+    if (encoder_frame_num == 0) {
+        std::vector<uint8_t> pps_sps;
+        nvenc->GetSequenceParams(pps_sps);
+        host_socket->SetPPSSPS(std::move(pps_sps));
+    }
+
     for (auto& packet : packets) {
         LOG_TRACE("Sending packet of size {} bytes or {} kb", packet.size(), packet.size() / 1024);
-        static_cast<UDPSocketSender*>(udp_socket)->enqueue_send(std::move(packet));
-    }
-    if (encoder_frame_num == 0) {
-        udp_socket->sync();
+        host_socket->WriteVideoFrame(std::move(packet), send_idr);
     }
     encoder_frame_num++;
 }
 
-bool VideoStreamer::InitDecode(uint32_t frame_timeout_ms) {
+bool VideoStreamer::InitDecode() {
 
     LOG_INFO("Initializing decoder");
     if (!check(cuInit(0))) {
@@ -224,12 +226,14 @@ bool VideoStreamer::InitDecode(uint32_t frame_timeout_ms) {
         LOG_CRITICAL("Failed to create cuda context");
         return false;
     }
-    LOG_TRACE("Creating socket provider with frame timeout {}", frame_timeout_ms);
-    stream_provider = new SocketProvider(static_cast<UDPSocketReceiver*>(udp_socket), frame_timeout_ms);
+    LOG_TRACE("Creating socket provider");
+    stream_provider = new SocketProvider(client_socket);
+    LOG_TRACE("Ready for PPS SPS");
+    client_socket->SendClientState(fp_proto::ClientState::READY_FOR_PPS_SPS_IDR);
     LOG_TRACE("Creating demuxer");
     demuxer = new FFmpegDemuxer(stream_provider);
-    LOG_TRACE("Syncing");
-    udp_socket->sync();
+    LOG_TRACE("Ready for video");
+    client_socket->SendClientState(fp_proto::ClientState::READY_FOR_VIDEO);
     LOG_TRACE("Creating decoder");
     decoder = new NvDecoder(cuda_context, true, FFmpeg2NvCodecId(demuxer->GetVideoCodec()), true, false, NULL, NULL, 0, 0, 1000);
     int nRGBWidth = (demuxer->GetWidth() + 1) & ~1;
@@ -245,22 +249,12 @@ bool VideoStreamer::InitDecode(uint32_t frame_timeout_ms) {
     return true;
 }
 
-bool VideoStreamer::InitConnection(const char* ip, unsigned short port, bool is_sender) {
-    if (is_sender) {
-        LOG_INFO("Initializing server on port {}", port);
-        udp_socket = new UDPSocketSender();
-    }
-    else {
-        LOG_INFO("Initializing connection to {}:{}", ip, port);
-        udp_socket = new UDPSocketReceiver();
-    }
-    udp_socket->init_connection(ip, port);
-    LOG_TRACE("Syncing sockets");
-    udp_socket->sync();
-    LOG_TRACE("Starting socket backend");
-    udp_socket->start_backend();
+void VideoStreamer::SetSocket(std::shared_ptr<HostSocket> socket) {
+    host_socket = socket;
+}
 
-    return true;
+void VideoStreamer::SetSocket(std::shared_ptr<ClientSocket> socket) {
+    client_socket = socket;
 }
 
 void VideoStreamer::Demux() {
@@ -271,8 +265,7 @@ void VideoStreamer::Decode() {
     if (video_packet_size > 0) {
         num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE, video_packet_ts);
         LOG_TRACE("Decoded {} frames with {} bytes", num_frames, video_packet_size);
-    }
-    else {
+    } else {
         num_frames = 0;
         LOG_INFO("Skipping decode because there were no video bytes");
     }

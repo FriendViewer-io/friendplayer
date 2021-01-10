@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Release|x64">
@@ -7,35 +7,47 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="common\Client.cpp" />
     <ClCompile Include="common\Crypto.cpp" />
+    <ClCompile Include="common\FrameRingBuffer.cpp" />
     <ClCompile Include="common\Log.cpp" />
+    <ClCompile Include="common\Socket.cpp" />
     <ClCompile Include="common\Timer.cpp" />
-    <ClCompile Include="common\udp_epic.cpp" />
     <ClCompile Include="decoder\NvDecoder.cpp" />
     <ClCompile Include="encoder\DDAImpl.cpp" />
     <ClCompile Include="encoder\NvEncoder.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
+    <ClCompile Include="protobuf\client_messages.pb.cc" />
+    <ClCompile Include="protobuf\host_messages.pb.cc" />
     <ClCompile Include="streamer\AudioStreamer.cpp" />
     <ClCompile Include="streamer\VideoStreamer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common\Client.h" />
     <ClInclude Include="common\ColorSpace.h" />
     <ClInclude Include="common\Crypto.h" />
+    <ClInclude Include="common\FrameRingBuffer.h" />
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
+    <ClInclude Include="common\Socket.h" />
     <ClInclude Include="common\Timer.h" />
-    <ClInclude Include="common\udp_epic.h" />
     <ClInclude Include="decoder\FFmpegDemuxer.h" />
     <ClInclude Include="decoder\FramePresenterD3D.h" />
     <ClInclude Include="decoder\FramePresenterD3D11.h" />
     <ClInclude Include="decoder\NvDecoder.h" />
     <ClInclude Include="encoder\DDAImpl.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
+    <ClInclude Include="protobuf\client_messages.pb.h" />
+    <ClInclude Include="protobuf\host_messages.pb.h" />
     <ClInclude Include="streamer\AudioStreamer.h" />
     <ClInclude Include="streamer\VideoStreamer.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="common\ColorSpace.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="protobuf\client_messages.proto" />
+    <None Include="protobuf\host_messages.proto" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

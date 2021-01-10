@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package fp_proto;
+
+message VideoFrame {
+    uint32 chunk_offset = 1;
+    bool is_idr_frame = 2;
+    bytes data = 3;
+}
+
+message AudioFrame {
+    uint32 chunk_offset = 1;
+    bytes data = 2;
+}
+
+message HostDataFrame {
+    uint32 frame_num = 1;
+    uint32 frame_size = 2;
+    uint32 stream_point = 3;
+    oneof DataFrame {
+        VideoFrame video = 4;
+        AudioFrame audio = 5;
+    }
+}

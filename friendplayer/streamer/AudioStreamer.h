@@ -16,8 +16,7 @@ class AudioStreamer {
 public:
 	inline static constexpr int ENCODED_SAMPLE_RATE = 48000;
 	inline static constexpr int ENCODED_CHANNEL_COUNT = 2;
-	inline static constexpr int OPUS_FRAME_SIZE = ENCODED_SAMPLE_RATE / 100;
-	inline static constexpr int OPUS_MAX_FRAME_SIZE = OPUS_FRAME_SIZE;
+	inline static constexpr int OPUS_FRAME_SIZE = ENCODED_SAMPLE_RATE / 50;
 
 	// sizeof(s16) * stereo
 	inline static constexpr int BYTES_PER_FRAME = 2 * ENCODED_CHANNEL_COUNT;
