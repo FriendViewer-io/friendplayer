@@ -41,11 +41,11 @@ void audio_thread_client(std::shared_ptr<ClientSocket> sock) {
     while (true) {
         auto frame_start = std::chrono::system_clock::now();
         auto last_now = frame_start;
-        std::basic_string_view<uint8_t> enc_frame_wrapper(enc_frame_out.data(), enc_frame_out.size());
+        RetrievedBuffer enc_frame_wrapper(enc_frame_out.data(), enc_frame_out.size());
         sock->GetAudioFrame(enc_frame_wrapper);
         auto get_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
         last_now = std::chrono::system_clock::now();
-        std::vector<uint8_t> enc_frame(enc_frame_wrapper.begin(), enc_frame_wrapper.end());
+        std::vector<uint8_t> enc_frame(enc_frame_wrapper.data_out.begin(), enc_frame_wrapper.data_out.end());
 
         if (enc_frame.empty()) { continue; }
 

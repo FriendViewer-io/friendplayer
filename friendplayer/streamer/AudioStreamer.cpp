@@ -177,7 +177,9 @@ bool AudioStreamer::CaptureAudio(std::vector<uint8_t>& raw_out) {
     raw_out = std::move(wrapover_buf);
     wrapover_buf.clear();
 
-    while(raw_out.size() < 960 * 8) {
+    const int requested_bytes = OPUS_FRAME_SIZE * system_format->nBlockAlign;
+
+    while(raw_out.size() < requested_bytes) {
         WaitForCapture(signals);
 
         uint32_t capture_size = 0;
@@ -191,7 +193,6 @@ bool AudioStreamer::CaptureAudio(std::vector<uint8_t>& raw_out) {
             if (!capture_size) {
                 break;
             }
-            LOG_INFO("Retrieved packet of size {}", capture_size);
 
             capture_->GetBuffer(&buffer, &frames, &flags, &pos, &ts);
             raw_out.insert(raw_out.end(), buffer, buffer + (frames * system_format->nBlockAlign));
@@ -199,9 +200,9 @@ bool AudioStreamer::CaptureAudio(std::vector<uint8_t>& raw_out) {
         }
     }
 
-    if (raw_out.size() > 960 * 8) {
-        wrapover_buf.resize(raw_out.size() - 960 * 8);
-        std::copy(raw_out.begin() + 960 * 8, raw_out.end(), wrapover_buf.begin());
+    if (raw_out.size() > requested_bytes) {
+        wrapover_buf.resize(raw_out.size() - requested_bytes);
+        std::copy(raw_out.begin() + requested_bytes, raw_out.end(), wrapover_buf.begin());
     }
     return true;
 }

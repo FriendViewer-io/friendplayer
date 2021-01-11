@@ -23,10 +23,11 @@ constexpr size_t VIDEO_FRAME_SIZE = 20000;
 constexpr size_t AUDIO_FRAME_SIZE = 1795;
 
 constexpr size_t CLIENT_RECV_SIZE = 1024 * 256;
-constexpr size_t HOST_SEND_SIZE = 1024 * 256;
+constexpr size_t HOST_SEND_SIZE = 1024 * 1024;
 
 // 60 frame timeout for asking for IDR from host
-constexpr uint32_t IDR_SEND_TIMEOUT = 60;
+// move this to host?
+constexpr uint32_t IDR_SEND_TIMEOUT = 20;
 
 class SocketBase { 
 public:
@@ -57,9 +58,9 @@ public:
     ClientSocket(std::string_view ip);
 
     // blocks until available
-    void GetVideoFrame(std::basic_string_view<uint8_t>& frame_out);
+    void GetVideoFrame(RetrievedBuffer& buf_in);
     // blocks until available
-    void GetAudioFrame(std::basic_string_view<uint8_t>& frame_out);
+    void GetAudioFrame(RetrievedBuffer& buf_in);
 
     void SendClientState(fp_proto::ClientState::State state);
     void SendRequestToHost(fp_proto::RequestToHost::RequestType request);

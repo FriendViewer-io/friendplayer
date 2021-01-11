@@ -27,6 +27,7 @@ void FrameRingBuffer::AddFrameChunk(const fp_proto::HostDataFrame& frame) {
     std::lock_guard<std::mutex> lock(buffer_m);
     // Invalid frame
     if (frame.frame_num() < frame_number) { 
+        //LOG_WARNING("{}: Decoder got frame number behind {} < {}", buffer_name, frame.frame_num(), frame_number);
         return;
     } else if (frame.frame_num() >= frame_number + frame_count) {
         // Frame is beyond current buffer (probably decoder isn't taking them out fast enough)
@@ -53,56 +54,47 @@ void FrameRingBuffer::AddFrameChunk(const fp_proto::HostDataFrame& frame) {
     std::copy(data.begin(), data.end(), buffer_frame.data.begin() + chunk_offset);
 
     // Frame is ready
-    if (buffer_frame.current_read_size == buffer_frame.size) {
-        // If newer frame is ready before current frame skip to newer frame
-        for (int i = frame_number; i < frame.frame_num(); ++i) {
-            buffer[i % frame_count].num = i + frame_count;
-            buffer[i % frame_count].size = 0;
-            buffer[i % frame_count].current_read_size = 0;
-            buffer[i % frame_count].stream_point = 0;
-        }
-        if (frame_number != buffer_frame.num) {
-            LOG_WARNING("{}: Newer frame arrived earlier skipping from {} to {}", buffer_name, frame_number, buffer_frame.num);
-        }
-        frame_number = buffer_frame.num;
+    if (buffer_frame.current_read_size == buffer_frame.size && frame_number == buffer_frame.num) {
         frame_ready.store(true);
         frame_ready_cv.notify_one();
     }
 }
 
-uint32_t FrameRingBuffer::GetFront(std::basic_string_view<uint8_t>& data_out) {
+uint32_t FrameRingBuffer::GetFront(RetrievedBuffer& buf_in) {
     std::unique_lock<std::mutex> lock(buffer_m);
-    bool got_frame = frame_ready_cv.wait_for(lock, std::chrono::milliseconds(100), [this]{ return frame_ready.load(); });
-    
-    if (!got_frame) {
-        data_out = data_out.substr(0, 0);
-        return 0;
-    }
+    bool got_frame = frame_ready_cv.wait_for(lock, std::chrono::milliseconds(frame_number == 0 ? 100000 : 100), [this]{ return frame_ready.load(); });
 
-    auto data = buffer[frame_index()].data;
+    const auto& data = buffer[frame_index()].data;
     if (data.size() < buffer[frame_index()].size) {
         LOG_CRITICAL("{}: Invalid frame size reported by AddFrameChunk, stream restarting!", buffer_name);
         return -1;
     }
 
-    size_t max_copy = std::min(static_cast<size_t>(buffer[frame_index()].size), data_out.size());
-    std::copy(data.begin(), data.begin() + max_copy, const_cast<uint8_t*>(data_out.data()));
-    data_out = data_out.substr(0, max_copy);
-
-    uint32_t num_missed_bytes = buffer[frame_index()].stream_point - stream_point;
-    if (buffer[frame_index()].stream_point < stream_point) {
-        LOG_CRITICAL("{}: New frame stream point {} is behind buffer stream point {}, stream restarting!", buffer_name, buffer[frame_index()].stream_point, stream_point);
-        return -1;
+    size_t max_copy = std::min(static_cast<size_t>(buffer[frame_index()].size), buf_in.data_out.size());
+    std::copy(data.begin(), data.begin() + max_copy, const_cast<uint8_t*>(buf_in.data_out.data()));
+    buf_in.data_out = buf_in.data_out.substr(0, max_copy);
+    buf_in.bytes_received = buffer[frame_index()].current_read_size;
+    
+    uint32_t num_missed_bytes = 0;
+    if (buffer[frame_index()].size > 0) {
+        num_missed_bytes = buffer[frame_index()].stream_point - stream_point;
+        if (buffer[frame_index()].stream_point < stream_point) {
+            LOG_CRITICAL("{}: New frame stream point {} is behind buffer stream point {}, stream restarting!", buffer_name, buffer[frame_index()].stream_point, stream_point);
+            return -1;
+        }
+        stream_point = buffer[frame_index()].stream_point + buffer[frame_index()].size;
     }
-    stream_point = buffer[frame_index()].stream_point + buffer[frame_index()].size;
     
     buffer[frame_index()].num = frame_number + frame_count;
     buffer[frame_index()].size = 0;
     buffer[frame_index()].current_read_size = 0;
     buffer[frame_index()].stream_point = 0;
     frame_number++;
-
-    frame_ready.store(false);
+    if (buffer[frame_index()].current_read_size == buffer[frame_index()].size && buffer[frame_index()].size > 0) {
+        LOG_INFO("Next frame is already done, so skipping frame_ready false");
+    } else {
+        frame_ready.store(false);
+    }
 
     return num_missed_bytes;
 }

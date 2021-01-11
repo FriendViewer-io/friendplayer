@@ -352,9 +352,10 @@ public:
     SocketProvider(std::shared_ptr<ClientSocket> udp_sock_) : udp_sock(udp_sock_) { }
 
     virtual int GetData(uint8_t* pBuf, int nBuf) {
-        auto view = std::basic_string_view<uint8_t>(pBuf, nBuf);
-        udp_sock->GetVideoFrame(view);
-        return view.size();
+        RetrievedBuffer buf_result(pBuf, nBuf);
+        udp_sock->GetVideoFrame(buf_result);
+        LOG_TRACE("FFMpeg Demuxer got {}/{} bytes", buf_result.bytes_received, buf_result.data_out.size());
+        return buf_result.data_out.size();
     }
 
 private:

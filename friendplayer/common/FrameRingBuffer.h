@@ -18,13 +18,21 @@ struct Frame {
     std::vector<uint8_t> data;
 };
 
+struct RetrievedBuffer {
+    RetrievedBuffer(uint8_t* buffer_in, int buffer_size) 
+        : data_out(buffer_in, buffer_size), bytes_received(0) {}
+
+    std::basic_string_view<uint8_t> data_out;
+    uint32_t bytes_received;
+};
+
 class FrameRingBuffer {
 public:
     FrameRingBuffer(std::string name, size_t num_frames, size_t frame_capacity);
 
     void AddFrameChunk(const fp_proto::HostDataFrame& frame);
-    // Returns missed bytes needed to decrypt
-    uint32_t GetFront(std::basic_string_view<uint8_t>& data_out);
+    // Returns # of bytes needed to fix decryption
+    uint32_t GetFront(RetrievedBuffer& buf_in);
     
 private:
     std::vector<Frame> buffer;

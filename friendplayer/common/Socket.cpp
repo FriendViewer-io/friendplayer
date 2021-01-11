@@ -28,12 +28,11 @@ ClientSocket::ClientSocket(std::string_view ip)
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
 }
 
-void ClientSocket::GetVideoFrame(std::basic_string_view<uint8_t>& frame_out) {
-    uint32_t size_to_decrypt = video_buffer.GetFront(frame_out);
+void ClientSocket::GetVideoFrame(RetrievedBuffer& buf_in) {
+    uint32_t size_to_decrypt = video_buffer.GetFront(buf_in);
     // Run decryption
-    if (size_to_decrypt != 0) {
+    if (size_to_decrypt != 0 || buf_in.bytes_received == 0 || (buf_in.bytes_received < buf_in.data_out.size())) {
         idr_send_timeout = IDR_SEND_TIMEOUT;
-        LOG_INFO("Size = {}", size_to_decrypt);
     } else if (idr_send_timeout >= 0) {
         if (idr_send_timeout == 0) {
             SendRequestToHost(fp_proto::RequestToHost::SEND_IDR);
@@ -43,8 +42,8 @@ void ClientSocket::GetVideoFrame(std::basic_string_view<uint8_t>& frame_out) {
     }
 }
 
-void ClientSocket::GetAudioFrame(std::basic_string_view<uint8_t>& frame_out) {
-    uint32_t size_to_decrypt = audio_buffer.GetFront(frame_out);
+void ClientSocket::GetAudioFrame(RetrievedBuffer& buf_in) {
+    uint32_t size_to_decrypt = audio_buffer.GetFront(buf_in);
     // Run decryption
 }
 
