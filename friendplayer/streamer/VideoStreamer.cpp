@@ -8,6 +8,7 @@
 #include "common/Log.h"
 #include "common/NvCodecUtils.h"
 #include "common/ColorSpace.h"
+#include "common/Config.h"
 #include "protobuf/client_messages.pb.h"
 
 // Decoder
@@ -118,7 +119,7 @@ bool VideoStreamer::InitEncode() {
     d3d_ctx = dx_unique_ptr<ID3D11DeviceContext>(d3d_ctx_ptr, DxDeleter<ID3D11DeviceContext>);
 
     // DXGI dup
-    dxgi_provider = std::make_unique<DDAImpl>(d3d_dev.get(), d3d_ctx.get(), 1);
+    dxgi_provider = std::make_unique<DDAImpl>(d3d_dev.get(), d3d_ctx.get(), Config::MonitorIndex);
     hr = dxgi_provider->Init();
 
     if (FAILED(hr)) {
@@ -130,13 +131,13 @@ bool VideoStreamer::InitEncode() {
     }
 
     DWORD width = dxgi_provider->getWidth(), height = dxgi_provider->getHeight();
-    LOG_INFO("Successfully created & initialized DXGI output duplicator for monitor {} ({}x{})", 0, width, height);
+    LOG_INFO("Successfully created & initialized DXGI output duplicator for monitor {} ({}x{})", Config::MonitorIndex, width, height);
 
     // InitEnc
     NV_ENC_BUFFER_FORMAT fmt = NV_ENC_BUFFER_FORMAT_ARGB;
     nvenc = std::make_unique<NvEncoder>(d3d_dev.get(), width, height);
 
-    if (!InitEncoderParams(60, 2000000, width, height)) {
+    if (!InitEncoderParams(60, Config::AverageBitrate, width, height)) {
         nvenc.release();
         dxgi_provider.release();
         d3d_dev.release();

@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "common/Config.h"
 #include "common/Log.h"
 #include "common/Timer.h"
 #include "streamer/VideoStreamer.h"
@@ -71,19 +72,16 @@ void heartbeat(std::shared_ptr<ClientSocket> sock) {
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
 
-    Log::init_stdout_logging(LogOptions{false});
-
-    if (argc != 4) {
-        LOG_CRITICAL("Incorrect number of args - {} <streamer/client> ip <port>", argv[0]);
+    if (Config::LoadConfig(argc, argv) >= 0)
         return 1;
-    }
+
+    Log::init_stdout_logging(LogOptions{Config::EnableTracing});
 
     Timer timer;
     VideoStreamer streamer;
-    bool is_sender = strcmp(argv[1], "streamer") == 0;
     
-    if (is_sender) {
-        std::shared_ptr<HostSocket> host = std::make_shared<HostSocket>();
+    if (Config::IsHost) {
+        std::shared_ptr<HostSocket> host = std::make_shared<HostSocket>(Config::Port);
         std::thread aud_th(audio_thread_host, host);
         host->StartSocket();
         streamer.SetSocket(host);
@@ -132,7 +130,7 @@ int main(int argc, char** argv) {
             }
         }
     } else {
-        std::shared_ptr<ClientSocket> client = std::make_shared<ClientSocket>(argv[2]);
+        std::shared_ptr<ClientSocket> client = std::make_shared<ClientSocket>(Config::ServerIP, Config::Port);
         streamer.SetSocket(client);
         std::thread aud_th(audio_thread_client, client);
         client->StartSocket();

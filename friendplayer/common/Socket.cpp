@@ -17,14 +17,14 @@ void SocketBase::Stop() {
     socket.close();
 }
 
-ClientSocket::ClientSocket(std::string_view ip)
+ClientSocket::ClientSocket(std::string_view ip, unsigned short port)
     : video_buffer("video buffer", VIDEO_FRAME_BUFFER, VIDEO_FRAME_SIZE),
       audio_buffer("audio buffer", AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE),
       sent_frame_num(0),
       idr_send_timeout(-1) {
-    host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), FP_UDP_PORT);
+    host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), port);
     socket.open(asio::ip::udp::v4());
-    socket.bind(asio_endpoint(asio::ip::udp::v4(), FP_UDP_PORT));
+    socket.bind(asio_endpoint(asio::ip::udp::v4(), port));
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
 }
 
@@ -97,8 +97,8 @@ void ClientSocket::NetworkThread() {
     }
 }
 
-HostSocket::HostSocket() {
-    endpoint = asio_endpoint(asio::ip::udp::v4(), FP_UDP_PORT);
+HostSocket::HostSocket(unsigned short port) {
+    endpoint = asio_endpoint(asio::ip::udp::v4(), port);
     socket = asio_socket(io_service, endpoint);
     socket.set_option(asio::socket_base::send_buffer_size(HOST_SEND_SIZE));
 }

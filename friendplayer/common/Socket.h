@@ -55,7 +55,7 @@ protected:
 
 class ClientSocket : public SocketBase{
 public:
-    ClientSocket(std::string_view ip);
+    ClientSocket(std::string_view ip, unsigned short port);
 
     // blocks until available
     void GetVideoFrame(RetrievedBuffer& buf_in);
@@ -79,7 +79,7 @@ private:
 
 class HostSocket : public SocketBase {
 public:
-    HostSocket();
+    HostSocket(unsigned short port);
 
     void WriteVideoFrame(const std::vector<uint8_t>& data, bool is_idr_frame);
     void WriteAudioFrame(const std::vector<uint8_t>& data);
