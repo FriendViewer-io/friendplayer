@@ -33,7 +33,6 @@
     <ClInclude Include="common\NvCodecUtils.h" />
     <ClInclude Include="common\Socket.h" />
     <ClInclude Include="common\Timer.h" />
-    <ClInclude Include="decoder\FFmpegDemuxer.h" />
     <ClInclude Include="decoder\FramePresenterD3D.h" />
     <ClInclude Include="decoder\FramePresenterD3D11.h" />
     <ClInclude Include="decoder\NvDecoder.h" />

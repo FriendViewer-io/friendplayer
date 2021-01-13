@@ -14,8 +14,6 @@ struct ID3D11Texture2D;
 class DDAImpl;
 
 class NvDecoder;
-class SocketProvider;
-class FFmpegDemuxer;
 class FramePresenterD3D11;
 
 class UDPSocket;
@@ -41,8 +39,6 @@ private:
     // Decoder
     CUcontext cuda_context;
     CUdeviceptr cuda_frame;
-    FFmpegDemuxer* demuxer = nullptr;
-    SocketProvider* stream_provider = nullptr;
     NvDecoder* decoder = nullptr;
     FramePresenterD3D11* presenter = nullptr;
     uint8_t* video_packet = nullptr;

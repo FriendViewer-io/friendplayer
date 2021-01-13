@@ -13,7 +13,6 @@
 
 // Decoder
 #include "decoder/NvDecoder.h"
-#include "decoder/FFmpegDemuxer.h"
 #include "decoder/FramePresenterD3D11.h"
 
 // Encoder
@@ -227,24 +226,27 @@ bool VideoStreamer::InitDecode() {
         LOG_CRITICAL("Failed to create cuda context");
         return false;
     }
-    LOG_TRACE("Creating socket provider");
-    stream_provider = new SocketProvider(client_socket);
+    video_packet = new uint8_t[1024 * 1024];
+    LOG_TRACE("Creating decoder");
+    decoder = new NvDecoder(cuda_context, true, cudaVideoCodec_H264, true, false, NULL, NULL, 0, 0, 1000);
     LOG_TRACE("Ready for PPS SPS");
     client_socket->SendClientState(fp_proto::ClientState::READY_FOR_PPS_SPS_IDR);
-    LOG_TRACE("Creating demuxer");
-    demuxer = new FFmpegDemuxer(stream_provider);
+    LOG_TRACE("Getting first frame");
+
+    RetrievedBuffer buf_result(video_packet, 1024 * 1024);
+    client_socket->GetVideoFrame(buf_result);
+    video_packet_size = buf_result.bytes_received;
+    num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE);
+
     LOG_TRACE("Ready for video");
     client_socket->SendClientState(fp_proto::ClientState::READY_FOR_VIDEO);
-    LOG_TRACE("Creating decoder");
-    decoder = new NvDecoder(cuda_context, true, FFmpeg2NvCodecId(demuxer->GetVideoCodec()), true, false, NULL, NULL, 0, 0, 1000);
-    int nRGBWidth = (demuxer->GetWidth() + 1) & ~1;
     LOG_TRACE("Allocating CUDA frame");
-    if (!check(cuMemAlloc(&cuda_frame, nRGBWidth * demuxer->GetHeight() * 4))) {
+    if (!check(cuMemAlloc(&cuda_frame, decoder->GetDecodeWidth() * decoder->GetHeight() * 4))) {
         LOG_CRITICAL("Failed to allocate cuda frame memory");
         return false;
     }
     LOG_TRACE("Creating FramePresenterType");
-    presenter = new FramePresenterD3D11(cuda_context, nRGBWidth, demuxer->GetHeight());
+    presenter = new FramePresenterD3D11(cuda_context, decoder->GetDecodeWidth() , decoder->GetHeight());
     LOG_TRACE("Finished initializing streamer as decoder");
 
     return true;
@@ -259,12 +261,14 @@ void VideoStreamer::SetSocket(std::shared_ptr<ClientSocket> socket) {
 }
 
 void VideoStreamer::Demux() {
-    demuxer->Demux(&video_packet, &video_packet_size, &video_packet_ts);
+    RetrievedBuffer buf_result(video_packet, 1024*1024);
+    client_socket->GetVideoFrame(buf_result);
+    video_packet_size = buf_result.bytes_received;
 }
 
 void VideoStreamer::Decode() {
-    if (video_packet_size > 0) {
-        num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE, video_packet_ts);
+    if (video_packet_size > 0 && num_frames == 0) {
+        num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE);
         LOG_TRACE("Decoded {} frames with {} bytes", num_frames, video_packet_size);
     } else {
         num_frames = 0;
@@ -280,7 +284,7 @@ void VideoStreamer::PresentVideo() {
     int iMatrix = 0;
     int64_t timestamp = 0;
     LARGE_INTEGER counter;
-    int nRGBWidth = (demuxer->GetWidth() + 1) & ~1;
+    int nRGBWidth = decoder->GetDecodeWidth();
 
     for (int i = 0; i < num_frames; i++)
     {
@@ -322,4 +326,6 @@ void VideoStreamer::PresentVideo() {
 
         presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4, delay);
     }
+
+    num_frames = 0;
 }

@@ -80,9 +80,6 @@
     <ClInclude Include="encoder\DDAImpl.h">
       <Filter>Source Files\encoder</Filter>
     </ClInclude>
-    <ClInclude Include="decoder\FFmpegDemuxer.h">
-      <Filter>Source Files\decoder</Filter>
-    </ClInclude>
     <ClInclude Include="decoder\FramePresenterD3D.h">
       <Filter>Source Files\decoder</Filter>
     </ClInclude>

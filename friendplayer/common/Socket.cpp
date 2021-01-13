@@ -24,7 +24,6 @@ ClientSocket::ClientSocket(std::string_view ip, unsigned short port)
       idr_send_timeout(-1) {
     host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), port);
     socket.open(asio::ip::udp::v4());
-    socket.bind(asio_endpoint(asio::ip::udp::v4(), port));
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
 }
 
