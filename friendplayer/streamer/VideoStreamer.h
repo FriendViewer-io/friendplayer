@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 
+#include "common/Socket.h"
 #include "nvEncodeAPI.h"
 
 class NvEncoder;
@@ -13,8 +14,6 @@ struct ID3D11Texture2D;
 class DDAImpl;
 
 class NvDecoder;
-class SocketProvider;
-class FFmpegDemuxer;
 class FramePresenterD3D11;
 
 class UDPSocket;
@@ -28,19 +27,18 @@ public:
     void Encode(bool send_idr);
 //    void CaptureFrame(int wait_ms);
 
-    bool InitDecode(uint32_t frame_timeout_ms);
+    bool InitDecode();
     void Demux();
     void Decode();
     void PresentVideo();
 
-    bool InitConnection(const char* ip, unsigned short port, bool is_sender);
+    void SetSocket(std::shared_ptr<HostSocket> socket);
+    void SetSocket(std::shared_ptr<ClientSocket> socket);
 
 private:
     // Decoder
     CUcontext cuda_context;
     CUdeviceptr cuda_frame;
-    FFmpegDemuxer* demuxer = nullptr;
-    SocketProvider* stream_provider = nullptr;
     NvDecoder* decoder = nullptr;
     FramePresenterD3D11* presenter = nullptr;
     uint8_t* video_packet = nullptr;
@@ -69,6 +67,7 @@ private:
     uint32_t encoder_frame_num = 0;
 
     // Common    
-    UDPSocket* udp_socket;
+    std::shared_ptr<HostSocket> host_socket;
+    std::shared_ptr<ClientSocket> client_socket;
     LARGE_INTEGER counter_freq;
 };

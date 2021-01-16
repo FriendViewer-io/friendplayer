@@ -26,7 +26,7 @@
       <UniqueIdentifier>{05817dc1-0fcb-4e33-8803-93c91ef1ed31}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\protobuf">
-      <UniqueIdentifier>{14a12e76-5b00-422b-900a-3b498cdb696d}</UniqueIdentifier>
+      <UniqueIdentifier>{aa8891c7-bc88-4398-9e0f-a377c6c19fb4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -38,9 +38,6 @@
     </ClCompile>
     <ClCompile Include="decoder\NvDecoder.cpp">
       <Filter>Source Files\decoder</Filter>
-    </ClCompile>
-    <ClCompile Include="common\udp_epic.cpp">
-      <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="common\Log.cpp">
       <Filter>Source Files\common</Filter>
@@ -60,8 +57,11 @@
     <ClCompile Include="common\Crypto.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="streamer\InputStreamer.cpp">
-      <Filter>Source Files\streamers</Filter>
+    <ClCompile Include="common\Socket.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\FrameRingBuffer.cpp">
+      <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="protobuf\client_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
@@ -69,13 +69,31 @@
     <ClCompile Include="protobuf\host_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
+    <ClCompile Include="common\ClientHandler.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ClientProtocolHandler.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\HeartbeatManager.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ClientManager.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\common_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
+    </ClCompile>
+    <ClCompile Include="common\Config.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="streamer\InputStreamer.cpp">
+      <Filter>Source Files\streamers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
       <Filter>Source Files\encoder</Filter>
-    </ClInclude>
-    <ClInclude Include="decoder\FFmpegDemuxer.h">
-      <Filter>Source Files\decoder</Filter>
     </ClInclude>
     <ClInclude Include="decoder\FramePresenterD3D.h">
       <Filter>Source Files\decoder</Filter>
@@ -90,9 +108,6 @@
       <Filter>Source Files\decoder</Filter>
     </ClInclude>
     <ClInclude Include="common\ColorSpace.h">
-      <Filter>Source Files\common</Filter>
-    </ClInclude>
-    <ClInclude Include="common\udp_epic.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="common\NvCodecUtils.h">
@@ -113,8 +128,11 @@
     <ClInclude Include="common\Crypto.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="streamer\InputStreamer.h">
-      <Filter>Source Files\streamers</Filter>
+    <ClInclude Include="common\Socket.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\FrameRingBuffer.h">
+      <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="protobuf\client_messages.pb.h">
       <Filter>Source Files\protobuf</Filter>
@@ -122,10 +140,39 @@
     <ClInclude Include="protobuf\host_messages.pb.h">
       <Filter>Source Files\protobuf</Filter>
     </ClInclude>
+    <ClInclude Include="common\Config.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ClientProtocolHandler.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\HeartbeatManager.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ClientHandler.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ClientManager.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\common_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="streamer\InputStreamer.h">
+      <Filter>Source Files\streamers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="common\ColorSpace.cu">
       <Filter>Source Files\common</Filter>
     </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="protobuf\client_messages.proto">
+      <Filter>Source Files\protobuf</Filter>
+    </None>
+    <None Include="protobuf\host_messages.proto">
+      <Filter>Source Files\protobuf</Filter>
+    </None>
   </ItemGroup>
 </Project>

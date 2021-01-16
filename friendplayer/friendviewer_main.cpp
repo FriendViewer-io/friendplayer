@@ -1,83 +1,105 @@
-#include <winsock2.h>
+#include <iostream>
+#include <csignal>
 
+#include "common/HeartbeatManager.h"
+#include "common/ClientManager.h"
+#include "common/ClientProtocolHandler.h"
+#include "common/Config.h"
 #include "common/Log.h"
 #include "common/Timer.h"
 #include "streamer/VideoStreamer.h"
 #include "streamer/AudioStreamer.h"
 
-void audio_thread(bool is_sender, short port, char* ip) {
-    WSAData wsa_data;
-    WSAStartup(MAKEWORD(2,2), &wsa_data);
 
+void exit_handler(int signal) {
+    LOG_INFO("Exit handler called");
+    exit(1);
+}
+
+
+void audio_thread_host(std::shared_ptr<HostSocket> sock) {
     AudioStreamer audio_streamer;
-
-    // streamer.InitConnection(argv[2], atoi(argv[3]), is_sender);
-    if (is_sender) {
-        SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        struct sockaddr_in addr = { 0 };
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
-        addr.sin_addr.S_un.S_addr = INADDR_ANY;
-        bind(s, (struct sockaddr*)(&addr), sizeof(struct sockaddr_in));
-
-        listen(s, SOMAXCONN);
-        SOCKET natsock = accept(s, nullptr, nullptr);
-
-        audio_streamer.InitEncoder(64000);
-
-        while (true) {
-            std::vector<uint8_t> raw_frame_in, enc_frame;
-            audio_streamer.CaptureAudio(raw_frame_in);
-            if (raw_frame_in.size() == 0) { continue; }
-            audio_streamer.EncodeAudio(raw_frame_in, enc_frame);
-            int sz = enc_frame.size();
-            LOG_TRACE("Send size: {} bytes", sz);
-            send(natsock, (char*)&sz, 4, 0);
-            send(natsock, (char*)enc_frame.data(), enc_frame.size(), 0);
+    audio_streamer.InitEncoder(64000);
+    while (true) {
+        auto begin_tm = std::chrono::system_clock::now();
+        std::vector<uint8_t> raw_frame_in, enc_frame;
+        audio_streamer.CaptureAudio(raw_frame_in);
+        auto capture_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_tm);
+        if (raw_frame_in.size() == 0) {
+            LOG_TRACE("Skipped a whole 10ms, was there no audio???");
+            continue;
         }
-    } else {
-        audio_streamer.InitDecoder();
-        
-        SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        struct sockaddr_in addr = { 0 };
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
-        addr.sin_addr.S_un.S_addr = inet_addr(ip);
+        begin_tm = std::chrono::system_clock::now();
+        audio_streamer.EncodeAudio(raw_frame_in, enc_frame);
+        auto encode_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_tm);
 
-        connect(s, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
-
-        while (true) {
-            int incoming_sz;
-            recv(s, (char*)&incoming_sz, 4, 0);
-
-            std::vector<uint8_t> raw_frame_out, enc_frame;
-            enc_frame.resize(incoming_sz);
-            recv(s, (char*)enc_frame.data(), incoming_sz, 0);
-
-            audio_streamer.DecodeAudio(enc_frame, raw_frame_out);
-            audio_streamer.PlayAudio(raw_frame_out);
-        }
+        begin_tm = std::chrono::system_clock::now();
+        int sz = enc_frame.size();
+        sock->WriteAudioFrame(enc_frame);
+        auto write_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_tm);
+        LOG_TRACE("Capture times={} {} {}", capture_elapsed.count(), encode_elapsed.count(), write_elapsed.count());
     }
 }
+
+void audio_thread_client(std::shared_ptr<ClientSocket> sock) {
+    AudioStreamer audio_streamer;
+    
+    audio_streamer.InitDecoder();
+    
+    std::vector<uint8_t> enc_frame_out, raw_frame_out;
+    enc_frame_out.resize(20 * 1024);
+
+    while (true) {
+        auto frame_start = std::chrono::system_clock::now();
+        auto last_now = frame_start;
+        RetrievedBuffer enc_frame_wrapper(enc_frame_out.data(), enc_frame_out.size());
+        sock->GetAudioFrame(enc_frame_wrapper);
+        auto get_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
+        last_now = std::chrono::system_clock::now();
+        std::vector<uint8_t> enc_frame(enc_frame_wrapper.data_out.begin(), enc_frame_wrapper.data_out.end());
+
+        if (enc_frame.empty()) { continue; }
+
+        audio_streamer.DecodeAudio(enc_frame, raw_frame_out);
+        auto decode_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
+        last_now = std::chrono::system_clock::now();
+        if (raw_frame_out.size() > 0) {
+            audio_streamer.PlayAudio(raw_frame_out);
+        }
+        auto play_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
+        LOG_TRACE("Elapsed times: {} {} {}", get_elapsed.count(), decode_elapsed.count(), play_elapsed.count());
+    }
+}
+
+void heartbeat(std::shared_ptr<ClientProtocolHandler> protocol_handler) {
+    while (true) {
+        fp_proto::Message msg;
+        msg.mutable_hb_msg()->set_is_response(false);
+        protocol_handler->EnqueueSendMessage(std::move(msg));
+        Sleep(10000);
+    }
+}
+
 
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
 
-    Log::init_stdout_logging(LogOptions{false});
-
-    if (argc != 4) {
-        LOG_CRITICAL("Incorrect number of args - %s <streamer/client> ip <port>", argv[0]);
+    if (Config::LoadConfig(argc, argv) >= 0)
         return 1;
-    }
+
+    Log::init_stdout_logging(LogOptions{Config::EnableTracing});
 
     Timer timer;
     VideoStreamer streamer;
-
-    bool is_sender = strcmp(argv[1], "streamer") == 0;
-    streamer.InitConnection(argv[2], atoi(argv[3]), is_sender);
-    std::thread aud_th(audio_thread, is_sender, atoi(argv[3]), argv[2]);
     
-    if (is_sender) {
+    if (Config::IsHost) {
+        std::shared_ptr<ClientManager> client_mgr = std::make_shared<ClientManager>();
+        std::shared_ptr<HeartbeatManager> heartbeat_mgr = std::make_shared<HeartbeatManager>(client_mgr);
+        std::shared_ptr<HostSocket> host = std::make_shared<HostSocket>(Config::Port, client_mgr, heartbeat_mgr);
+        std::thread aud_th(audio_thread_host, host);
+        host->StartSocket();
+        heartbeat_mgr->StartHeartbeatManager();
+        streamer.SetSocket(host);
         if (!streamer.InitEncode()) {
             LOG_CRITICAL("InitEncode failed");
             return 1;
@@ -99,7 +121,7 @@ int main(int argc, char** argv) {
                 send_idr = true;
             }
             end_pressed = end_state;
-            streamer.Encode(send_idr);
+            streamer.Encode(send_idr || host->ShouldSendIDR());
             auto encode_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
 
             if (!timer.Synchronize()) {
@@ -119,11 +141,20 @@ int main(int argc, char** argv) {
             if (elapsed.count() > 20000) {
                 //LOG_WARNING("Elapsed times: {} {} {}", capture_elapsed.count(), encode_elapsed.count(), elapsed.count());
             } else {
-                LOG_INFO("Elapsed times: {} {} {}", capture_elapsed.count(), encode_elapsed.count(), elapsed.count());
+                LOG_TRACE("Elapsed times: {} {} {}", capture_elapsed.count(), encode_elapsed.count(), elapsed.count());
             }
         }
     } else {
-        if (!streamer.InitDecode(50)) {
+        signal(SIGINT, exit_handler);
+        signal(SIGTERM, exit_handler);
+        std::shared_ptr<ClientProtocolHandler> protocol_handler = std::make_shared<ClientProtocolHandler>();
+        std::shared_ptr<ClientSocket> client = std::make_shared<ClientSocket>(Config::ServerIP, Config::Port, protocol_handler);
+        streamer.SetSocket(client);
+        std::thread aud_th(audio_thread_client, client);
+        client->StartSocket();
+        protocol_handler->StartWorker();
+        std::thread heartbeat_thread(heartbeat, protocol_handler);
+        if (!streamer.InitDecode()) {
             LOG_CRITICAL("InitDecode failed");
             return 1;
         }

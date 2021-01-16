@@ -115,7 +115,7 @@ inline bool check(GLenum e) {
 
 inline bool check(int e) {
     if (e < 0) {
-        LOG_ERROR("General error %d", e);
+        LOG_ERROR("General error {}", e);
         return false;
     }
     return true;
