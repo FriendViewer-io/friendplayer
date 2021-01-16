@@ -44,7 +44,7 @@ public:
     *   @return true on success
     *   @return false on failure
     */
-    virtual bool PresentDeviceFrame(unsigned char* dpBgra, int nPitch, int64_t delay) = 0;
+    virtual bool PresentDeviceFrame(unsigned char* dpBgra, int nPitch) = 0;
 
 protected:
     /**

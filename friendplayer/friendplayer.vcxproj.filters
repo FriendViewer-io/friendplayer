@@ -69,16 +69,13 @@
     <ClCompile Include="protobuf\host_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
-    <ClCompile Include="common\ClientHandler.cpp">
+    <ClCompile Include="common\HostProtocolHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="common\ClientProtocolHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="common\HeartbeatManager.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
-    <ClCompile Include="common\ClientManager.cpp">
+    <ClCompile Include="common\ProtocolManager.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="protobuf\common_messages.pb.cc">
@@ -89,6 +86,9 @@
     </ClCompile>
     <ClCompile Include="streamer\InputStreamer.cpp">
       <Filter>Source Files\streamers</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ProtocolHandler.cpp">
+      <Filter>Source Files\common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -146,13 +146,10 @@
     <ClInclude Include="common\ClientProtocolHandler.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="common\HeartbeatManager.h">
+    <ClInclude Include="common\HostProtocolHandler.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="common\ClientHandler.h">
-      <Filter>Source Files\common</Filter>
-    </ClInclude>
-    <ClInclude Include="common\ClientManager.h">
+    <ClInclude Include="common\ProtocolManager.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="protobuf\common_messages.pb.h">
@@ -160,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="streamer\InputStreamer.h">
       <Filter>Source Files\streamers</Filter>
+    </ClCompile>
+    <ClInclude Include="common\ProtocolHandler.h">
+      <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -172,6 +172,9 @@
       <Filter>Source Files\protobuf</Filter>
     </None>
     <None Include="protobuf\host_messages.proto">
+      <Filter>Source Files\protobuf</Filter>
+    </None>
+    <None Include="protobuf\common_messages.proto">
       <Filter>Source Files\protobuf</Filter>
     </None>
   </ItemGroup>

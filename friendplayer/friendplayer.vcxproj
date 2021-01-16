@@ -7,13 +7,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="common\ClientHandler.cpp" />
-    <ClCompile Include="common\ClientManager.cpp" />
+    <ClCompile Include="common\HostProtocolHandler.cpp" />
+    <ClCompile Include="common\ProtocolHandler.cpp" />
+    <ClCompile Include="common\ProtocolManager.cpp" />
     <ClCompile Include="common\ClientProtocolHandler.cpp" />
     <ClCompile Include="common\Config.cpp" />
     <ClCompile Include="common\Crypto.cpp" />
     <ClCompile Include="common\FrameRingBuffer.cpp" />
-    <ClCompile Include="common\HeartbeatManager.cpp" />
     <ClCompile Include="common\Log.cpp" />
     <ClCompile Include="common\Socket.cpp" />
     <ClCompile Include="common\Timer.cpp" />
@@ -29,14 +29,14 @@
     <ClCompile Include="streamer\VideoStreamer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common\ClientHandler.h" />
-    <ClInclude Include="common\ClientManager.h" />
+    <ClInclude Include="common\HostProtocolHandler.h" />
+    <ClInclude Include="common\ProtocolHandler.h" />
+    <ClInclude Include="common\ProtocolManager.h" />
     <ClInclude Include="common\ClientProtocolHandler.h" />
     <ClInclude Include="common\ColorSpace.h" />
     <ClInclude Include="common\Config.h" />
     <ClInclude Include="common\Crypto.h" />
     <ClInclude Include="common\FrameRingBuffer.h" />
-    <ClInclude Include="common\HeartbeatManager.h" />
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
     <ClInclude Include="common\Socket.h" />
@@ -58,6 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="protobuf\client_messages.proto" />
+    <None Include="protobuf\common_messages.proto" />
     <None Include="protobuf\host_messages.proto" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -14,14 +14,11 @@
 #include "protobuf/client_messages.pb.h"
 #include "protobuf/host_messages.pb.h"
 
-class ClientManager;
-class HostSocket;
-class HeartbeatManager;
-
+class SocketBase;
 
 // Client management from host perspective
-class ClientHandler {
-private:
+class ProtocolHandler {
+protected:
     using clock = std::chrono::system_clock;
     static constexpr size_t BLOCK_SIZE = 16;
     // maximum chunk size over UDP accounding for proto overhead
@@ -33,84 +30,50 @@ private:
     static constexpr uint32_t RECV_DROP_WINDOW = 3;
     static constexpr uint32_t FAST_RETRANSMIT_WINDOW = 5;
 
-
 public:
     using asio_endpoint = asio::ip::udp::endpoint;
-    enum ClientState : uint32_t {
+    enum StreamState : uint32_t {
         UNINITIALIZED = 0,
         WAITING_FOR_VIDEO = 1,
         READY,
         DISCONNECTED,
     };
 
-    ClientHandler(int id, asio_endpoint endpoint);
+    ProtocolHandler(int client_id, const asio_endpoint& target_endpoint);
 
-    void SetParentSocket(HostSocket* parent) { parent_socket = parent; }
-    void SetClientManager(std::shared_ptr<ClientManager> mgr) { client_manager = std::move(mgr); }
-    void SetHeartbeatManager(std::shared_ptr<HeartbeatManager> mgr) { heartbeat_manager = std::move(mgr); }
+    virtual void SetParentSocket(SocketBase* parent) { parent_socket = parent; }
     int GetId() { return client_id; }
-    const asio_endpoint& GetEndpoint() { return client_endpoint; }
-    void SetAudio(bool enabled) { audio_enabled = enabled; }
-    void SetKeyboard(bool enabled) { keyboard_enabled = enabled; }
-    void SetMouse(bool enabled) { mouse_enabled = enabled; }
-    void SetController(bool enabled) { controller_enabled = enabled; }
+    const asio_endpoint& GetEndpoint() { return endpoint; }
     bool IsConnectionValid() { return state->load() != DISCONNECTED; }
-    void Transition(ClientState new_state) { state->store(new_state); }
-    ClientState GetState() { return state->load(); }
-    
-    void AddAudioStreamPoint(uint32_t val) { audio_stream_point += val; }
-    uint32_t GetAudioStreamPoint() { return audio_stream_point; }
+    void Transition(StreamState new_state) { state->store(new_state); }
+    StreamState GetState() { return state->load(); }
 
-    void AddVideoStreamPoint(uint32_t val) { video_stream_point += val; }
-    uint32_t GetVideoStreamPoint() { return video_stream_point; }
+    int64_t GetLastHeartbeat() { return last_heartbeat.load(); }
+    void UpdateHeartbeat() { last_heartbeat.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()); }
 
     // Worker thread for this client (handles protocol)
-    void ClientRecvWorker();
-    void ClientSendWorker();
-    void ClientRetransmitWorker();
+    void RecvWorker();
+    void SendWorker();
+    void RetransmitWorker();
     void StartWorker() {
-        async_recv_worker = std::make_unique<std::thread>(&ClientHandler::ClientRecvWorker, this);
-        async_send_worker = std::make_unique<std::thread>(&ClientHandler::ClientSendWorker, this);
-        async_retransmit_worker = std::make_unique<std::thread>(&ClientHandler::ClientRetransmitWorker, this);
+        async_recv_worker = std::make_unique<std::thread>(&ProtocolHandler::RecvWorker, this);
+        async_send_worker = std::make_unique<std::thread>(&ProtocolHandler::SendWorker, this);
+        async_retransmit_worker = std::make_unique<std::thread>(&ProtocolHandler::RetransmitWorker, this);
     }
-    void KillAllThreads() {
-        state->store(DISCONNECTED);
-        send_message_queue_cv->notify_one();
-        recv_message_queue_cv->notify_one();
-        shared_data_cv->notify_one();
-
-        async_send_worker->join();
-        async_recv_worker->join();
-        async_retransmit_worker->join();
-    }
+    void KillAllThreads();
     // Threadsafe, pass message for ClientMessageWorker to do job
     void EnqueueRecvMessage(fp_proto::Message&& message);
     void EnqueueSendMessage(fp_proto::Message&& message);
-
-    void SendAudioData(const std::vector<uint8_t>& data);
-    void SendVideoData(const std::vector<uint8_t>& data, fp_proto::VideoFrame_FrameType type);
     
-private:
+protected:
     const int client_id;
+    std::unique_ptr<std::atomic<StreamState>> state;
 
-    bool audio_enabled;
-    bool keyboard_enabled;
-    bool mouse_enabled;
-    bool controller_enabled;
-    std::unique_ptr<std::atomic<ClientState>> state;
+    SocketBase* parent_socket;
+    asio_endpoint endpoint;
 
-    HostSocket* parent_socket;
-    std::shared_ptr<ClientManager> client_manager;
-    std::shared_ptr<HeartbeatManager> heartbeat_manager;
-
-    asio_endpoint client_endpoint;
-
-    uint32_t video_stream_point;
-    uint32_t audio_stream_point;
-    uint32_t audio_frame_num;
-    uint32_t video_frame_num;
-    int pps_sps_version;
-
+    std::atomic_int64_t last_heartbeat;
+    
     // Send management
     std::unique_ptr<std::thread> async_send_worker;
     std::list<fp_proto::Message> send_message_queue;
@@ -165,15 +128,11 @@ private:
     void SendDataMessage_internal(fp_proto::Message& msg);
     void DoSlowRetransmission();
 
-    bool DoHandshake();
-
     void OnAcknowledge(const fp_proto::AckMessage& msg);
-    // GUARDED BY recv_message_queue_m
-    void OnDataFrame(const fp_proto::DataMessage& msg);
 
-    void OnKeyboardFrame(const fp_proto::ClientDataFrame& msg);
-    void OnMouseFrame(const fp_proto::ClientDataFrame& msg);
-    void OnControllerFrame(const fp_proto::ClientDataFrame& msg);
-    void OnHostRequest(const fp_proto::ClientDataFrame& msg);
-    void OnClientState(const fp_proto::ClientDataFrame& msg);
+protected:
+    // GUARDED BY send_message_queue_m
+    virtual bool DoHandshake() = 0;
+    // GUARDED BY recv_message_queue_m
+    virtual void OnDataFrame(const fp_proto::DataMessage& msg) = 0;
 };

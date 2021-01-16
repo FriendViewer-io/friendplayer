@@ -38,7 +38,7 @@ message RequestToHost {
     RequestType type = 1;
 }
 
-message ClientState {
+message StreamState {
     enum State {
         READY_FOR_PPS_SPS_IDR = 0;
         READY_FOR_VIDEO = 1;
@@ -55,7 +55,7 @@ message ClientDataFrame {
         MouseFrame mouse = 3;
         ControllerFrame controller = 4;
         RequestToHost host_request = 5;
-        ClientState client_state = 6;
+        StreamState stream_state = 6;
     }
 }
 
