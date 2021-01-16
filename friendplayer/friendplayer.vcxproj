@@ -10,7 +10,6 @@
     <ClCompile Include="common\ClientHandler.cpp" />
     <ClCompile Include="common\ClientManager.cpp" />
     <ClCompile Include="common\ClientProtocolHandler.cpp" />
-    <ClCompile Include="common\Client.cpp" />
     <ClCompile Include="common\Config.cpp" />
     <ClCompile Include="common\Crypto.cpp" />
     <ClCompile Include="common\FrameRingBuffer.cpp" />
