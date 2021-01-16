@@ -11,16 +11,13 @@
 #include <vector>
 
 #include "common/FrameRingBuffer.h"
-#include "common/Client.h"
+#include "common/ClientManager.h"
+#include "common/ClientProtocolHandler.h"
 #include "protobuf/client_messages.pb.h"
+#include "protobuf/common_messages.pb.h"
 #include "protobuf/host_messages.pb.h"
 
 constexpr unsigned short FP_UDP_PORT = 40040;
-constexpr size_t VIDEO_FRAME_BUFFER = 5;
-constexpr size_t AUDIO_FRAME_BUFFER = 5;
-// Guess values, tune or scale these?
-constexpr size_t VIDEO_FRAME_SIZE = 20000;
-constexpr size_t AUDIO_FRAME_SIZE = 1795;
 
 constexpr size_t CLIENT_RECV_SIZE = 1024 * 256;
 constexpr size_t HOST_SEND_SIZE = 1024 * 1024;
@@ -29,16 +26,7 @@ constexpr size_t HOST_SEND_SIZE = 1024 * 1024;
 // move this to host?
 constexpr uint32_t IDR_SEND_TIMEOUT = 20;
 
-class SocketBase { 
-public:
-    SocketBase()
-        : network_thread(nullptr),
-          is_running(false),
-          socket(io_service) {}
-    void StartSocket();
-    void WaitForSocket();
-    void Stop();
-    
+class SocketBase {
 protected:
     using asio_socket = asio::ip::udp::socket;
     using asio_endpoint = asio::ip::udp::endpoint;
@@ -51,11 +39,21 @@ protected:
 
     asio_service io_service;
     asio_socket socket;
+
+public:
+    SocketBase()
+        : network_thread(nullptr),
+          is_running(false),
+          socket(io_service) {}
+    void StartSocket();
+    void WaitForSocket();
+    void Stop();
+    void MessageSend(const fp_proto::Message& outgoing_msg, const asio_endpoint& target_endpoint);
 };
 
-class ClientSocket : public SocketBase{
+class ClientSocket : public SocketBase {
 public:
-    ClientSocket(std::string_view ip);
+    ClientSocket(std::string_view ip, std::shared_ptr<ClientProtocolHandler> protocol_handler);
 
     // blocks until available
     void GetVideoFrame(RetrievedBuffer& buf_in);
@@ -65,13 +63,15 @@ public:
     void SendClientState(fp_proto::ClientState::State state);
     void SendRequestToHost(fp_proto::RequestToHost::RequestType request);
 
+    void MessageSend(const fp_proto::Message& outgoing_msg);
+
 protected:
     virtual void NetworkThread();
+
 private:
     asio_endpoint host_endpoint;
 
-    FrameRingBuffer video_buffer;
-    FrameRingBuffer audio_buffer;
+    std::shared_ptr<ClientProtocolHandler> protocol_handler;
 
     std::atomic_uint32_t sent_frame_num;
     int32_t idr_send_timeout;
@@ -79,7 +79,8 @@ private:
 
 class HostSocket : public SocketBase {
 public:
-    HostSocket();
+    HostSocket(std::shared_ptr<ClientManager> client_mgr,
+               std::shared_ptr<HeartbeatManager> heartbeat_mgr);
 
     void WriteVideoFrame(const std::vector<uint8_t>& data, bool is_idr_frame);
     void WriteAudioFrame(const std::vector<uint8_t>& data);
@@ -89,21 +90,23 @@ public:
 
     // Make this friended
     void WriteData(const asio::const_buffer& buffer, asio::ip::udp::endpoint endpoint);
-    void SetPPSSPS(std::vector<uint8_t>&& pps_sps) { active_pps_sps = std::move(pps_sps); }
-    const std::vector<uint8_t> GetPPSSPS() const { return active_pps_sps; }
+    void SetPPSSPS(std::vector<uint8_t>&& pps_sps) {
+        active_pps_sps = std::move(pps_sps);
+        pps_sps_version++;
+    }
+    const std::vector<uint8_t>& GetPPSSPS() const { return active_pps_sps; }
+    int GetPPSSPSVersion() const { return pps_sps_version; }
 
 protected:
     virtual void NetworkThread();
 
 private:
-    
     asio_endpoint endpoint;
 
-    std::map<asio_endpoint, Client> clients;
+    std::shared_ptr<ClientManager> client_mgr;
+    std::shared_ptr<HeartbeatManager> heartbeat_mgr;
 
-    std::shared_mutex m_client_wait;
-    std::condition_variable_any cv_client_wait;
-    
     std::atomic_bool should_send_idr;
     std::vector<uint8_t> active_pps_sps;
+    int pps_sps_version;
 };

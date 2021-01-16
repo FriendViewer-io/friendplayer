@@ -162,7 +162,7 @@ void VideoStreamer::Encode(bool send_idr) {
     auto begin_time = std::chrono::system_clock::now();
     send_idr = send_idr || encoder_frame_num == 0;
     NV_ENC_PIC_PARAMS params = {};
-    if (send_idr || encoder_frame_num == 60) {
+    if (send_idr) {
         params.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
     }
     std::vector<std::vector<uint8_t>> packets;

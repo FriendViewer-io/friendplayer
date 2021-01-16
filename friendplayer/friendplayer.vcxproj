@@ -7,9 +7,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="common\Client.cpp" />
+    <ClCompile Include="common\ClientHandler.cpp" />
+    <ClCompile Include="common\ClientManager.cpp" />
+    <ClCompile Include="common\ClientProtocolHandler.cpp" />
     <ClCompile Include="common\Crypto.cpp" />
     <ClCompile Include="common\FrameRingBuffer.cpp" />
+    <ClCompile Include="common\HeartbeatManager.cpp" />
     <ClCompile Include="common\Log.cpp" />
     <ClCompile Include="common\Socket.cpp" />
     <ClCompile Include="common\Timer.cpp" />
@@ -18,15 +21,19 @@
     <ClCompile Include="encoder\NvEncoder.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
     <ClCompile Include="protobuf\client_messages.pb.cc" />
+    <ClCompile Include="protobuf\common_messages.pb.cc" />
     <ClCompile Include="protobuf\host_messages.pb.cc" />
     <ClCompile Include="streamer\AudioStreamer.cpp" />
     <ClCompile Include="streamer\VideoStreamer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common\Client.h" />
+    <ClInclude Include="common\ClientHandler.h" />
+    <ClInclude Include="common\ClientManager.h" />
+    <ClInclude Include="common\ClientProtocolHandler.h" />
     <ClInclude Include="common\ColorSpace.h" />
     <ClInclude Include="common\Crypto.h" />
     <ClInclude Include="common\FrameRingBuffer.h" />
+    <ClInclude Include="common\HeartbeatManager.h" />
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
     <ClInclude Include="common\Socket.h" />
@@ -38,6 +45,7 @@
     <ClInclude Include="encoder\DDAImpl.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
     <ClInclude Include="protobuf\client_messages.pb.h" />
+    <ClInclude Include="protobuf\common_messages.pb.h" />
     <ClInclude Include="protobuf\host_messages.pb.h" />
     <ClInclude Include="streamer\AudioStreamer.h" />
     <ClInclude Include="streamer\VideoStreamer.h" />

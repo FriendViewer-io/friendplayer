@@ -3,8 +3,13 @@ syntax = "proto3";
 package fp_proto;
 
 message VideoFrame {
+    enum FrameType {
+        NORMAL = 0;
+        IDR = 1;
+        PPS_SPS = 2;
+    }
     uint32 chunk_offset = 1;
-    bool is_idr_frame = 2;
+    FrameType frame_type = 2;
     bytes data = 3;
 }
 
