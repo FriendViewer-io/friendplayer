@@ -1,6 +1,7 @@
-#include "Socket.h"
+#include "common/Socket.h"
 
 #include "common/Log.h"
+#include "common/HeartbeatManager.h"
 
 
 void SocketBase::StartSocket() {
@@ -17,18 +18,26 @@ void SocketBase::Stop() {
     socket.close();
 }
 
-ClientSocket::ClientSocket(std::string_view ip, unsigned short port)
-    : video_buffer("video buffer", VIDEO_FRAME_BUFFER, VIDEO_FRAME_SIZE),
-      audio_buffer("audio buffer", AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE),
+void SocketBase::MessageSend(const fp_proto::Message& outgoing_msg, const asio_endpoint& target_endpoint) {
+    socket.send_to(asio::buffer(outgoing_msg.SerializeAsString()), target_endpoint);
+}
+
+ClientSocket::ClientSocket(std::string_view ip, unsigned short port, std::shared_ptr<ClientProtocolHandler> protocol_handler)
+    : protocol_handler(std::move(protocol_handler)),
       sent_frame_num(0),
       idr_send_timeout(-1) {
     host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), port);
+    this->protocol_handler->SetParentSocket(this);
     socket.open(asio::ip::udp::v4());
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
 }
 
+void ClientSocket::MessageSend(const fp_proto::Message& outgoing_msg) {
+    SocketBase::MessageSend(outgoing_msg, host_endpoint);
+}
+
 void ClientSocket::GetVideoFrame(RetrievedBuffer& buf_in) {
-    uint32_t size_to_decrypt = video_buffer.GetFront(buf_in);
+    uint32_t size_to_decrypt = protocol_handler->GetVideoFrame(buf_in);
     // Run decryption
     if (size_to_decrypt != 0 || buf_in.bytes_received == 0 || (buf_in.bytes_received < buf_in.data_out.size())) {
         idr_send_timeout = IDR_SEND_TIMEOUT;
@@ -42,26 +51,28 @@ void ClientSocket::GetVideoFrame(RetrievedBuffer& buf_in) {
 }
 
 void ClientSocket::GetAudioFrame(RetrievedBuffer& buf_in) {
-    uint32_t size_to_decrypt = audio_buffer.GetFront(buf_in);
+    uint32_t size_to_decrypt = protocol_handler->GetAudioFrame(buf_in);
     // Run decryption
 }
 
 void ClientSocket::SendClientState(fp_proto::ClientState::State state) {
-    fp_proto::ClientState state_msg;
-    state_msg.set_state(state);
-    fp_proto::ClientDataFrame frame_msg;
-    frame_msg.set_frame_id(sent_frame_num.fetch_add(1));
-    *frame_msg.mutable_client_state() = state_msg;
-    socket.send_to(asio::buffer(frame_msg.SerializeAsString()), host_endpoint);
+    fp_proto::Message msg;
+    fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
+    data_msg.set_needs_ack(true);
+    fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
+    client_frame.mutable_client_state()->set_state(state);
+    client_frame.set_frame_id(sent_frame_num.fetch_add(1));
+    protocol_handler->EnqueueSendMessage(std::move(msg));
 }
 
 void ClientSocket::SendRequestToHost(fp_proto::RequestToHost::RequestType request) {
-    fp_proto::RequestToHost request_msg;
-    request_msg.set_type(request);
-    fp_proto::ClientDataFrame frame_msg;
-    frame_msg.set_frame_id(sent_frame_num.fetch_add(1));
-    *frame_msg.mutable_host_request() = request_msg;
-    socket.send_to(asio::buffer(frame_msg.SerializeAsString()), host_endpoint);
+    fp_proto::Message msg;
+    fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
+    data_msg.set_needs_ack(true);
+    fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
+    client_frame.mutable_host_request()->set_type(request);
+    client_frame.set_frame_id(sent_frame_num.fetch_add(1));
+    protocol_handler->EnqueueSendMessage(std::move(msg));
 }
 
 void ClientSocket::NetworkThread() {
@@ -76,30 +87,19 @@ void ClientSocket::NetworkThread() {
             continue;
         }
         
-        fp_proto::HostDataFrame frame;
-        frame.ParseFromArray(recv_buffer.data(), size);
-        
-        switch (frame.DataFrame_case()) {
-            case fp_proto::HostDataFrame::kAudio: {
-                audio_buffer.AddFrameChunk(frame);
-            }
-            break;
-            case fp_proto::HostDataFrame::kVideo: {
-                video_buffer.AddFrameChunk(frame);
-            }
-            break;
-            default: {
-                LOG_ERROR("Unknown message type from host: {}", static_cast<int>(frame.DataFrame_case()));
-            }
-            break;
-        }
+        fp_proto::Message msg;
+        msg.ParseFromArray(recv_buffer.data(), size);
+        protocol_handler->EnqueueRecvMessage(std::move(msg));
     }
 }
 
-HostSocket::HostSocket(unsigned short port) {
+HostSocket::HostSocket(unsigned short port, std::shared_ptr<ClientManager> client_mgr,
+                       std::shared_ptr<HeartbeatManager> heartbeat_mgr)
+  : client_mgr(std::move(client_mgr)), heartbeat_mgr(std::move(heartbeat_mgr)) {
     endpoint = asio_endpoint(asio::ip::udp::v4(), port);
     socket = asio_socket(io_service, endpoint);
     socket.set_option(asio::socket_base::send_buffer_size(HOST_SEND_SIZE));
+    pps_sps_version = -1;
 }
 
 void HostSocket::WriteData(const asio::const_buffer& buffer, asio::ip::udp::endpoint endpoint) {
@@ -125,60 +125,37 @@ void HostSocket::NetworkThread() {
         if (size == 0) {
             continue;
         }
-        fp_proto::ClientDataFrame frame;
-        frame.ParseFromArray(recv_buffer.data(), size);
-        {
-            std::lock_guard<std::shared_mutex> l(m_client_wait);
-            auto client_it = clients.find(client_endpoint);
-            if (client_it == clients.end()) {
-                LOG_INFO("New client added");
-                clients.emplace(client_endpoint, Client(this, clients.size(), client_endpoint));
-                if (clients.size() == 1) {
-                    cv_client_wait.notify_all();
-                }
-                client_it = clients.find(client_endpoint);
-                client_it->second.StartWorker();
+        ClientHandler* handler = client_mgr->LookupClientHandlerByEndpoint(client_endpoint);
+        if (handler == nullptr) {
+            handler = client_mgr->CreateNewClient(client_endpoint);
+            if (handler == nullptr) {
+                LOG_INFO("Client tried to join but there were too many clients.");
+                continue;
             }
-            client_it->second.EnqueueMessage(std::move(frame));
+            handler->SetParentSocket(this);
+            handler->SetClientManager(client_mgr);
+            handler->SetHeartbeatManager(heartbeat_mgr);
+            heartbeat_mgr->RegisterClient(handler->GetId());
+            handler->StartWorker();
         }
-        
+        fp_proto::Message msg;
+        msg.ParseFromArray(recv_buffer.data(), size);
+        handler->EnqueueRecvMessage(std::move(msg));
     }
-
 }
 
 void HostSocket::WriteVideoFrame(const std::vector<uint8_t>& data, bool is_idr_frame) {
-    fp_proto::HostDataFrame frame;
-    *frame.mutable_video() = fp_proto::VideoFrame();
-    frame.mutable_video()->set_is_idr_frame(is_idr_frame);
-    
-    static bool end_pressed = false;
-    
-    bool fuckup_frame = false, end_state = GetAsyncKeyState(VK_HOME);
-    if (end_state && !end_pressed) {
-        fuckup_frame = true;
-    }
-    end_pressed = end_state;
-    
-    std::shared_lock<std::shared_mutex> l(m_client_wait);
-    cv_client_wait.wait(l, [this] () -> bool {
-        return clients.size() > 0;
+    client_mgr->foreach_client([is_idr_frame, &data] (ClientHandler& client_handler) {
+        if (is_idr_frame) {
+            client_handler.SendVideoData(data, fp_proto::VideoFrame::IDR);
+        } else {
+            client_handler.SendVideoData(data, fp_proto::VideoFrame::NORMAL);
+        }
     });
-
-    for (auto& client_pair : clients) {
-        client_pair.second.SendHostData(frame, data);
-    }
 }
 
 void HostSocket::WriteAudioFrame(const std::vector<uint8_t>& data) {
-    fp_proto::HostDataFrame frame;
-    *frame.mutable_audio() = fp_proto::AudioFrame();
-    
-    std::shared_lock<std::shared_mutex> l(m_client_wait);
-    cv_client_wait.wait(l, [this] () -> bool {
-        return clients.size() > 0;
+    client_mgr->foreach_client([&data] (ClientHandler& client_handler) {
+        client_handler.SendAudioData(data);
     });
-
-    for (auto& client_pair : clients) {
-        client_pair.second.SendHostData(frame, data);
-    }
 }

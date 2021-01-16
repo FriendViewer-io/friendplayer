@@ -57,9 +57,6 @@
     <ClCompile Include="common\Crypto.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="common\Client.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
     <ClCompile Include="common\Socket.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
@@ -70,6 +67,21 @@
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
     <ClCompile Include="protobuf\host_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ClientHandler.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ClientProtocolHandler.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\HeartbeatManager.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ClientManager.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\common_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
     <ClCompile Include="common\Config.cpp">
@@ -113,9 +125,6 @@
     <ClInclude Include="common\Crypto.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="common\Client.h">
-      <Filter>Source Files\common</Filter>
-    </ClInclude>
     <ClInclude Include="common\Socket.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
@@ -130,6 +139,21 @@
     </ClInclude>
     <ClInclude Include="common\Config.h">
       <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ClientProtocolHandler.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\HeartbeatManager.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ClientHandler.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ClientManager.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\common_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

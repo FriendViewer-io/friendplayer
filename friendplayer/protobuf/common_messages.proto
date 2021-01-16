@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package fp_proto;
+
+import "client_messages.proto";
+import "host_messages.proto";
+
+message AckMessage {
+    uint32 sequence_ack = 1;
+}
+
+message DataMessage {
+    uint32 sequence_number = 1;
+    bool needs_ack = 2;
+    oneof Payload {
+        HostDataFrame host_frame = 3;
+        ClientDataFrame client_frame = 4;
+    }
+}
+
+message HeartbeatMessage {
+    uint64 timestamp = 1;
+    bool is_response = 2;
+}
+
+message HandshakeMessage {
+    uint64 magic = 1; // EXPECT 46524E44504C5952
+    // add diffie hellman? adam :)
+}
+
+message Message {
+    oneof Payload {
+        HandshakeMessage hs_msg = 1;
+        DataMessage data_msg = 2;
+        AckMessage ack_msg = 3;
+        HeartbeatMessage hb_msg = 4;
+    }
+}
