@@ -147,13 +147,11 @@ void ClientProtocolHandler::ClientRecvWorker() {
         }
 
         process_queue_cons();
-        if (!reordered_msg_queue.empty()) {
-            // window is a bit behind, dropped packets perhaps?
-            while (reordered_msg_queue.back().sequence_number() > frame_window_start + RECV_DROP_WINDOW) {
-                frame_window_start = reordered_msg_queue.front().sequence_number();
-                LOG_INFO("Updated frame window start={}", frame_window_start);
-                process_queue_cons();
-            }
+        // window is a bit behind, dropped packets perhaps?
+        while (!reordered_msg_queue.empty() && reordered_msg_queue.back().sequence_number() > frame_window_start + RECV_DROP_WINDOW) {
+            frame_window_start = reordered_msg_queue.front().sequence_number();
+            LOG_CRITICAL("Updated frame window start={}", frame_window_start);
+            process_queue_cons();
         }
     }
     // std::unique_lock<std::mutex> lock(*recv_message_queue_m);

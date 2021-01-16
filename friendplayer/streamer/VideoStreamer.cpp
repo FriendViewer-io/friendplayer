@@ -281,11 +281,8 @@ void VideoStreamer::Decode() {
 void VideoStreamer::PresentVideo() {
     
     uint8_t* pFrame;
-    static uint64_t firstPts = 0, startTime = 0;
-    static bool is_first_frame = true;
     int iMatrix = 0;
     int64_t timestamp = 0;
-    LARGE_INTEGER counter;
     int nRGBWidth = decoder->GetDecodeWidth();
 
     for (int i = 0; i < num_frames; i++)
@@ -307,23 +304,11 @@ void VideoStreamer::PresentVideo() {
                 P016ToColor32<BGRA32>(pFrame, 2 * decoder->GetWidth(), (uint8_t*)cuda_frame, 4 * nRGBWidth, decoder->GetWidth(), decoder->GetHeight(), iMatrix);
         }
 
-        if (is_first_frame)
-        {
-            firstPts = timestamp;
-            QueryPerformanceCounter(&counter);
-            startTime = 1000 * counter.QuadPart / counter_freq.QuadPart;
-            is_first_frame = false;
-        }
+        presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4);
+    }
 
-        QueryPerformanceCounter(&counter);
-        int64_t curTime = 1000 * counter.QuadPart / counter_freq.QuadPart;
-
-        int64_t expectedRenderTime = timestamp - firstPts + startTime;
-        int64_t delay = expectedRenderTime - curTime;
-        if (timestamp == 0)
-            delay = 0;
-        if (delay < 0)
-            continue;
+    num_frames = 0;
+}           continue;
         LOG_TRACE("Displaying frame for {}", delay);
 
         presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4, delay);

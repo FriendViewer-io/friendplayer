@@ -60,25 +60,13 @@ public:
         delete pthMsgLoop;
     }
 
-    bool PresentDeviceFrame(unsigned char* dpBgra, int nPitch, int64_t delay) {
+    bool PresentDeviceFrame(unsigned char* dpBgra, int nPitch) {
         mtx.lock();
         if (!bReady) {
             mtx.unlock();
             return false;
         }
         CopyDeviceFrame(dpBgra, nPitch);
-        /*if (!CreateTimerQueueTimer(&hTimer, hTimerQueue,
-            (WAITORTIMERCALLBACK)PresentRoutine, this, (DWORD)delay, 0, 0))
-        {
-            std::cout << "Problem in createtimer" << std::endl;
-        }
-        while (WaitForSingleObject(hPresentEvent, 0) != WAIT_OBJECT_0)
-        {
-        }
-        if (hTimer)
-        {
-            DeleteTimerQueueTimer(hTimerQueue, hTimer, nullptr);
-        }*/
         pSwapChain->Present(0, 0);
         mtx.unlock();
         return true;

@@ -154,12 +154,10 @@ void HostProtocolHandler::ClientRecvWorker() {
         }
 
         process_queue_cons();
-        if (!reordered_msg_queue.empty()) {
-            // window is a bit behind, dropped packets perhaps?
-            while (reordered_msg_queue.back().sequence_number() > frame_window_start + RECV_DROP_WINDOW) {
-                frame_window_start = reordered_msg_queue.front().sequence_number();
-                process_queue_cons();
-            }
+        // window is a bit behind, dropped packets perhaps?
+        while (!reordered_msg_queue.empty() && reordered_msg_queue.back().sequence_number() > frame_window_start + RECV_DROP_WINDOW) {
+            frame_window_start = reordered_msg_queue.front().sequence_number();
+            process_queue_cons();
         }
     }
     std::unique_lock<std::mutex> lock(*recv_message_queue_m);
@@ -233,6 +231,7 @@ void HostProtocolHandler::SendDataMessage_internal(fp_proto::Message& msg) {
     send_sequence_number++;
 
     parent_socket->MessageSend(msg, client_endpoint);
+    LOG_INFO("Send sequence number={}", send_sequence_number);
 }
 
 void HostProtocolHandler::DoSlowRetransmission() {
@@ -240,6 +239,7 @@ void HostProtocolHandler::DoSlowRetransmission() {
         // fast retransmit logic
         bool needs_srt = saved_msg.NeedsSlowRetransmit(RTT_milliseconds);
         if (needs_srt) {
+            LOG_INFO("Doing slow-retransmit!");
             // if doing a slow RT without fast RT, just say we did a fast to reduce bandwidth
             saved_msg.did_fast_retransmit = true;
             saved_msg.last_send_ts = clock::now();
