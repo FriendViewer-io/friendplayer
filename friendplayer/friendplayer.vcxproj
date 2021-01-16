@@ -25,6 +25,7 @@
     <ClCompile Include="protobuf\common_messages.pb.cc" />
     <ClCompile Include="protobuf\host_messages.pb.cc" />
     <ClCompile Include="streamer\AudioStreamer.cpp" />
+    <ClCompile Include="streamer\InputStreamer.cpp" />
     <ClCompile Include="streamer\VideoStreamer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -49,6 +50,7 @@
     <ClInclude Include="protobuf\common_messages.pb.h" />
     <ClInclude Include="protobuf\host_messages.pb.h" />
     <ClInclude Include="streamer\AudioStreamer.h" />
+    <ClInclude Include="streamer\InputStreamer.h" />
     <ClInclude Include="streamer\VideoStreamer.h" />
   </ItemGroup>
   <ItemGroup>
@@ -110,7 +112,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)dependencies\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Setupapi.lib;XInput.lib;XInput9_1_0.lib;ViGEmClient.lib;cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /s /y /I $(SolutionDir)dependencies\x64\bin\ $(OutputPath)

@@ -42,7 +42,8 @@ message ClientState {
     enum State {
         READY_FOR_PPS_SPS_IDR = 0;
         READY_FOR_VIDEO = 1;
-        DISCONNECTING = 2;
+        HEARTBEAT = 2;
+        DISCONNECTING = 3;
     }
     State state = 1;
 }

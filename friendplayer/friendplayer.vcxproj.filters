@@ -87,6 +87,9 @@
     <ClCompile Include="common\Config.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
+    <ClCompile Include="streamer\InputStreamer.cpp">
+      <Filter>Source Files\streamers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
@@ -154,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="protobuf\common_messages.pb.h">
       <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="streamer\InputStreamer.h">
+      <Filter>Source Files\streamers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
