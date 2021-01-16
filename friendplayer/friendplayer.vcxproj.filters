@@ -84,13 +84,13 @@
     <ClCompile Include="protobuf\common_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
+    <ClCompile Include="common\Config.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
       <Filter>Source Files\encoder</Filter>
-    </ClInclude>
-    <ClInclude Include="decoder\FFmpegDemuxer.h">
-      <Filter>Source Files\decoder</Filter>
     </ClInclude>
     <ClInclude Include="decoder\FramePresenterD3D.h">
       <Filter>Source Files\decoder</Filter>
@@ -136,6 +136,9 @@
     </ClInclude>
     <ClInclude Include="protobuf\host_messages.pb.h">
       <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="common\Config.h">
+      <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="common\ClientProtocolHandler.h">
       <Filter>Source Files\common</Filter>

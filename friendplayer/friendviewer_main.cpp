@@ -4,6 +4,7 @@
 #include "common/HeartbeatManager.h"
 #include "common/ClientManager.h"
 #include "common/ClientProtocolHandler.h"
+#include "common/Config.h"
 #include "common/Log.h"
 #include "common/Timer.h"
 #include "streamer/VideoStreamer.h"
@@ -83,22 +84,18 @@ void heartbeat(std::shared_ptr<ClientProtocolHandler> protocol_handler) {
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
 
-    Log::init_stdout_logging(LogOptions{false});
-
-    if (argc != 4) {
-        LOG_CRITICAL("Incorrect number of args - {} <streamer/client> ip <port>", argv[0]);
+    if (Config::LoadConfig(argc, argv) >= 0)
         return 1;
-    }
+
+    Log::init_stdout_logging(LogOptions{Config::EnableTracing});
 
     Timer timer;
     VideoStreamer streamer;
-    bool is_sender = strcmp(argv[1], "streamer") == 0;
     
-    if (is_sender) {
-        
+    if (Config::IsHost) {
         std::shared_ptr<ClientManager> client_mgr = std::make_shared<ClientManager>();
         std::shared_ptr<HeartbeatManager> heartbeat_mgr = std::make_shared<HeartbeatManager>(client_mgr);
-        std::shared_ptr<HostSocket> host = std::make_shared<HostSocket>(client_mgr, heartbeat_mgr);
+        std::shared_ptr<HostSocket> host = std::make_shared<HostSocket>(Config::Port, client_mgr, heartbeat_mgr);
         std::thread aud_th(audio_thread_host, host);
         host->StartSocket();
         heartbeat_mgr->StartHeartbeatManager();
@@ -150,10 +147,8 @@ int main(int argc, char** argv) {
     } else {
         signal(SIGINT, exit_handler);
         signal(SIGTERM, exit_handler);
-
         std::shared_ptr<ClientProtocolHandler> protocol_handler = std::make_shared<ClientProtocolHandler>();
-
-        std::shared_ptr<ClientSocket> client = std::make_shared<ClientSocket>(argv[2], protocol_handler);
+        std::shared_ptr<ClientSocket> client = std::make_shared<ClientSocket>(Config::ServerIP, Config::Port, protocol_handler);
         streamer.SetSocket(client);
         std::thread aud_th(audio_thread_client, client);
         client->StartSocket();

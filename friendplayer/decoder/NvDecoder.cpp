@@ -671,7 +671,7 @@ int NvDecoder::Decode(const uint8_t* pData, int nSize, int nFlags, int64_t nTime
     CUVIDSOURCEDATAPACKET packet = { 0 };
     packet.payload = pData;
     packet.payload_size = nSize;
-    packet.flags = nFlags | CUVID_PKT_TIMESTAMP;
+    packet.flags = nFlags;
     packet.timestamp = nTimestamp;
     if (!pData || nSize == 0) {
         packet.flags |= CUVID_PKT_ENDOFSTREAM;

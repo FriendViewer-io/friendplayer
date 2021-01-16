@@ -22,11 +22,11 @@ void SocketBase::MessageSend(const fp_proto::Message& outgoing_msg, const asio_e
     socket.send_to(asio::buffer(outgoing_msg.SerializeAsString()), target_endpoint);
 }
 
-ClientSocket::ClientSocket(std::string_view ip, std::shared_ptr<ClientProtocolHandler> protocol_handler)
+ClientSocket::ClientSocket(std::string_view ip, unsigned short port, std::shared_ptr<ClientProtocolHandler> protocol_handler)
     : protocol_handler(std::move(protocol_handler)),
       sent_frame_num(0),
       idr_send_timeout(-1) {
-    host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), FP_UDP_PORT);
+    host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), port);
     this->protocol_handler->SetParentSocket(this);
     socket.open(asio::ip::udp::v4());
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
@@ -93,10 +93,10 @@ void ClientSocket::NetworkThread() {
     }
 }
 
-HostSocket::HostSocket(std::shared_ptr<ClientManager> client_mgr,
+HostSocket::HostSocket(unsigned short port, std::shared_ptr<ClientManager> client_mgr,
                        std::shared_ptr<HeartbeatManager> heartbeat_mgr)
   : client_mgr(std::move(client_mgr)), heartbeat_mgr(std::move(heartbeat_mgr)) {
-    endpoint = asio_endpoint(asio::ip::udp::v4(), FP_UDP_PORT);
+    endpoint = asio_endpoint(asio::ip::udp::v4(), port);
     socket = asio_socket(io_service, endpoint);
     socket.set_option(asio::socket_base::send_buffer_size(HOST_SEND_SIZE));
     pps_sps_version = -1;
