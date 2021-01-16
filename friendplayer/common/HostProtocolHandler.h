@@ -15,6 +15,7 @@
 #include "protobuf/common_messages.pb.h"
 #include "protobuf/client_messages.pb.h"
 #include "protobuf/host_messages.pb.h"
+#include "streamer/InputStreamer.h"
 
 class ProtocolManager;
 class HostSocket;
@@ -43,6 +44,8 @@ private:
     bool keyboard_enabled;
     bool mouse_enabled;
     bool controller_enabled;
+
+    InputStreamer input_streamer;
 
     HostSocket* host_socket;
 

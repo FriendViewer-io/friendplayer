@@ -8,6 +8,7 @@
 #include "common/FrameRingBuffer.h"
 #include "streamer/VideoStreamer.h"
 #include "streamer/AudioStreamer.h"
+#include "streamer/InputStreamer.h"
 
 std::shared_ptr<ProtocolManager> protocol_mgr;
 
@@ -85,6 +86,7 @@ int main(int argc, char** argv) {
 
     Timer timer;
     VideoStreamer streamer;
+    InputStreamer i_streamer;
     
     protocol_mgr = std::make_shared<ProtocolManager>();
 
@@ -153,6 +155,9 @@ int main(int argc, char** argv) {
             LOG_CRITICAL("InitDecode failed");
             return 1;
         }
+
+        //TODO: instead of passing 0, add desired controller index to config/args.
+        i_streamer.RegisterPhysicalController(0);
         while (true) {
             auto frame_start = std::chrono::system_clock::now();
             auto last_now = frame_start;
@@ -166,6 +171,13 @@ int main(int argc, char** argv) {
             auto present_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
             auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - frame_start);
             LOG_TRACE("Elapsed times: {:>10}={:>8}+{:>8}+{:>8}", elapsed.count(), demux_elapsed.count(), decode_elapsed.count(), present_elapsed.count());
+
+            const auto controller_frame = i_streamer.CapturePhysicalController();
+            if(controller_frame.has_value())
+            {
+                client_socket->SendController(std::move(controller_frame.value()));
+            }
+
         }
 
     }

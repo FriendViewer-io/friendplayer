@@ -29,6 +29,7 @@ private:
     FrameRingBuffer video_buffer;
     FrameRingBuffer audio_buffer;
 
+
     // add enc/dec here -- adam! :)
 
     virtual bool DoHandshake();
