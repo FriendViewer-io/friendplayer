@@ -9,7 +9,7 @@ ClientManager::client_id ClientManager::LookupClientIdByEndpoint(const ClientMan
     return ep_to_id_it->second;
 }
 
-ClientHandler* ClientManager::LookupClientHandlerById(ClientManager::client_id id) {
+HostProtocolHandler* ClientManager::LookupHostProtocolHandlerById(ClientManager::client_id id) {
     std::lock_guard<std::mutex> lock(*mgr_m);
     auto id_to_handler_it = id_to_handler.find(id);
     if (id_to_handler_it == id_to_handler.end()) {
@@ -18,7 +18,7 @@ ClientHandler* ClientManager::LookupClientHandlerById(ClientManager::client_id i
     return &id_to_handler_it->second;
 }
 
-ClientHandler* ClientManager::LookupClientHandlerByEndpoint(const ClientManager::asio_endpoint& endpoint) {
+HostProtocolHandler* ClientManager::LookupHostProtocolHandlerByEndpoint(const ClientManager::asio_endpoint& endpoint) {
     std::lock_guard<std::mutex> lock(*mgr_m);
     auto ep_to_id_it = endpoint_to_id.find(endpoint);
     if (ep_to_id_it == endpoint_to_id.end()) {
@@ -32,12 +32,12 @@ ClientHandler* ClientManager::LookupClientHandlerByEndpoint(const ClientManager:
     return &id_to_handler_it->second;
 }
 
-ClientHandler* ClientManager::CreateNewClient(const ClientManager::asio_endpoint& endpoint) {
+HostProtocolHandler* ClientManager::CreateNewClient(const ClientManager::asio_endpoint& endpoint) {
     std::lock_guard<std::mutex> lock(*mgr_m);
     if (id_to_handler.size() > MAX_CLIENTS) {
         return nullptr;
     }
-    auto new_entry = id_to_handler.emplace(next_client_id, ClientHandler(next_client_id, endpoint));
+    auto new_entry = id_to_handler.emplace(next_client_id, HostProtocolHandler(next_client_id, endpoint));
     endpoint_to_id.emplace(endpoint, next_client_id);
     next_client_id++;
 

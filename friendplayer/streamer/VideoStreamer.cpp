@@ -245,6 +245,8 @@ bool VideoStreamer::InitDecode() {
         LOG_CRITICAL("Failed to allocate cuda frame memory");
         return false;
     }
+
+    client_socket->SendRequestToHost(fp_proto::RequestToHost::SEND_IDR);
     LOG_TRACE("Creating FramePresenterType");
     presenter = new FramePresenterD3D11(cuda_context, decoder->GetDecodeWidth() , decoder->GetHeight());
     LOG_TRACE("Finished initializing streamer as decoder");

@@ -7,7 +7,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="common\ClientHandler.cpp" />
+    <ClCompile Include="common\HostProtocolHandler.cpp" />
     <ClCompile Include="common\ClientManager.cpp" />
     <ClCompile Include="common\ClientProtocolHandler.cpp" />
     <ClCompile Include="common\Config.cpp" />
@@ -28,7 +28,7 @@
     <ClCompile Include="streamer\VideoStreamer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common\ClientHandler.h" />
+    <ClInclude Include="common\HostProtocolHandler.h" />
     <ClInclude Include="common\ClientManager.h" />
     <ClInclude Include="common\ClientProtocolHandler.h" />
     <ClInclude Include="common\ColorSpace.h" />
@@ -56,6 +56,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="protobuf\client_messages.proto" />
+    <None Include="protobuf\common_messages.proto" />
     <None Include="protobuf\host_messages.proto" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

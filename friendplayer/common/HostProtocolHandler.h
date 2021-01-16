@@ -20,7 +20,7 @@ class HeartbeatManager;
 
 
 // Client management from host perspective
-class ClientHandler {
+class HostProtocolHandler {
 private:
     using clock = std::chrono::system_clock;
     static constexpr size_t BLOCK_SIZE = 16;
@@ -43,7 +43,7 @@ public:
         DISCONNECTED,
     };
 
-    ClientHandler(int id, asio_endpoint endpoint);
+    HostProtocolHandler(int id, asio_endpoint endpoint);
 
     void SetParentSocket(HostSocket* parent) { parent_socket = parent; }
     void SetClientManager(std::shared_ptr<ClientManager> mgr) { client_manager = std::move(mgr); }
@@ -57,32 +57,17 @@ public:
     bool IsConnectionValid() { return state->load() != DISCONNECTED; }
     void Transition(ClientState new_state) { state->store(new_state); }
     ClientState GetState() { return state->load(); }
-    
-    void AddAudioStreamPoint(uint32_t val) { audio_stream_point += val; }
-    uint32_t GetAudioStreamPoint() { return audio_stream_point; }
-
-    void AddVideoStreamPoint(uint32_t val) { video_stream_point += val; }
-    uint32_t GetVideoStreamPoint() { return video_stream_point; }
 
     // Worker thread for this client (handles protocol)
     void ClientRecvWorker();
     void ClientSendWorker();
     void ClientRetransmitWorker();
     void StartWorker() {
-        async_recv_worker = std::make_unique<std::thread>(&ClientHandler::ClientRecvWorker, this);
-        async_send_worker = std::make_unique<std::thread>(&ClientHandler::ClientSendWorker, this);
-        async_retransmit_worker = std::make_unique<std::thread>(&ClientHandler::ClientRetransmitWorker, this);
+        async_recv_worker = std::make_unique<std::thread>(&HostProtocolHandler::ClientRecvWorker, this);
+        async_send_worker = std::make_unique<std::thread>(&HostProtocolHandler::ClientSendWorker, this);
+        async_retransmit_worker = std::make_unique<std::thread>(&HostProtocolHandler::ClientRetransmitWorker, this);
     }
-    void KillAllThreads() {
-        state->store(DISCONNECTED);
-        send_message_queue_cv->notify_one();
-        recv_message_queue_cv->notify_one();
-        shared_data_cv->notify_one();
-
-        async_send_worker->join();
-        async_recv_worker->join();
-        async_retransmit_worker->join();
-    }
+    void KillAllThreads();
     // Threadsafe, pass message for ClientMessageWorker to do job
     void EnqueueRecvMessage(fp_proto::Message&& message);
     void EnqueueSendMessage(fp_proto::Message&& message);

@@ -69,7 +69,7 @@
     <ClCompile Include="protobuf\host_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
-    <ClCompile Include="common\ClientHandler.cpp">
+    <ClCompile Include="common\HostProtocolHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="common\ClientProtocolHandler.cpp">
@@ -146,7 +146,7 @@
     <ClInclude Include="common\HeartbeatManager.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="common\ClientHandler.h">
+    <ClInclude Include="common\HostProtocolHandler.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="common\ClientManager.h">
@@ -166,6 +166,9 @@
       <Filter>Source Files\protobuf</Filter>
     </None>
     <None Include="protobuf\host_messages.proto">
+      <Filter>Source Files\protobuf</Filter>
+    </None>
+    <None Include="protobuf\common_messages.proto">
       <Filter>Source Files\protobuf</Filter>
     </None>
   </ItemGroup>

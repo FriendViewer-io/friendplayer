@@ -6,7 +6,7 @@
 
 #include <asio/ip/udp.hpp>
 
-#include "common/ClientHandler.h"
+#include "common/HostProtocolHandler.h"
 
 constexpr size_t MAX_CLIENTS = 4;
 
@@ -22,9 +22,9 @@ public:
     }
 
     client_id LookupClientIdByEndpoint(const asio_endpoint& endpoint);
-    ClientHandler* LookupClientHandlerById(client_id id);
-    ClientHandler* LookupClientHandlerByEndpoint(const asio_endpoint& endpoint);
-    ClientHandler* CreateNewClient(const asio_endpoint& endpoint);
+    HostProtocolHandler* LookupHostProtocolHandlerById(client_id id);
+    HostProtocolHandler* LookupHostProtocolHandlerByEndpoint(const asio_endpoint& endpoint);
+    HostProtocolHandler* CreateNewClient(const asio_endpoint& endpoint);
 
     // Spin up another thread to ensure the client joins properly
     void DestroyClient(client_id id);
@@ -43,7 +43,7 @@ public:
 private:
     std::unique_ptr<std::mutex> mgr_m;
     std::map<asio_endpoint, client_id> endpoint_to_id;
-    std::map<client_id, ClientHandler> id_to_handler;
+    std::map<client_id, HostProtocolHandler> id_to_handler;
 
     client_id next_client_id;
 };

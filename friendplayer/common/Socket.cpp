@@ -125,7 +125,7 @@ void HostSocket::NetworkThread() {
         if (size == 0) {
             continue;
         }
-        ClientHandler* handler = client_mgr->LookupClientHandlerByEndpoint(client_endpoint);
+        HostProtocolHandler* handler = client_mgr->LookupHostProtocolHandlerByEndpoint(client_endpoint);
         if (handler == nullptr) {
             handler = client_mgr->CreateNewClient(client_endpoint);
             if (handler == nullptr) {
@@ -145,7 +145,7 @@ void HostSocket::NetworkThread() {
 }
 
 void HostSocket::WriteVideoFrame(const std::vector<uint8_t>& data, bool is_idr_frame) {
-    client_mgr->foreach_client([is_idr_frame, &data] (ClientHandler& client_handler) {
+    client_mgr->foreach_client([is_idr_frame, &data] (HostProtocolHandler& client_handler) {
         if (is_idr_frame) {
             client_handler.SendVideoData(data, fp_proto::VideoFrame::IDR);
         } else {
@@ -155,7 +155,7 @@ void HostSocket::WriteVideoFrame(const std::vector<uint8_t>& data, bool is_idr_f
 }
 
 void HostSocket::WriteAudioFrame(const std::vector<uint8_t>& data) {
-    client_mgr->foreach_client([&data] (ClientHandler& client_handler) {
+    client_mgr->foreach_client([&data] (HostProtocolHandler& client_handler) {
         client_handler.SendAudioData(data);
     });
 }

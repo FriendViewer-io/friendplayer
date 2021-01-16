@@ -1,4 +1,4 @@
-#include "common/ClientHandler.h"
+#include "common/HostProtocolHandler.h"
 
 #include "common/Socket.h"
 #include "common/Log.h"
@@ -9,7 +9,7 @@
 
 using namespace std::chrono_literals;
 
-ClientHandler::ClientHandler(int id, asio_endpoint endpoint)
+HostProtocolHandler::HostProtocolHandler(int id, asio_endpoint endpoint)
     : client_id(id),
       audio_enabled(true),
       keyboard_enabled(false),
@@ -41,21 +41,33 @@ ClientHandler::ClientHandler(int id, asio_endpoint endpoint)
     waiting_for_ack = std::make_unique<std::atomic_bool>(false);
 }
 
-void ClientHandler::EnqueueRecvMessage(fp_proto::Message&& message) {
+void HostProtocolHandler::KillAllThreads() {
+    state->store(DISCONNECTED);
+
+    send_message_queue_cv->notify_one();
+    recv_message_queue_cv->notify_one();
+    shared_data_cv->notify_one();
+
+    async_send_worker->join();
+    async_recv_worker->join();
+    async_retransmit_worker->join();
+}
+
+void HostProtocolHandler::EnqueueRecvMessage(fp_proto::Message&& message) {
     std::lock_guard<std::mutex> lock(*recv_message_queue_m);
  
     recv_message_queue.emplace_back(std::move(message));
     recv_message_queue_cv->notify_one();
 }
 
-void ClientHandler::EnqueueSendMessage(fp_proto::Message&& message) {
+void HostProtocolHandler::EnqueueSendMessage(fp_proto::Message&& message) {
     std::lock_guard<std::mutex> lock(*send_message_queue_m);
 
     send_message_queue.emplace_back(std::move(message));
     send_message_queue_cv->notify_all();
 }
 
-void ClientHandler::ClientRecvWorker() {
+void HostProtocolHandler::ClientRecvWorker() {
     // Do the handshake
     // Setup keys
     std::list<fp_proto::DataMessage> reordered_msg_queue;
@@ -154,7 +166,7 @@ void ClientHandler::ClientRecvWorker() {
     LOG_INFO("Message worker for client {} exiting, timeout={}", client_id, IsConnectionValid());
 }
 
-void ClientHandler::ClientSendWorker() {
+void HostProtocolHandler::ClientSendWorker() {
     while (true) {
         std::unique_lock<std::mutex> lock(*send_message_queue_m);
         send_message_queue_cv->wait(lock, [this] { return !send_message_queue.empty() || !IsConnectionValid(); });
@@ -195,7 +207,7 @@ void ClientHandler::ClientSendWorker() {
     }
 }
 
-void ClientHandler::ClientRetransmitWorker() {
+void HostProtocolHandler::ClientRetransmitWorker() {
     while (true) {
         std::unique_lock<std::mutex> lock(*shared_data_m);
         shared_data_cv->wait(lock, [this] { return waiting_for_ack->load() || !IsConnectionValid(); });
@@ -211,7 +223,7 @@ void ClientHandler::ClientRetransmitWorker() {
     }
 }
 
-void ClientHandler::SendDataMessage_internal(fp_proto::Message& msg) {
+void HostProtocolHandler::SendDataMessage_internal(fp_proto::Message& msg) {
     fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
     data_msg.set_sequence_number(send_sequence_number);
     if (data_msg.needs_ack()) {
@@ -223,7 +235,7 @@ void ClientHandler::SendDataMessage_internal(fp_proto::Message& msg) {
     parent_socket->MessageSend(msg, client_endpoint);
 }
 
-void ClientHandler::DoSlowRetransmission() {
+void HostProtocolHandler::DoSlowRetransmission() {
     for (auto&& [seqnum, saved_msg] : unacked_messages) {
         // fast retransmit logic
         bool needs_srt = saved_msg.NeedsSlowRetransmit(RTT_milliseconds);
@@ -243,7 +255,7 @@ void ClientHandler::DoSlowRetransmission() {
     }
 }
 
-bool ClientHandler::DoHandshake() {
+bool HostProtocolHandler::DoHandshake() {
     bool got_msg;
 
     std::unique_lock<std::mutex> lock(*recv_message_queue_m);
@@ -284,7 +296,7 @@ bool ClientHandler::DoHandshake() {
     return true;
 }
 
-void ClientHandler::OnAcknowledge(const fp_proto::AckMessage& msg) {
+void HostProtocolHandler::OnAcknowledge(const fp_proto::AckMessage& msg) {
     // lock associated with both blocking_seq_number and waiting for ack, makes sure that blocking_seq_number doesn't get modified 
     std::unique_lock<std::mutex> lock(*shared_data_m);
     if (!unacked_messages.empty()) {
@@ -301,10 +313,9 @@ void ClientHandler::OnAcknowledge(const fp_proto::AckMessage& msg) {
         }
     }
     highest_acked_seqnum = std::max(highest_acked_seqnum, msg.sequence_ack());
-    LOG_INFO("Received acknowledge, highest seqnum={}", highest_acked_seqnum);
 }
 
-void ClientHandler::OnClientState(const fp_proto::ClientDataFrame& msg) {
+void HostProtocolHandler::OnClientState(const fp_proto::ClientDataFrame& msg) {
     const auto& cl_state = msg.client_state();
     LOG_INFO("Client state = {}", static_cast<int>(cl_state.state()));
     switch(cl_state.state()) {
@@ -318,8 +329,13 @@ void ClientHandler::OnClientState(const fp_proto::ClientDataFrame& msg) {
         }
         break;
         case fp_proto::ClientState::DISCONNECTING: {
-            Transition(ClientState::DISCONNECTED);
+            heartbeat_manager->UnregisterClient(client_id);
+            std::thread async_destroy_client([] (std::shared_ptr<ClientManager> client_mgr, int id) {
+                client_mgr->DestroyClient(id);
+            }, client_manager, client_id);
+            async_destroy_client.detach();
         }
+        break;
         default: {
             LOG_ERROR("Client sent unknown state: {}", static_cast<int>(cl_state.state()));
         }
@@ -327,7 +343,7 @@ void ClientHandler::OnClientState(const fp_proto::ClientDataFrame& msg) {
     }
 }
 
-void ClientHandler::OnHostRequest(const fp_proto::ClientDataFrame& msg) {
+void HostProtocolHandler::OnHostRequest(const fp_proto::ClientDataFrame& msg) {
     const auto& request = msg.host_request();
     LOG_INFO("Client request to host = {}", static_cast<int>(request.type()));
     switch(request.type()) {
@@ -345,7 +361,7 @@ void ClientHandler::OnHostRequest(const fp_proto::ClientDataFrame& msg) {
     }
 }
 
-void ClientHandler::OnDataFrame(const fp_proto::DataMessage& msg) {
+void HostProtocolHandler::OnDataFrame(const fp_proto::DataMessage& msg) {
     switch(msg.Payload_case()){
         case fp_proto::DataMessage::kClientFrame: {
             const fp_proto::ClientDataFrame& c_msg = msg.client_frame();
@@ -375,19 +391,19 @@ void ClientHandler::OnDataFrame(const fp_proto::DataMessage& msg) {
     }
 }
 
-void ClientHandler::OnKeyboardFrame(const fp_proto::ClientDataFrame& msg) {
+void HostProtocolHandler::OnKeyboardFrame(const fp_proto::ClientDataFrame& msg) {
 
 }
 
-void ClientHandler::OnMouseFrame(const fp_proto::ClientDataFrame& msg) {
+void HostProtocolHandler::OnMouseFrame(const fp_proto::ClientDataFrame& msg) {
 
 }
 
-void ClientHandler::OnControllerFrame(const fp_proto::ClientDataFrame& msg) {
+void HostProtocolHandler::OnControllerFrame(const fp_proto::ClientDataFrame& msg) {
 
 }
 
-void ClientHandler::SendAudioData(const std::vector<uint8_t>& data) {
+void HostProtocolHandler::SendAudioData(const std::vector<uint8_t>& data) {
     if (state->load() != ClientState::READY) {
         return;
     }
@@ -395,7 +411,7 @@ void ClientHandler::SendAudioData(const std::vector<uint8_t>& data) {
     for (size_t chunk_offset = 0; chunk_offset < data.size(); chunk_offset += MAX_DATA_CHUNK) {
         fp_proto::Message msg;
         fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
-        data_msg.set_needs_ack(true);
+        data_msg.set_needs_ack(false);
         fp_proto::HostDataFrame& host_frame = *data_msg.mutable_host_frame();
         
         const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, data.size());
@@ -413,7 +429,7 @@ void ClientHandler::SendAudioData(const std::vector<uint8_t>& data) {
     audio_frame_num++;
 }
 
-void ClientHandler::SendVideoData(const std::vector<uint8_t>& data, fp_proto::VideoFrame_FrameType type) {
+void HostProtocolHandler::SendVideoData(const std::vector<uint8_t>& data, fp_proto::VideoFrame_FrameType type) {
     // Only send if ready or if 
     if (state->load() != ClientState::READY
         && (state->load() != ClientState::WAITING_FOR_VIDEO || type != fp_proto::VideoFrame::IDR)) {
@@ -422,31 +438,22 @@ void ClientHandler::SendVideoData(const std::vector<uint8_t>& data, fp_proto::Vi
     
     std::vector<uint8_t> buffered_data;
 
+    bool sending_pps_sps = false;
     // Handle PPS SPS sending
     if (pps_sps_version != parent_socket->GetPPSSPSVersion()) {
+        sending_pps_sps = true;
         buffered_data = parent_socket->GetPPSSPS();
-        fp_proto::Message msg;
-        fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
-        data_msg.set_needs_ack(true);
-        fp_proto::HostDataFrame& host_frame = *data_msg.mutable_host_frame();
-        host_frame.set_frame_size(buffered_data.size());
-        host_frame.set_frame_num(video_frame_num);
-        host_frame.set_stream_point(video_stream_point);
-        host_frame.mutable_video()->set_data(buffered_data.data(), buffered_data.size());
-        host_frame.mutable_video()->set_chunk_offset(0);
-        host_frame.mutable_video()->set_frame_type(fp_proto::VideoFrame::PPS_SPS);
+        buffered_data.insert(buffered_data.end(), data.begin(), data.end());
         pps_sps_version = parent_socket->GetPPSSPSVersion();
-        EnqueueSendMessage(std::move(msg));
-        video_stream_point += buffered_data.size();
-        video_frame_num++;
+    } else {
+        buffered_data = data;
     }
-
-    buffered_data = data;
 
     for (size_t chunk_offset = 0; chunk_offset < buffered_data.size(); chunk_offset += MAX_DATA_CHUNK) {
         fp_proto::Message msg;
         fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
-        data_msg.set_needs_ack(true);
+        data_msg.set_needs_ack(sending_pps_sps);
+        sending_pps_sps = false;
         fp_proto::HostDataFrame& host_frame = *data_msg.mutable_host_frame();
         
         const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, buffered_data.size());

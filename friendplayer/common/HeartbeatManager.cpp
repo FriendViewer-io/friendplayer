@@ -22,8 +22,8 @@ void HeartbeatManager::HeartbeatThread() {
             if (it->second >= NUM_ATTEMPTS) {
                 LOG_INFO("Client id={} timed out", it->first);
                 client_manager->DestroyClient(it->first);
-                attempts_map.erase(it);
                 active_clients.erase(std::find(active_clients.begin(), active_clients.end(), it->first));
+                attempts_map.erase(it->first);
             } else {
                 attempts_map[it->first] = attempts_map[it->first] + 1;
             }
@@ -31,7 +31,7 @@ void HeartbeatManager::HeartbeatThread() {
         
         //send a heartbeat to all active clients
         for (int i : active_clients) {
-            ClientHandler* this_client = client_manager->LookupClientHandlerById(i);
+            HostProtocolHandler* this_client = client_manager->LookupHostProtocolHandlerById(i);
 
             fp_proto::Message send_msg;
             *send_msg.mutable_hb_msg() = fp_proto::HeartbeatMessage();
@@ -46,6 +46,13 @@ void HeartbeatManager::RegisterClient(int id) {
     
     active_clients.emplace_back(id);
     attempts_map[id] = 0;
+}
+
+void HeartbeatManager::UnregisterClient(int id) {
+    std::lock_guard<std::mutex> lock(*active_clients_m);
+    
+    active_clients.erase(std::find(active_clients.begin(), active_clients.end(), id));
+    attempts_map.erase(id);
 }
 
 void HeartbeatManager::UpdateClient(int id) {

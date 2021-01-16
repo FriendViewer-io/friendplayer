@@ -24,6 +24,7 @@ public:
     void StartHeartbeatManager();
     void HeartbeatThread();
     void RegisterClient(int id);
+    void UnregisterClient(int id);
     void UpdateClient(int id);
     void Stop() { active->store(false); }
 

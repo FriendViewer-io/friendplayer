@@ -73,7 +73,7 @@ void ClientProtocolHandler::ClientRecvWorker() {
             OnDataFrame(p_msg);
             reordered_msg_queue.pop_front();
             //handle this frame
-
+            LOG_INFO("Setting frame_window_start to {} + 1", p_msg.sequence_number());
             frame_window_start = p_msg.sequence_number() + 1;
         }
     };
@@ -151,6 +151,7 @@ void ClientProtocolHandler::ClientRecvWorker() {
             // window is a bit behind, dropped packets perhaps?
             while (reordered_msg_queue.back().sequence_number() > frame_window_start + RECV_DROP_WINDOW) {
                 frame_window_start = reordered_msg_queue.front().sequence_number();
+                LOG_INFO("Updated frame window start={}", frame_window_start);
                 process_queue_cons();
             }
         }
