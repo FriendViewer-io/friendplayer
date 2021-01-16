@@ -1,25 +1,22 @@
 #include <iostream>
 #include <csignal>
 
-#include "common/HeartbeatManager.h"
-#include "common/ClientManager.h"
-#include "common/ClientProtocolHandler.h"
+#include "common/ProtocolManager.h"
 #include "common/Config.h"
 #include "common/Log.h"
 #include "common/Timer.h"
+#include "common/FrameRingBuffer.h"
 #include "streamer/VideoStreamer.h"
 #include "streamer/AudioStreamer.h"
 
-std::shared_ptr<ClientSocket> client_socket;
-std::shared_ptr<ClientProtocolHandler> protocol_handler;
+std::shared_ptr<ProtocolManager> protocol_mgr;
 
+std::shared_ptr<ClientSocket> client_socket;
 std::shared_ptr<HostSocket> host_socket;
-std::shared_ptr<ClientManager> client_mgr;
-std::shared_ptr<HeartbeatManager> heartbeat_mgr;
 
 void exit_handler(int signal) {
     LOG_INFO("Sending disconnect");
-    client_socket->SendClientState(fp_proto::ClientState::DISCONNECTING);
+    client_socket->SendStreamState(fp_proto::StreamState::DISCONNECTING);
     exit(1);
 }
 
@@ -78,16 +75,6 @@ void audio_thread_client(std::shared_ptr<ClientSocket> sock) {
     }
 }
 
-void heartbeat(std::shared_ptr<ClientProtocolHandler> protocol_handler) {
-    while (true) {
-        fp_proto::Message msg;
-        msg.mutable_hb_msg()->set_is_response(false);
-        protocol_handler->EnqueueSendMessage(std::move(msg));
-        Sleep(10000);
-    }
-}
-
-
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
 
@@ -99,14 +86,13 @@ int main(int argc, char** argv) {
     Timer timer;
     VideoStreamer streamer;
     
+    protocol_mgr = std::make_shared<ProtocolManager>();
+
     if (Config::IsHost) {
-        client_mgr = std::make_shared<ClientManager>();
-        heartbeat_mgr = std::make_shared<HeartbeatManager>(client_mgr);
-        host_socket = std::make_shared<HostSocket>(Config::Port, client_mgr, heartbeat_mgr);
+        host_socket = std::make_shared<HostSocket>(Config::Port, protocol_mgr);
 
         streamer.SetSocket(host_socket);
         host_socket->StartSocket();
-        heartbeat_mgr->StartHeartbeatManager();
         
         std::thread aud_th(audio_thread_host, host_socket);
         if (!streamer.InitEncode()) {
@@ -157,15 +143,12 @@ int main(int argc, char** argv) {
         signal(SIGINT, exit_handler);
         signal(SIGTERM, exit_handler);
         
-        protocol_handler = std::make_shared<ClientProtocolHandler>();
-        client_socket = std::make_shared<ClientSocket>(Config::ServerIP, Config::Port, protocol_handler);
+        client_socket = std::make_shared<ClientSocket>(Config::ServerIP, Config::Port, protocol_mgr);
         
         streamer.SetSocket(client_socket);
         client_socket->StartSocket();
-        protocol_handler->StartWorker();
         
         std::thread aud_th(audio_thread_client, client_socket);
-        std::thread heartbeat_thread(heartbeat, protocol_handler);
         if (!streamer.InitDecode()) {
             LOG_CRITICAL("InitDecode failed");
             return 1;

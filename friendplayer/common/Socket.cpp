@@ -1,8 +1,11 @@
 #include "common/Socket.h"
 
 #include "common/Log.h"
-#include "common/HeartbeatManager.h"
-
+#include "common/FrameRingBuffer.h"
+#include "common/ClientProtocolHandler.h"
+#include "common/HostProtocolHandler.h"
+#include "common/ProtocolHandler.h"
+#include "common/ProtocolManager.h"
 
 void SocketBase::StartSocket() {
     is_running.store(true);
@@ -22,12 +25,13 @@ void SocketBase::MessageSend(const fp_proto::Message& outgoing_msg, const asio_e
     socket.send_to(asio::buffer(outgoing_msg.SerializeAsString()), target_endpoint);
 }
 
-ClientSocket::ClientSocket(std::string_view ip, unsigned short port, std::shared_ptr<ClientProtocolHandler> protocol_handler)
-    : protocol_handler(std::move(protocol_handler)),
+ClientSocket::ClientSocket(std::string_view ip, unsigned short port,
+        std::shared_ptr<ProtocolManager> protocol_mgr)
+    : SocketBase(std::move(protocol_mgr)),
+      protocol_handler(std::move(protocol_handler)),
       sent_frame_num(0),
       idr_send_timeout(-1) {
     host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), port);
-    this->protocol_handler->SetParentSocket(this);
     socket.open(asio::ip::udp::v4());
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
 }
@@ -55,12 +59,12 @@ void ClientSocket::GetAudioFrame(RetrievedBuffer& buf_in) {
     // Run decryption
 }
 
-void ClientSocket::SendClientState(fp_proto::ClientState::State state) {
+void ClientSocket::SendStreamState(fp_proto::StreamState::State state) {
     fp_proto::Message msg;
     fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
     data_msg.set_needs_ack(true);
     fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
-    client_frame.mutable_client_state()->set_state(state);
+    client_frame.mutable_stream_state()->set_state(state);
     client_frame.set_frame_id(sent_frame_num.fetch_add(1));
     protocol_handler->EnqueueSendMessage(std::move(msg));
 }
@@ -81,6 +85,10 @@ void ClientSocket::NetworkThread() {
 
     asio::error_code ec;
 
+    protocol_handler = protocol_mgr->CreateNewClientProtocol(host_endpoint);
+    protocol_handler->SetParentSocket(this);
+    protocol_handler->StartWorker();
+
     while (is_running.load()) {
         size_t size = socket.receive_from(asio::buffer(recv_buffer), host_endpoint, 0, ec);
         if (size == 0) {
@@ -93,9 +101,8 @@ void ClientSocket::NetworkThread() {
     }
 }
 
-HostSocket::HostSocket(unsigned short port, std::shared_ptr<ClientManager> client_mgr,
-                       std::shared_ptr<HeartbeatManager> heartbeat_mgr)
-  : client_mgr(std::move(client_mgr)), heartbeat_mgr(std::move(heartbeat_mgr)) {
+HostSocket::HostSocket(unsigned short port, std::shared_ptr<ProtocolManager> protocol_mgr)
+  : SocketBase(std::move(protocol_mgr)) {
     endpoint = asio_endpoint(asio::ip::udp::v4(), port);
     socket = asio_socket(io_service, endpoint);
     socket.set_option(asio::socket_base::send_buffer_size(HOST_SEND_SIZE));
@@ -125,17 +132,14 @@ void HostSocket::NetworkThread() {
         if (size == 0) {
             continue;
         }
-        HostProtocolHandler* handler = client_mgr->LookupHostProtocolHandlerByEndpoint(client_endpoint);
+        ProtocolHandler* handler = protocol_mgr->LookupProtocolHandlerByEndpoint(client_endpoint);
         if (handler == nullptr) {
-            handler = client_mgr->CreateNewClient(client_endpoint);
+            handler = protocol_mgr->CreateNewHostProtocol(client_endpoint);
             if (handler == nullptr) {
                 LOG_INFO("Client tried to join but there were too many clients.");
                 continue;
             }
             handler->SetParentSocket(this);
-            handler->SetClientManager(client_mgr);
-            handler->SetHeartbeatManager(heartbeat_mgr);
-            heartbeat_mgr->RegisterClient(handler->GetId());
             handler->StartWorker();
         }
         fp_proto::Message msg;
@@ -145,17 +149,18 @@ void HostSocket::NetworkThread() {
 }
 
 void HostSocket::WriteVideoFrame(const std::vector<uint8_t>& data, bool is_idr_frame) {
-    client_mgr->foreach_client([is_idr_frame, &data] (HostProtocolHandler& client_handler) {
+    protocol_mgr->foreach_client([is_idr_frame, &data] (ProtocolHandler* client_handler) {
         if (is_idr_frame) {
-            client_handler.SendVideoData(data, fp_proto::VideoFrame::IDR);
+            static_cast<HostProtocolHandler*>(client_handler)->SendVideoData(data, fp_proto::VideoFrame::IDR);
         } else {
-            client_handler.SendVideoData(data, fp_proto::VideoFrame::NORMAL);
+            static_cast<HostProtocolHandler*>(client_handler)->SendVideoData(data, fp_proto::VideoFrame::NORMAL);
         }
     });
 }
 
 void HostSocket::WriteAudioFrame(const std::vector<uint8_t>& data) {
-    client_mgr->foreach_client([&data] (HostProtocolHandler& client_handler) {
-        client_handler.SendAudioData(data);
+    protocol_mgr->foreach_client([&data] (ProtocolHandler* client_handler) {
+
+        static_cast<HostProtocolHandler*>(client_handler)->SendAudioData(data);
     });
 }

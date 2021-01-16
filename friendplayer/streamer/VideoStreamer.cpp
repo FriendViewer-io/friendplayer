@@ -9,6 +9,7 @@
 #include "common/NvCodecUtils.h"
 #include "common/ColorSpace.h"
 #include "common/Config.h"
+#include "common/FrameRingBuffer.h"
 #include "protobuf/client_messages.pb.h"
 
 // Decoder
@@ -230,7 +231,7 @@ bool VideoStreamer::InitDecode() {
     LOG_TRACE("Creating decoder");
     decoder = new NvDecoder(cuda_context, true, cudaVideoCodec_H264, true, false, NULL, NULL, 0, 0, 1000);
     LOG_TRACE("Ready for PPS SPS");
-    client_socket->SendClientState(fp_proto::ClientState::READY_FOR_PPS_SPS_IDR);
+    client_socket->SendStreamState(fp_proto::StreamState::READY_FOR_PPS_SPS_IDR);
     LOG_TRACE("Getting first frame");
 
     RetrievedBuffer buf_result(video_packet, 1024 * 1024);
@@ -239,7 +240,7 @@ bool VideoStreamer::InitDecode() {
     num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE);
 
     LOG_TRACE("Ready for video");
-    client_socket->SendClientState(fp_proto::ClientState::READY_FOR_VIDEO);
+    client_socket->SendStreamState(fp_proto::StreamState::READY_FOR_VIDEO);
     LOG_TRACE("Allocating CUDA frame");
     if (!check(cuMemAlloc(&cuda_frame, decoder->GetDecodeWidth() * decoder->GetHeight() * 4))) {
         LOG_CRITICAL("Failed to allocate cuda frame memory");
@@ -305,13 +306,6 @@ void VideoStreamer::PresentVideo() {
         }
 
         presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4);
-    }
-
-    num_frames = 0;
-}           continue;
-        LOG_TRACE("Displaying frame for {}", delay);
-
-        presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4, delay);
     }
 
     num_frames = 0;

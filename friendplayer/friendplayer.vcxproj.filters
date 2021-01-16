@@ -75,16 +75,16 @@
     <ClCompile Include="common\ClientProtocolHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="common\HeartbeatManager.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
-    <ClCompile Include="common\ClientManager.cpp">
+    <ClCompile Include="common\ProtocolManager.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="protobuf\common_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
     <ClCompile Include="common\Config.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\ProtocolHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
   </ItemGroup>
@@ -143,17 +143,17 @@
     <ClInclude Include="common\ClientProtocolHandler.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="common\HeartbeatManager.h">
-      <Filter>Source Files\common</Filter>
-    </ClInclude>
     <ClInclude Include="common\HostProtocolHandler.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="common\ClientManager.h">
+    <ClInclude Include="common\ProtocolManager.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="protobuf\common_messages.pb.h">
       <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="common\ProtocolHandler.h">
+      <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
