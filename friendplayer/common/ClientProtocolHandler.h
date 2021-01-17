@@ -24,6 +24,8 @@ public:
     uint32_t GetVideoFrame(RetrievedBuffer& buf_in);
     uint32_t GetAudioFrame(RetrievedBuffer& buf_in);
     
+    virtual ~ClientProtocolHandler() {}
+    
 private:
 
     FrameRingBuffer video_buffer;

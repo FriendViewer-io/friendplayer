@@ -12,13 +12,10 @@ void SocketBase::StartSocket() {
     network_thread = std::make_unique<std::thread>(&SocketBase::NetworkThread, this);
 }
 
-void SocketBase::WaitForSocket() {
-    network_thread->join();
-}
-
 void SocketBase::Stop() {
     is_running.store(false);
     socket.close();
+    network_thread->join();
 }
 
 void SocketBase::MessageSend(const fp_proto::Message& outgoing_msg, const asio_endpoint& target_endpoint) {
@@ -34,10 +31,19 @@ ClientSocket::ClientSocket(std::string_view ip, unsigned short port,
     host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), port);
     socket.open(asio::ip::udp::v4());
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
+
+    protocol_handler = this->protocol_mgr->CreateNewClientProtocol(host_endpoint);
+    protocol_handler->SetParentSocket(this);
+    protocol_handler->StartWorker();
+
 }
 
 void ClientSocket::MessageSend(const fp_proto::Message& outgoing_msg) {
     SocketBase::MessageSend(outgoing_msg, host_endpoint);
+}
+
+bool ClientSocket::BlockForHandshake() {
+    return protocol_handler->BlockForHandshake();
 }
 
 void ClientSocket::GetVideoFrame(RetrievedBuffer& buf_in) {
@@ -94,10 +100,6 @@ void ClientSocket::NetworkThread() {
     recv_buffer.resize(1500);
 
     asio::error_code ec;
-
-    protocol_handler = protocol_mgr->CreateNewClientProtocol(host_endpoint);
-    protocol_handler->SetParentSocket(this);
-    protocol_handler->StartWorker();
 
     while (is_running.load()) {
         size_t size = socket.receive_from(asio::buffer(recv_buffer), host_endpoint, 0, ec);

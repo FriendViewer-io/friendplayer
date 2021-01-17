@@ -29,7 +29,19 @@ ProtocolHandler::ProtocolHandler(int client_id, const asio_endpoint& target_endp
     shared_data_cv = std::make_unique<std::condition_variable>();
     waiting_for_ack = std::make_unique<std::atomic_bool>(false);
 
+    handshake_m = std::make_unique<std::mutex>();
+    handshake_signal = std::make_unique<std::condition_variable>();
+
     UpdateHeartbeat();
+}
+
+bool ProtocolHandler::BlockForHandshake() {
+    std::unique_lock<std::mutex> hs_lock(*handshake_m);
+    handshake_signal->wait(hs_lock, [this] {
+        return protocol_state == HS_READY ||
+               protocol_state == HS_FAILED;
+    });
+    return protocol_state == HS_READY;
 }
 
 void ProtocolHandler::KillAllThreads() {
@@ -72,16 +84,23 @@ void ProtocolHandler::RecvWorker() {
             frame_window_start = p_msg.sequence_number() + 1;
         }
     };
-    
-    if (!DoHandshake()) {
-        if (client_id == -1) {
-            LOG_INFO("Dropping connection to host, failed to pass handshake");
-        } else {
-            LOG_INFO("Dropping connection from client {}, failed to pass handshake", client_id);
+
+    {
+        std::lock_guard<std::mutex> hs_lock(*handshake_m);
+        if (!DoHandshake()) {
+            if (client_id == -1) {
+                LOG_INFO("Dropping connection to host, failed to pass handshake");
+            } else {
+                LOG_INFO("Dropping connection from client {}, failed to pass handshake", client_id);
+            }
+            Transition(DISCONNECTED);
+            protocol_state = HS_FAILED;
+            handshake_signal->notify_one();
+            return;
         }
-        Transition(DISCONNECTED);
-        return;
+        handshake_signal->notify_one();
     }
+
     // Begin streaming!
     while (true) {
         std::unique_lock<std::mutex> lock(*recv_message_queue_m);

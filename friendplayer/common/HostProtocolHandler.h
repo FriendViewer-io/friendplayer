@@ -39,6 +39,8 @@ public:
     void SendAudioData(const std::vector<uint8_t>& data);
     void SendVideoData(const std::vector<uint8_t>& data, fp_proto::VideoFrame_FrameType type);
     
+    virtual ~HostProtocolHandler() {}
+    
 private:
     bool audio_enabled;
     bool keyboard_enabled;
@@ -65,4 +67,5 @@ private:
     void OnControllerFrame(const fp_proto::ClientDataFrame& msg);
     void OnHostRequest(const fp_proto::ClientDataFrame& msg);
     void OnStreamState(const fp_proto::ClientDataFrame& msg);
+
 };

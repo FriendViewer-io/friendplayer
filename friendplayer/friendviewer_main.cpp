@@ -149,6 +149,12 @@ int main(int argc, char** argv) {
         
         streamer.SetSocket(client_socket);
         client_socket->StartSocket();
+
+        if (!client_socket->BlockForHandshake()) {
+            client_socket->Stop();
+            LOG_ERROR("Handshake to server failed.");
+            return 1;
+        }
         
         std::thread aud_th(audio_thread_client, client_socket);
         if (!streamer.InitDecode()) {

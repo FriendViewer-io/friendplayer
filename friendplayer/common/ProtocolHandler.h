@@ -51,6 +51,8 @@ public:
     int64_t GetLastHeartbeat() { return last_heartbeat.load(); }
     void UpdateHeartbeat() { last_heartbeat.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()); }
 
+    bool BlockForHandshake();
+
     // Worker thread for this client (handles protocol)
     void RecvWorker();
     void SendWorker();
@@ -64,6 +66,8 @@ public:
     // Threadsafe, pass message for ClientMessageWorker to do job
     void EnqueueRecvMessage(fp_proto::Message&& message);
     void EnqueueSendMessage(fp_proto::Message&& message);
+
+    virtual ~ProtocolHandler() {}
     
 protected:
     const int client_id;
@@ -116,11 +120,14 @@ protected:
     // Acks which are blocking further data sending (slow retransmission)
     std::vector<uint32_t> blocking_acks;
     enum HandshakeState {
-        HS_UNINITIALIZED, HS_WAITING_SHAKE_ACK, HS_READY
+        HS_UNINITIALIZED, HS_WAITING_SHAKE_ACK, HS_READY, HS_FAILED
     };
-    HandshakeState protocol_state;
     uint32_t RTT_milliseconds;
     uint32_t highest_acked_seqnum;
+
+    std::unique_ptr<std::mutex> handshake_m;
+    std::unique_ptr<std::condition_variable> handshake_signal;
+    HandshakeState protocol_state;
 
     // add enc/dec here -- adam! :)
 
