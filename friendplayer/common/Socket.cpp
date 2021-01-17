@@ -79,13 +79,13 @@ void ClientSocket::SendRequestToHost(fp_proto::RequestToHost::RequestType reques
     protocol_handler->EnqueueSendMessage(std::move(msg));
 }
 
-void ClientSocket::SendController(fp_proto::ControllerFrame frame) 
+void ClientSocket::SendController(const fp_proto::ControllerFrame& frame)
 {
     fp_proto::Message msg;
     fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
     data_msg.set_needs_ack(false);
     fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
-    client_frame.set_allocated_controller(&frame);
+    client_frame.mutable_controller()->CopyFrom(frame);
     protocol_handler->EnqueueSendMessage(std::move(msg));
 }
 

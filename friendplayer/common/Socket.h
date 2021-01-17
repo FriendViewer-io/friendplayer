@@ -68,7 +68,7 @@ public:
     void SendStreamState(fp_proto::StreamState::State state);
     void SendRequestToHost(fp_proto::RequestToHost::RequestType request);
 
-    void SendController(fp_proto::ControllerFrame frame);
+    void SendController(const fp_proto::ControllerFrame& frame);
 
     void MessageSend(const fp_proto::Message& outgoing_msg);
 

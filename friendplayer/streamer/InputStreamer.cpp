@@ -119,6 +119,7 @@ std::optional<fp_proto::ControllerFrame> InputStreamer::CapturePhysicalControlle
     return_frame.set_s_thumb_ly(state.Gamepad.sThumbLY);
     return_frame.set_s_thumb_rx(state.Gamepad.sThumbRX);
     return_frame.set_s_thumb_ry(state.Gamepad.sThumbRY);
+    return_frame.set_w_buttons(state.Gamepad.wButtons);
 
     return return_frame;
 
