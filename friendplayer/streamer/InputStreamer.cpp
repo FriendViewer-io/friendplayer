@@ -1,10 +1,6 @@
 #include "InputStreamer.h"
 
 #include "common/Log.h"
-#include <Xinput.h>
-
-#include "protobuf/client_messages.pb.h"
-#include <optional>
 
 
 InputStreamer::InputStreamer() {
@@ -33,7 +29,7 @@ bool InputStreamer::RegisterVirtualController()
     //upon registration of first controller, open a connection with the ViGEm bus.
     //not done in the constructor because there's no need to do this until a controller is actually connected
 
-    //take another look at this when dealing with multiple users
+    //TODO:take another look at this when dealing with multiple users
     if(this->client == nullptr)
     {
         this->client = vigem_alloc();
@@ -69,14 +65,13 @@ bool InputStreamer::RegisterVirtualController()
     return true;
 }
 
-//TODO: handle ds4 support here??
-bool InputStreamer::RegisterPhysicalController(const DWORD user_index)
+void InputStreamer::RegisterPhysicalController(const DWORD user_index)
 {
     this->dw_user_index = user_index;
     this->physical_controller_registered = true;
 }
 
-//take a protobuf struct as input
+//TODO:take a protobuf struct as input
 bool InputStreamer::UpdateVirtualController(const fp_proto::ControllerFrame& input)
 {
     if(!this->virtual_controller_registered)
@@ -103,10 +98,10 @@ bool InputStreamer::UpdateVirtualController(const fp_proto::ControllerFrame& inp
         return false;  
 }
 
-//return into a protobuf struct
+//TODO: return into a protobuf struct
 std::optional<fp_proto::ControllerFrame> InputStreamer::CapturePhysicalController()
 {
-    
+
     if(!this->physical_controller_registered)
     {
         LOG_WARNING("Attemping to capture unallocated physical controller");
@@ -124,6 +119,7 @@ std::optional<fp_proto::ControllerFrame> InputStreamer::CapturePhysicalControlle
     return_frame.set_s_thumb_ly(state.Gamepad.sThumbLY);
     return_frame.set_s_thumb_rx(state.Gamepad.sThumbRX);
     return_frame.set_s_thumb_ry(state.Gamepad.sThumbRY);
+    return_frame.set_w_buttons(state.Gamepad.wButtons);
 
     return return_frame;
 

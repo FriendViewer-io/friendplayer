@@ -18,7 +18,8 @@ HostProtocolHandler::HostProtocolHandler(int id, asio_endpoint endpoint)
       audio_stream_point(0),
       audio_frame_num(0),
       video_frame_num(0),
-      pps_sps_version(-1) { }
+      pps_sps_version(-1),
+      input_streamer() { }
 
 bool HostProtocolHandler::DoHandshake() {
     bool got_msg;
@@ -141,8 +142,14 @@ void HostProtocolHandler::OnMouseFrame(const fp_proto::ClientDataFrame& msg) {
 
 }
 
-void HostProtocolHandler::OnControllerFrame(const fp_proto::ClientDataFrame& msg) {
-
+void HostProtocolHandler::OnControllerFrame(const fp_proto::ClientDataFrame& msg) 
+{
+    const auto& frame = msg.controller();
+    if(!input_streamer.is_virtual_controller_registered()) {
+        //TODO: add protocol logic to do this? maybe this won't work with vigem client handles
+        input_streamer.RegisterVirtualController();
+    }
+    input_streamer.UpdateVirtualController(frame);
 }
 
 void HostProtocolHandler::SendAudioData(const std::vector<uint8_t>& data) {

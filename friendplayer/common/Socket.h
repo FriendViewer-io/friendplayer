@@ -49,7 +49,6 @@ public:
           socket(io_service),
           protocol_mgr(std::move(protocol_mgr)) {}
     void StartSocket();
-    void WaitForSocket();
     void Stop();
     void MessageSend(const fp_proto::Message& outgoing_msg,
             const asio_endpoint& target_endpoint);
@@ -68,7 +67,11 @@ public:
     void SendStreamState(fp_proto::StreamState::State state);
     void SendRequestToHost(fp_proto::RequestToHost::RequestType request);
 
+    void SendController(const fp_proto::ControllerFrame& frame);
+
     void MessageSend(const fp_proto::Message& outgoing_msg);
+
+    bool BlockForHandshake();
 
 protected:
     virtual void NetworkThread();

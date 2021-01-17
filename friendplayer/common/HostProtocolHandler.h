@@ -15,6 +15,7 @@
 #include "protobuf/common_messages.pb.h"
 #include "protobuf/client_messages.pb.h"
 #include "protobuf/host_messages.pb.h"
+#include "streamer/InputStreamer.h"
 
 class ProtocolManager;
 class HostSocket;
@@ -38,11 +39,15 @@ public:
     void SendAudioData(const std::vector<uint8_t>& data);
     void SendVideoData(const std::vector<uint8_t>& data, fp_proto::VideoFrame_FrameType type);
     
+    virtual ~HostProtocolHandler() {}
+    
 private:
     bool audio_enabled;
     bool keyboard_enabled;
     bool mouse_enabled;
     bool controller_enabled;
+
+    InputStreamer input_streamer;
 
     HostSocket* host_socket;
 
@@ -62,4 +67,5 @@ private:
     void OnControllerFrame(const fp_proto::ClientDataFrame& msg);
     void OnHostRequest(const fp_proto::ClientDataFrame& msg);
     void OnStreamState(const fp_proto::ClientDataFrame& msg);
+
 };
