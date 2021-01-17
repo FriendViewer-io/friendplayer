@@ -40,6 +40,9 @@ VideoStreamer::VideoStreamer()
 
 VideoStreamer::~VideoStreamer() {
     check(cuMemFree(cuda_frame));
+    if (decoder != nullptr) {
+        delete decoder;
+    }
 }
 
 bool VideoStreamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD w, DWORD h) {
@@ -231,7 +234,7 @@ bool VideoStreamer::InitDecode() {
     LOG_TRACE("Creating decoder");
     decoder = new NvDecoder(cuda_context, true, cudaVideoCodec_H264, true, false, NULL, NULL, 0, 0, 1000);
     LOG_TRACE("Ready for PPS SPS");
-    client_socket->SendStreamState(fp_proto::StreamState::READY_FOR_PPS_SPS_IDR);
+    client_socket->SendStreamState(fp_proto::ClientState::READY_FOR_PPS_SPS_IDR);
     LOG_TRACE("Getting first frame");
 
     RetrievedBuffer buf_result(video_packet, 1024 * 1024);
@@ -240,7 +243,7 @@ bool VideoStreamer::InitDecode() {
     num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE);
 
     LOG_TRACE("Ready for video");
-    client_socket->SendStreamState(fp_proto::StreamState::READY_FOR_VIDEO);
+    client_socket->SendStreamState(fp_proto::ClientState::READY_FOR_VIDEO);
     LOG_TRACE("Allocating CUDA frame");
     if (!check(cuMemAlloc(&cuda_frame, decoder->GetDecodeWidth() * decoder->GetHeight() * 4))) {
         LOG_CRITICAL("Failed to allocate cuda frame memory");

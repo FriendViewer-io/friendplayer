@@ -9,40 +9,7 @@
 
 using namespace std::chrono_literals;
 
-ProtocolManager::client_id ProtocolManager::LookupClientIdByEndpoint(const ProtocolManager::asio_endpoint& endpoint) {
-    std::lock_guard<std::mutex> lock(*mgr_m);
-    auto ep_to_id_it = endpoint_to_id.find(endpoint);
-    if (ep_to_id_it == endpoint_to_id.end()) {
-        return CLIENT_ID_NOT_FOUND;
-    }
-    return ep_to_id_it->second;
-}
-
-ProtocolHandler* ProtocolManager::LookupProtocolHandlerById(ProtocolManager::client_id id) {
-    std::lock_guard<std::mutex> lock(*mgr_m);
-    auto id_to_handler_it = id_to_handler.find(id);
-    if (id_to_handler_it == id_to_handler.end()) {
-        return nullptr;
-    }
-    return id_to_handler_it->second;
-}
-
-ProtocolHandler* ProtocolManager::LookupProtocolHandlerByEndpoint(const ProtocolManager::asio_endpoint& endpoint) {
-    std::lock_guard<std::mutex> lock(*mgr_m);
-    auto ep_to_id_it = endpoint_to_id.find(endpoint);
-    if (ep_to_id_it == endpoint_to_id.end()) {
-        return nullptr;
-    }
-
-    auto id_to_handler_it = id_to_handler.find(ep_to_id_it->second);
-    if (id_to_handler_it == id_to_handler.end()) {
-        return nullptr;
-    }
-    return id_to_handler_it->second;
-}
-
 HostProtocolHandler* ProtocolManager::CreateNewHostProtocol(const ProtocolManager::asio_endpoint& endpoint) {
-    std::lock_guard<std::mutex> lock(*mgr_m);
     if (id_to_handler.size() > MAX_CLIENTS) {
         return nullptr;
     }
@@ -55,7 +22,6 @@ HostProtocolHandler* ProtocolManager::CreateNewHostProtocol(const ProtocolManage
 }
 
 ClientProtocolHandler* ProtocolManager::CreateNewClientProtocol(const ProtocolManager::asio_endpoint& endpoint) {
-    std::lock_guard<std::mutex> lock(*mgr_m);
     if (id_to_handler.size() > MAX_CLIENTS) {
         return nullptr;
     }
@@ -67,7 +33,6 @@ ClientProtocolHandler* ProtocolManager::CreateNewClientProtocol(const ProtocolMa
 }
 
 void ProtocolManager::DestroyClient(ProtocolManager::client_id id) {
-    std::lock_guard<std::mutex> lock(*mgr_m);
     auto id_to_handler_it = id_to_handler.find(id);
     if (id_to_handler_it == id_to_handler.end()) {
         return;
@@ -82,21 +47,20 @@ void ProtocolManager::DestroyClient(ProtocolManager::client_id id) {
     id_to_handler.erase(id_to_handler_it);
 }
 
-void ProtocolManager::DestroyClient(const ProtocolManager::asio_endpoint& endpoint)  {
-    std::lock_guard<std::mutex> lock(*mgr_m);
-    auto ep_to_id_it = endpoint_to_id.find(endpoint);
-    if (ep_to_id_it == endpoint_to_id.end()) {
-        return;
-    }
-    auto id_to_handler_it = id_to_handler.find(ep_to_id_it->second);
+// void ProtocolManager::DestroyClient(const ProtocolManager::asio_endpoint& endpoint)  {
+//     auto ep_to_id_it = endpoint_to_id.find(endpoint);
+//     if (ep_to_id_it == endpoint_to_id.end()) {
+//         return;
+//     }
+//     auto id_to_handler_it = id_to_handler.find(ep_to_id_it->second);
 
-    if (id_to_handler_it != id_to_handler.end()) {
-        id_to_handler_it->second->KillAllThreads();
-        delete (id_to_handler_it->second);
-        id_to_handler.erase(id_to_handler_it);
-    }
-    endpoint_to_id.erase(ep_to_id_it);
-}
+//     if (id_to_handler_it != id_to_handler.end()) {
+//         id_to_handler_it->second->KillAllThreads();
+//         delete (id_to_handler_it->second);
+//         id_to_handler.erase(id_to_handler_it);
+//     }
+//     endpoint_to_id.erase(ep_to_id_it);
+// }
 
 void ProtocolManager::ClientStateThread() {
     const int64_t timeout_time = std::chrono::milliseconds(HEARTBEAT_TIMEOUT_MS).count();
@@ -104,6 +68,7 @@ void ProtocolManager::ClientStateThread() {
         std::this_thread::sleep_for(std::chrono::milliseconds(UPDATE_TIME));
         const int64_t cur_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
+        std::lock_guard<std::mutex> lock(*mgr_m);
         for (auto it = id_to_handler.begin(); it != id_to_handler.end(); it++) {
             if (it->second->GetLastHeartbeat() + timeout_time < cur_time) {
                 LOG_INFO("Client {} timed out", it->second->GetId());

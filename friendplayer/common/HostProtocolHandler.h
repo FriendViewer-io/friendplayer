@@ -62,6 +62,9 @@ private:
     // GUARDED BY recv_message_queue_m
     void OnDataFrame(const fp_proto::DataMessage& msg);
 
+    void OnStateMessage(const fp_proto::StateMessage& msg);
+    void OnClientState(const fp_proto::ClientState& cl_state);
+
     void OnKeyboardFrame(const fp_proto::ClientDataFrame& msg);
     void OnMouseFrame(const fp_proto::ClientDataFrame& msg);
     void OnControllerFrame(const fp_proto::ClientDataFrame& msg);

@@ -17,7 +17,11 @@ std::shared_ptr<HostSocket> host_socket;
 
 void exit_handler(int signal) {
     LOG_INFO("Sending disconnect");
-    client_socket->SendStreamState(fp_proto::StreamState::DISCONNECTING);
+    if (client_socket) {
+        client_socket->SendStreamState(fp_proto::ClientState::DISCONNECTING);
+    } else {
+        host_socket->SendStreamState(fp_proto::HostState::DISCONNECTING);
+    }
     exit(1);
 }
 
@@ -54,7 +58,7 @@ void audio_thread_client(std::shared_ptr<ClientSocket> sock) {
     std::vector<uint8_t> enc_frame_out, raw_frame_out;
     enc_frame_out.resize(20 * 1024);
 
-    while (true) {
+    while (protocol_mgr->HasClients()) {
         auto frame_start = std::chrono::system_clock::now();
         auto last_now = frame_start;
         RetrievedBuffer enc_frame_wrapper(enc_frame_out.data(), enc_frame_out.size());
@@ -89,6 +93,9 @@ int main(int argc, char** argv) {
     InputStreamer i_streamer;
     
     protocol_mgr = std::make_shared<ProtocolManager>();
+
+    signal(SIGINT, exit_handler);
+    signal(SIGTERM, exit_handler);    
 
     if (Config::IsHost) {
         host_socket = std::make_shared<HostSocket>(Config::Port, protocol_mgr);
@@ -142,9 +149,6 @@ int main(int argc, char** argv) {
             }
         }
     } else {
-        signal(SIGINT, exit_handler);
-        signal(SIGTERM, exit_handler);
-        
         client_socket = std::make_shared<ClientSocket>(Config::ServerIP, Config::Port, protocol_mgr);
         
         streamer.SetSocket(client_socket);
@@ -164,7 +168,7 @@ int main(int argc, char** argv) {
 
         //TODO: instead of passing 0, add desired controller index to config/args.
         i_streamer.RegisterPhysicalController(0);
-        while (true) {
+        while (protocol_mgr->HasClients()) {
             auto frame_start = std::chrono::system_clock::now();
             auto last_now = frame_start;
             streamer.Demux();
@@ -183,8 +187,8 @@ int main(int argc, char** argv) {
             {
                 client_socket->SendController(std::move(controller_frame.value()));
             }
-
         }
-
+        client_socket->Stop();
+        aud_th.join();
     }
 }

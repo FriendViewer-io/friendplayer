@@ -4,6 +4,7 @@
 #include <mutex>
 #include <memory>
 #include <thread>
+#include <type_traits>
 
 #include <asio/ip/udp.hpp>
 
@@ -32,30 +33,50 @@ public:
         client_state_listener = std::make_unique<std::thread>(&ProtocolManager::ClientStateThread, this);
     }
 
-    client_id LookupClientIdByEndpoint(const asio_endpoint& endpoint);
-    ProtocolHandler* LookupProtocolHandlerById(client_id id);
-    ProtocolHandler* LookupProtocolHandlerByEndpoint(const asio_endpoint& endpoint);
+    // GUARDED BY mgr_m
+    template <typename _Fn>
+    void LookupProtocolHandlerByEndpoint(const asio_endpoint& endpoint, _Fn&& cb) {
+        std::lock_guard<std::mutex> lock(*mgr_m);
+        auto ep_to_id_it = endpoint_to_id.find(endpoint);
+        if (ep_to_id_it == endpoint_to_id.end()) {
+            cb(nullptr);
+            return;
+        }
+
+        auto id_to_handler_it = id_to_handler.find(ep_to_id_it->second);
+        if (id_to_handler_it == id_to_handler.end()) {
+            cb(nullptr);
+            return;
+        }
+        cb(id_to_handler_it->second);
+    }
+    
+    // WARNING: DOES NOT LOCK MUTEX! Only call from a threadsafe location :)
     HostProtocolHandler* CreateNewHostProtocol(const asio_endpoint& endpoint);
     ClientProtocolHandler* CreateNewClientProtocol(const asio_endpoint& endpoint);
 
-    // Spin up another thread to ensure the client joins properly
-    void DestroyClient(client_id id);
-    void DestroyClient(const asio_endpoint& endpoint);
+    bool HasClients() { return !id_to_handler.empty(); }
+
+
 
     // Handles natural disconnects and heartbeats
     void ClientStateThread();
 
-    template <typename _Fn>
+    template <typename Handler, typename _Fn>
     constexpr void foreach_client(_Fn&& client_cb) {
+        static_assert(std::is_base_of_v<ProtocolHandler, Handler>, "Handler must be base class of ProtocolHandler!");
         std::lock_guard<std::mutex> lock(*mgr_m);
         for (auto&& [id, handler] : id_to_handler) {
-            client_cb(handler);
+            client_cb(static_cast<Handler*>(handler));
         }
     }
 
     ~ProtocolManager();
 
 private:
+    void DestroyClient(client_id id);
+    // void DestroyClient(const asio_endpoint& endpoint);
+
     std::unique_ptr<std::mutex> mgr_m;
     std::map<asio_endpoint, client_id> endpoint_to_id;
     std::map<client_id, ProtocolHandler*> id_to_handler;

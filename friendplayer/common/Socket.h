@@ -64,7 +64,7 @@ public:
     // blocks until available
     void GetAudioFrame(RetrievedBuffer& buf_in);
 
-    void SendStreamState(fp_proto::StreamState::State state);
+    void SendStreamState(fp_proto::ClientState::State state);
     void SendRequestToHost(fp_proto::RequestToHost::RequestType request);
 
     void SendController(const fp_proto::ControllerFrame& frame);
@@ -78,8 +78,6 @@ protected:
 
 private:
     asio_endpoint host_endpoint;
-
-    ClientProtocolHandler* protocol_handler;
 
     std::atomic_uint32_t sent_frame_num;
     int32_t idr_send_timeout;
@@ -95,8 +93,7 @@ public:
     void SetNeedIDR(bool need_idr);
     bool ShouldSendIDR();
 
-    // Make this friended
-    void WriteData(const asio::const_buffer& buffer, asio::ip::udp::endpoint endpoint);
+    void SendStreamState(fp_proto::HostState::State state);
     void SetPPSSPS(std::vector<uint8_t>&& pps_sps) {
         active_pps_sps = std::move(pps_sps);
         pps_sps_version++;

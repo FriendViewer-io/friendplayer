@@ -9,6 +9,13 @@ message AckMessage {
     uint32 sequence_ack = 1;
 }
 
+message StateMessage {
+    oneof State {
+        ClientState client_state = 1;
+        HostState host_state = 2;
+    }
+}
+
 message DataMessage {
     uint32 sequence_number = 1;
     bool needs_ack = 2;
@@ -34,5 +41,6 @@ message Message {
         DataMessage data_msg = 2;
         AckMessage ack_msg = 3;
         HeartbeatMessage hb_msg = 4;
+        StateMessage state_msg = 5;
     }
 }

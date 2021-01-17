@@ -34,11 +34,14 @@ private:
 
     // add enc/dec here -- adam! :)
 
+    // GUARDED BY recv_message_queue_m
     virtual bool DoHandshake();
-
     // GUARDED BY recv_message_queue_m
     virtual void OnDataFrame(const fp_proto::DataMessage& msg);
+    // GUARDED BY recv_message_queue_m
+    virtual void OnStateMessage(const fp_proto::StateMessage& msg);    
 
     void OnVideoFrame(const fp_proto::HostDataFrame& msg);
     void OnAudioFrame(const fp_proto::HostDataFrame& msg);
+    void OnHostState(const fp_proto::HostState& msg);
 };

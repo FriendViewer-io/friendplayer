@@ -2,6 +2,13 @@ syntax = "proto3";
 
 package fp_proto;
 
+message HostState {
+    enum State {
+        DISCONNECTING = 0;
+    }
+    State state = 1;
+}
+
 message VideoFrame {
     enum FrameType {
         NORMAL = 0;

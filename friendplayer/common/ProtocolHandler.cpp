@@ -180,6 +180,16 @@ void ProtocolHandler::RecvWorker() {
                     EnqueueSendMessage(std::move(msg));
                 }
                 break;
+            case fp_proto::Message::kStateMsg:
+                OnStateMessage(msg.state_msg());
+                break;
+            default:
+                if (client_id == -1) {
+                    LOG_INFO("Unknown message type {} received from host", msg.Payload_case());
+                } else {
+                    LOG_INFO("Unknown message type {} received from client {}", msg.Payload_case(), client_id);
+                }
+                break;
             }
         }
 
@@ -215,6 +225,9 @@ void ProtocolHandler::SendWorker() {
                 parent_socket->MessageSend(to_send, endpoint);
                 break;
             case fp_proto::Message::kAckMsg:
+                parent_socket->MessageSend(to_send, endpoint);
+                break;
+            case fp_proto::Message::kStateMsg:
                 parent_socket->MessageSend(to_send, endpoint);
                 break;
             case fp_proto::Message::kDataMsg:

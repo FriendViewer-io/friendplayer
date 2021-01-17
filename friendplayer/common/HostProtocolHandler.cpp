@@ -25,6 +25,7 @@ bool HostProtocolHandler::DoHandshake() {
     bool got_msg;
 
     std::unique_lock<std::mutex> lock(*recv_message_queue_m);
+    LOG_INFO("Waiting for first handshake");
     got_msg = recv_message_queue_cv->wait_for(lock, 5s, [this] { return !recv_message_queue.empty(); });
     if (!got_msg) {
         return false;
@@ -43,9 +44,10 @@ bool HostProtocolHandler::DoHandshake() {
     fp_proto::Message handshake_response;
     *handshake_response.mutable_hs_msg() = fp_proto::HandshakeMessage();
     handshake_response.mutable_hs_msg()->set_magic(0x46524E44504C5953ull);
-
+    LOG_INFO("Sending back first handshake");
     EnqueueSendMessage(std::move(handshake_response));
 
+    LOG_INFO("Waiting for second handshake");
     got_msg = recv_message_queue_cv->wait_for(lock, 5s, [this] { return !recv_message_queue.empty(); });
     if (!got_msg) {
         return false;
@@ -59,29 +61,40 @@ bool HostProtocolHandler::DoHandshake() {
         return false;
     }
     protocol_state = HandshakeState::HS_READY;
+    LOG_INFO("Done with handshake");
     return true;
 }
 
-void HostProtocolHandler::OnStreamState(const fp_proto::ClientDataFrame& msg) {
-    const auto& cl_state = msg.stream_state();
+void HostProtocolHandler::OnClientState(const fp_proto::ClientState& cl_state) {
     LOG_INFO("Client state = {}", static_cast<int>(cl_state.state()));
     switch(cl_state.state()) {
-        case fp_proto::StreamState::READY_FOR_PPS_SPS_IDR: {
+        case fp_proto::ClientState::READY_FOR_PPS_SPS_IDR: {
             Transition(StreamState::WAITING_FOR_VIDEO);
             host_socket->SetNeedIDR(true);
         }
         break;
-        case fp_proto::StreamState::READY_FOR_VIDEO: {
+        case fp_proto::ClientState::READY_FOR_VIDEO: {
             Transition(StreamState::READY);
         }
         break;
-        case fp_proto::StreamState::DISCONNECTING: {
+        case fp_proto::ClientState::DISCONNECTING: {
             Transition(StreamState::DISCONNECTED);
         }
         break;
         default: {
             LOG_ERROR("Client sent unknown state: {}", static_cast<int>(cl_state.state()));
         }
+        break;
+    }
+}
+
+void HostProtocolHandler::OnStateMessage(const fp_proto::StateMessage& msg) {
+    switch (msg.State_case()) {
+    case fp_proto::StateMessage::kClientState:
+        OnClientState(msg.client_state());
+        break;
+    case fp_proto::StateMessage::kHostState:
+        LOG_WARNING("Received HostState message from client, ignoring");
         break;
     }
 }
@@ -120,9 +133,6 @@ void HostProtocolHandler::OnDataFrame(const fp_proto::DataMessage& msg) {
                     break;
                 case fp_proto::ClientDataFrame::kHostRequest:
                     OnHostRequest(c_msg);
-                    break;
-                case fp_proto::ClientDataFrame::kStreamState:
-                    OnStreamState(c_msg);
                     break;
             }
         }

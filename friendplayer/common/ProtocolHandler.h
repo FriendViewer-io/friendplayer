@@ -142,4 +142,6 @@ protected:
     virtual bool DoHandshake() = 0;
     // GUARDED BY recv_message_queue_m
     virtual void OnDataFrame(const fp_proto::DataMessage& msg) = 0;
+    // GUARDED BY recV_message_queue_m
+    virtual void OnStateMessage(const fp_proto::StateMessage& msg) = 0;
 };

@@ -25,16 +25,15 @@ void SocketBase::MessageSend(const fp_proto::Message& outgoing_msg, const asio_e
 ClientSocket::ClientSocket(std::string_view ip, unsigned short port,
         std::shared_ptr<ProtocolManager> protocol_mgr)
     : SocketBase(std::move(protocol_mgr)),
-      protocol_handler(std::move(protocol_handler)),
       sent_frame_num(0),
       idr_send_timeout(-1) {
     host_endpoint = asio_endpoint(asio_address::from_string(std::string(ip)), port);
     socket.open(asio::ip::udp::v4());
     socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
 
-    protocol_handler = this->protocol_mgr->CreateNewClientProtocol(host_endpoint);
-    protocol_handler->SetParentSocket(this);
-    protocol_handler->StartWorker();
+    ClientProtocolHandler* client = this->protocol_mgr->CreateNewClientProtocol(host_endpoint);
+    client->SetParentSocket(this);
+    client->StartWorker();
 
 }
 
@@ -43,56 +42,67 @@ void ClientSocket::MessageSend(const fp_proto::Message& outgoing_msg) {
 }
 
 bool ClientSocket::BlockForHandshake() {
-    return protocol_handler->BlockForHandshake();
+    bool handshaked_successfully = false;
+    protocol_mgr->foreach_client<ClientProtocolHandler>([this, &handshaked_successfully] (ClientProtocolHandler* handler) {
+        handshaked_successfully = handler->BlockForHandshake();
+    });
+    return handshaked_successfully;
 }
 
 void ClientSocket::GetVideoFrame(RetrievedBuffer& buf_in) {
-    uint32_t size_to_decrypt = protocol_handler->GetVideoFrame(buf_in);
-    // Run decryption
-    if (size_to_decrypt != 0 || buf_in.bytes_received == 0 || (buf_in.bytes_received < buf_in.data_out.size())) {
-        idr_send_timeout = IDR_SEND_TIMEOUT;
-    } else if (idr_send_timeout >= 0) {
-        if (idr_send_timeout == 0) {
-            SendRequestToHost(fp_proto::RequestToHost::SEND_IDR);
-            LOG_INFO("Requesting IDR from host");
+    protocol_mgr->foreach_client<ClientProtocolHandler>([this, &buf_in] (ClientProtocolHandler* handler) {
+        uint32_t size_to_decrypt = handler->GetVideoFrame(buf_in);
+        // Run decryption
+        if (size_to_decrypt != 0 || buf_in.bytes_received == 0 || (buf_in.bytes_received < buf_in.data_out.size())) {
+            idr_send_timeout = IDR_SEND_TIMEOUT;
+        } else if (idr_send_timeout >= 0) {
+            if (idr_send_timeout == 0) {
+                SendRequestToHost(fp_proto::RequestToHost::SEND_IDR);
+                LOG_INFO("Requesting IDR from host");
+            }
+            idr_send_timeout--;
         }
-        idr_send_timeout--;
-    }
+    });
 }
 
 void ClientSocket::GetAudioFrame(RetrievedBuffer& buf_in) {
-    uint32_t size_to_decrypt = protocol_handler->GetAudioFrame(buf_in);
-    // Run decryption
+    protocol_mgr->foreach_client<ClientProtocolHandler>([this, &buf_in] (ClientProtocolHandler* handler) {
+        uint32_t size_to_decrypt = handler->GetAudioFrame(buf_in);
+        // Run decryption
+    });
 }
 
-void ClientSocket::SendStreamState(fp_proto::StreamState::State state) {
-    fp_proto::Message msg;
-    fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
-    data_msg.set_needs_ack(true);
-    fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
-    client_frame.mutable_stream_state()->set_state(state);
-    client_frame.set_frame_id(sent_frame_num.fetch_add(1));
-    protocol_handler->EnqueueSendMessage(std::move(msg));
+void ClientSocket::SendStreamState(fp_proto::ClientState::State state) {
+    protocol_mgr->foreach_client<ClientProtocolHandler>([state] (ClientProtocolHandler* handler) {
+        fp_proto::Message msg;
+        fp_proto::StateMessage& state_msg = *msg.mutable_state_msg();
+        fp_proto::ClientState& client_state = *state_msg.mutable_client_state();
+        client_state.set_state(state);
+        handler->EnqueueSendMessage(std::move(msg));
+    });
 }
 
 void ClientSocket::SendRequestToHost(fp_proto::RequestToHost::RequestType request) {
-    fp_proto::Message msg;
-    fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
-    data_msg.set_needs_ack(true);
-    fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
-    client_frame.mutable_host_request()->set_type(request);
-    client_frame.set_frame_id(sent_frame_num.fetch_add(1));
-    protocol_handler->EnqueueSendMessage(std::move(msg));
+    protocol_mgr->foreach_client<ClientProtocolHandler>([this, request] (ClientProtocolHandler* handler) {
+        fp_proto::Message msg;
+        fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
+        data_msg.set_needs_ack(true);
+        fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
+        client_frame.mutable_host_request()->set_type(request);
+        client_frame.set_frame_id(sent_frame_num.fetch_add(1));
+        handler->EnqueueSendMessage(std::move(msg));
+    });
 }
 
-void ClientSocket::SendController(const fp_proto::ControllerFrame& frame)
-{
-    fp_proto::Message msg;
-    fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
-    data_msg.set_needs_ack(false);
-    fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
-    client_frame.mutable_controller()->CopyFrom(frame);
-    protocol_handler->EnqueueSendMessage(std::move(msg));
+void ClientSocket::SendController(const fp_proto::ControllerFrame& frame) {
+    protocol_mgr->foreach_client<ClientProtocolHandler>([this, &frame] (ClientProtocolHandler* handler) {
+        fp_proto::Message msg;
+        fp_proto::DataMessage& data_msg = *msg.mutable_data_msg();
+        data_msg.set_needs_ack(false);
+        fp_proto::ClientDataFrame& client_frame = *data_msg.mutable_client_frame();
+        client_frame.mutable_controller()->CopyFrom(frame);
+        handler->EnqueueSendMessage(std::move(msg));
+    });
 }
 
 void ClientSocket::NetworkThread() {
@@ -106,10 +116,13 @@ void ClientSocket::NetworkThread() {
         if (size == 0) {
             continue;
         }
-        
-        fp_proto::Message msg;
-        msg.ParseFromArray(recv_buffer.data(), size);
-        protocol_handler->EnqueueRecvMessage(std::move(msg));
+        LOG_INFO("Recieved {} bytes", size);
+        protocol_mgr->foreach_client<ClientProtocolHandler>([this, size, &recv_buffer] (ClientProtocolHandler* handler) {
+            fp_proto::Message msg;
+            msg.ParseFromArray(recv_buffer.data(), size);
+            LOG_INFO("Client recieved message");
+            handler->EnqueueRecvMessage(std::move(msg));
+        });
     }
 }
 
@@ -121,8 +134,14 @@ HostSocket::HostSocket(unsigned short port, std::shared_ptr<ProtocolManager> pro
     pps_sps_version = -1;
 }
 
-void HostSocket::WriteData(const asio::const_buffer& buffer, asio::ip::udp::endpoint endpoint) {
-    socket.send_to(buffer, endpoint);
+void HostSocket::SendStreamState(fp_proto::HostState::State state) {
+    protocol_mgr->foreach_client<HostProtocolHandler>([state] (HostProtocolHandler* handler) {
+        fp_proto::Message msg;
+        fp_proto::StateMessage& state_msg = *msg.mutable_state_msg();
+        fp_proto::HostState& host_state = *state_msg.mutable_host_state();
+        host_state.set_state(state);
+        handler->EnqueueSendMessage(std::move(msg));
+    });
 }
 
 void HostSocket::SetNeedIDR(bool need_idr) {
@@ -144,35 +163,35 @@ void HostSocket::NetworkThread() {
         if (size == 0) {
             continue;
         }
-        ProtocolHandler* handler = protocol_mgr->LookupProtocolHandlerByEndpoint(client_endpoint);
-        if (handler == nullptr) {
-            handler = protocol_mgr->CreateNewHostProtocol(client_endpoint);
+        protocol_mgr->LookupProtocolHandlerByEndpoint(client_endpoint, [this, size, &recv_buffer, &client_endpoint] (ProtocolHandler* handler) {
             if (handler == nullptr) {
-                LOG_INFO("Client tried to join but there were too many clients.");
-                continue;
+                handler = protocol_mgr->CreateNewHostProtocol(client_endpoint);
+                if (handler == nullptr) {
+                    LOG_INFO("Client tried to join but there were too many clients.");
+                    return;
+                }
+                handler->SetParentSocket(this);
+                handler->StartWorker();
             }
-            handler->SetParentSocket(this);
-            handler->StartWorker();
-        }
-        fp_proto::Message msg;
-        msg.ParseFromArray(recv_buffer.data(), size);
-        handler->EnqueueRecvMessage(std::move(msg));
+            fp_proto::Message msg;
+            msg.ParseFromArray(recv_buffer.data(), size);
+            handler->EnqueueRecvMessage(std::move(msg));
+        });
     }
 }
 
 void HostSocket::WriteVideoFrame(const std::vector<uint8_t>& data, bool is_idr_frame) {
-    protocol_mgr->foreach_client([is_idr_frame, &data] (ProtocolHandler* client_handler) {
+    protocol_mgr->foreach_client<HostProtocolHandler>([is_idr_frame, &data] (HostProtocolHandler* client_handler) {
         if (is_idr_frame) {
-            static_cast<HostProtocolHandler*>(client_handler)->SendVideoData(data, fp_proto::VideoFrame::IDR);
+            client_handler->SendVideoData(data, fp_proto::VideoFrame::IDR);
         } else {
-            static_cast<HostProtocolHandler*>(client_handler)->SendVideoData(data, fp_proto::VideoFrame::NORMAL);
+            client_handler->SendVideoData(data, fp_proto::VideoFrame::NORMAL);
         }
     });
 }
 
 void HostSocket::WriteAudioFrame(const std::vector<uint8_t>& data) {
-    protocol_mgr->foreach_client([&data] (ProtocolHandler* client_handler) {
-
-        static_cast<HostProtocolHandler*>(client_handler)->SendAudioData(data);
+    protocol_mgr->foreach_client<HostProtocolHandler>([&data] (HostProtocolHandler* client_handler) {
+        client_handler->SendAudioData(data);
     });
 }
