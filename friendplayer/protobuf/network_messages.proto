@@ -1,22 +1,22 @@
 syntax = "proto3";
 
-package fp_proto;
+package fp_network;
 
 import "client_messages.proto";
 import "host_messages.proto";
 
-message AckMessage {
+message Ack {
     uint32 sequence_ack = 1;
 }
 
-message StateMessage {
+message State {
     oneof State {
         ClientState client_state = 1;
         HostState host_state = 2;
     }
 }
 
-message DataMessage {
+message Data {
     uint32 sequence_number = 1;
     bool needs_ack = 2;
     oneof Payload {
@@ -25,22 +25,22 @@ message DataMessage {
     }
 }
 
-message HeartbeatMessage {
+message Heartbeat {
     uint64 timestamp = 1;
     bool is_response = 2;
 }
 
-message HandshakeMessage {
+message Handshake {
     uint64 magic = 1; // EXPECT 46524E44504C5952
     // add diffie hellman? adam :)
 }
 
-message Message {
+message Network {
     oneof Payload {
-        HandshakeMessage hs_msg = 1;
-        DataMessage data_msg = 2;
-        AckMessage ack_msg = 3;
-        HeartbeatMessage hb_msg = 4;
-        StateMessage state_msg = 5;
+        Handshake hs_msg = 1;
+        Data data_msg = 2;
+        Ack ack_msg = 3;
+        Heartbeat hb_msg = 4;
+        State state_msg = 5;
     }
 }

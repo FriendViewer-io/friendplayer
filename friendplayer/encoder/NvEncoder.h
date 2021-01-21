@@ -47,9 +47,7 @@ public:
     void Lock() { swap_m.lock(); }
     void Unlock() { swap_m.unlock(); }
 
-    void EncodeActiveFrame(std::vector<std::vector<uint8_t>> &packets_out, NV_ENC_PIC_PARAMS *pic_params = nullptr);
-
-    void EndEncode(std::vector<std::vector<uint8_t>> &packets_out);
+    void EncodeActiveFrame(std::string &packets_out, NV_ENC_PIC_PARAMS *pic_params = nullptr);
 
     int GetCapabilityValue(GUID guid_codec, NV_ENC_CAPS caps_to_query);
     void *GetDevice() const { return device; }
@@ -65,7 +63,7 @@ public:
     bool CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* init_params, GUID codec_guid, GUID preset_guid, NV_ENC_TUNING_INFO tuning_info = NV_ENC_TUNING_INFO_UNDEFINED);
     void GetInitializeParams(NV_ENC_INITIALIZE_PARAMS *init_params);
 
-    void GetSequenceParams(std::vector<uint8_t> &sps);
+    void GetSequenceParams(std::string& ppssps);
 
     ~NvEncoder();
 
@@ -98,11 +96,10 @@ protected:
 private:
     bool LoadNvEncApi();
 
-    void GetEncodedPacket(std::vector<std::vector<uint8_t>> &output_packets);
+    void GetEncodedPacket(std::string& output_packets);
     void InitializeBitstreamBuffer();
     void DestroyBitstreamBuffer();
     void DestroyHWEncoder();
-    void FlushEncoder();
 
 private:
     void* encoder_ptr = nullptr;

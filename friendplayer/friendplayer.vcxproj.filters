@@ -28,6 +28,9 @@
     <Filter Include="Source Files\protobuf">
       <UniqueIdentifier>{aa8891c7-bc88-4398-9e0f-a377c6c19fb4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\actor">
+      <UniqueIdentifier>{356868bf-a8eb-4ae6-8a24-477406644cc4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="friendviewer_main.cpp">
@@ -63,12 +66,6 @@
     <ClCompile Include="common\FrameRingBuffer.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="protobuf\client_messages.pb.cc">
-      <Filter>Source Files\protobuf</Filter>
-    </ClCompile>
-    <ClCompile Include="protobuf\host_messages.pb.cc">
-      <Filter>Source Files\protobuf</Filter>
-    </ClCompile>
     <ClCompile Include="common\HostProtocolHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
@@ -78,9 +75,6 @@
     <ClCompile Include="common\ProtocolManager.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="protobuf\common_messages.pb.cc">
-      <Filter>Source Files\protobuf</Filter>
-    </ClCompile>
     <ClCompile Include="common\Config.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
@@ -89,6 +83,66 @@
     </ClCompile>
     <ClCompile Include="common\ProtocolHandler.cpp">
       <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\Actor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\ActorEnvironment.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\ActorGenerator.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\ActorMap.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\AdminActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\BaseActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\ClientActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\ClientManagerActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\DataBuffer.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\HeartbeatActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\HostActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\ProtocolActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\SocketActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\TimerActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\VideoDecodeActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\VideoEncodeActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\actor_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\client_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\host_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
+    </ClCompile>
+    <ClCompile Include="protobuf\network_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -134,12 +188,6 @@
     <ClInclude Include="common\FrameRingBuffer.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="protobuf\client_messages.pb.h">
-      <Filter>Source Files\protobuf</Filter>
-    </ClInclude>
-    <ClInclude Include="protobuf\host_messages.pb.h">
-      <Filter>Source Files\protobuf</Filter>
-    </ClInclude>
     <ClInclude Include="common\Config.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
@@ -152,30 +200,79 @@
     <ClInclude Include="common\ProtocolManager.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="protobuf\common_messages.pb.h">
-      <Filter>Source Files\protobuf</Filter>
-    </ClInclude>
     <ClInclude Include="streamer\InputStreamer.h">
       <Filter>Source Files\streamers</Filter>
     </ClInclude>
     <ClInclude Include="common\ProtocolHandler.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
+    <ClInclude Include="actors\Actor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\ActorEnvironment.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\ActorGenerator.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\ActorMap.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\ActorType.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\AdminActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\BaseActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\ClientActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\ClientManagerActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\DataBuffer.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\HeartbeatActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\HostActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\ProtocolActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\SocketActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\TimerActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\VideoDecodeActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\VideoEncodeActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\actor_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\client_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\host_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="protobuf\network_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="common\ColorSpace.cu">
       <Filter>Source Files\common</Filter>
     </CudaCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="protobuf\client_messages.proto">
-      <Filter>Source Files\protobuf</Filter>
-    </None>
-    <None Include="protobuf\host_messages.proto">
-      <Filter>Source Files\protobuf</Filter>
-    </None>
-    <None Include="protobuf\common_messages.proto">
-      <Filter>Source Files\protobuf</Filter>
-    </None>
   </ItemGroup>
 </Project>

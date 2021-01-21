@@ -161,7 +161,7 @@ bool VideoStreamer::InitEncode() {
     return true;
 }
 
-void VideoStreamer::Encode(bool send_idr) {
+void VideoStreamer::Encode(bool send_idr, bool pps_sps_requested, std::string& data_out) {
     using namespace std::chrono_literals;
     auto begin_time = std::chrono::system_clock::now();
     send_idr = send_idr || encoder_frame_num == 0;
@@ -170,9 +170,10 @@ void VideoStreamer::Encode(bool send_idr) {
         params.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
     }
     std::vector<std::vector<uint8_t>> packets;
-    auto wait_time = 4ms;
-    while (begin_time + wait_time > std::chrono::system_clock::now() &&
-        !nvenc->SwapReady());
+
+    // auto wait_time = 4ms;
+    // while (begin_time + wait_time > std::chrono::system_clock::now() &&
+    //     !nvenc->SwapReady());
 
     nvenc->Lock();
     if (!nvenc->SwapReady()) {
@@ -181,8 +182,13 @@ void VideoStreamer::Encode(bool send_idr) {
     nvenc->Swap();
     nvenc->Unlock();
 
+    // if frame num == 0 then pps/sps inserted already
+    if (pps_sps_requested && encoder_frame_num > 0) {
+        nvenc->GetSequenceParams(data_out);
+    }
+
     auto pre_enc = std::chrono::system_clock::now();
-    nvenc->EncodeActiveFrame(packets, &params);
+    nvenc->EncodeActiveFrame(data_out, &params);
     auto post_enc = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - pre_enc);
     if (post_enc.count() > 30000) {
         LOG_CRITICAL("VERY SLOW ENCODE: {} us", post_enc.count());
@@ -193,22 +199,10 @@ void VideoStreamer::Encode(bool send_idr) {
 
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_time);
     LOG_TRACE("Successfully encoded frame#{} and retrieved {} packets, {} microseconds elapsed", encoder_frame_num, packets.size(), elapsed_time.count());
-
-    if (encoder_frame_num == 0) {
-        std::vector<uint8_t> pps_sps;
-        nvenc->GetSequenceParams(pps_sps);
-        host_socket->SetPPSSPS(std::move(pps_sps));
-    }
-
-    for (auto& packet : packets) {
-        LOG_TRACE("Sending packet of size {} bytes or {} kb", packet.size(), packet.size() / 1024);
-        host_socket->WriteVideoFrame(std::move(packet), send_idr);
-    }
     encoder_frame_num++;
 }
 
 bool VideoStreamer::InitDecode() {
-
     LOG_INFO("Initializing decoder");
     if (!check(cuInit(0))) {
         return false;
@@ -230,52 +224,39 @@ bool VideoStreamer::InitDecode() {
         LOG_CRITICAL("Failed to create cuda context");
         return false;
     }
-    video_packet = new uint8_t[1024 * 1024];
     LOG_TRACE("Creating decoder");
     decoder = new NvDecoder(cuda_context, true, cudaVideoCodec_H264, true, false, NULL, NULL, 0, 0, 1000);
     LOG_TRACE("Ready for PPS SPS");
-    client_socket->SendStreamState(fp_proto::ClientState::READY_FOR_PPS_SPS_IDR);
-    LOG_TRACE("Getting first frame");
 
-    RetrievedBuffer buf_result(video_packet, 1024 * 1024);
-    client_socket->GetVideoFrame(buf_result);
-    video_packet_size = buf_result.bytes_received;
-    num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE);
+    display_init = false;
+    num_frames = 0;
 
-    LOG_TRACE("Ready for video");
-    client_socket->SendStreamState(fp_proto::ClientState::READY_FOR_VIDEO);
+    return true;
+}
+
+bool VideoStreamer::IsDisplayInit() {
+    return display_init;
+}
+
+bool VideoStreamer::InitDisplay() {
+    LOG_INFO("Initializing display with first frame");
     LOG_TRACE("Allocating CUDA frame");
     if (!check(cuMemAlloc(&cuda_frame, decoder->GetDecodeWidth() * decoder->GetHeight() * 4))) {
         LOG_CRITICAL("Failed to allocate cuda frame memory");
         return false;
     }
 
-    client_socket->SendRequestToHost(fp_proto::RequestToHost::SEND_IDR);
     LOG_TRACE("Creating FramePresenterType");
     presenter = new FramePresenterD3D11(cuda_context, decoder->GetDecodeWidth() , decoder->GetHeight());
-    LOG_TRACE("Finished initializing streamer as decoder");
-
+    LOG_TRACE("Finished initializing display");
+    display_init = true;
     return true;
 }
 
-void VideoStreamer::SetSocket(std::shared_ptr<HostSocket> socket) {
-    host_socket = socket;
-}
-
-void VideoStreamer::SetSocket(std::shared_ptr<ClientSocket> socket) {
-    client_socket = socket;
-}
-
-void VideoStreamer::Demux() {
-    RetrievedBuffer buf_result(video_packet, 1024*1024);
-    client_socket->GetVideoFrame(buf_result);
-    video_packet_size = buf_result.bytes_received;
-}
-
-void VideoStreamer::Decode() {
-    if (video_packet_size > 0 && num_frames == 0) {
-        num_frames = decoder->Decode(video_packet, video_packet_size, CUVID_PKT_ENDOFPICTURE);
-        LOG_TRACE("Decoded {} frames with {} bytes", num_frames, video_packet_size);
+void VideoStreamer::Decode(std::string* video_packet) {
+    if (video_packet != nullptr && video_packet->size() > 0 && num_frames == 0) {
+        num_frames = decoder->Decode(reinterpret_cast<uint8_t*>(video_packet->data()), video_packet->size(), CUVID_PKT_ENDOFPICTURE);
+        LOG_TRACE("Decoded {} frames with {} bytes", num_frames, video_packet->size());
     } else {
         num_frames = 0;
         LOG_INFO("Skipping decode because there were no video bytes");

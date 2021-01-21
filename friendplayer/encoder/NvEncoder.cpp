@@ -221,20 +221,14 @@ void NvEncoder::MapResources() {
     mapped_input_buffers[active_input_frame] = map_input_resources.mappedResource;
 }
 
-void NvEncoder::EncodeActiveFrame(std::vector<std::vector<uint8_t>> &packets_out, NV_ENC_PIC_PARAMS *pic_params) {
-    //LOG_INFO("Encoding on frame idx {}", active_input_frame);
-
-    packets_out.clear();
+void NvEncoder::EncodeActiveFrame(std::string &packets_out, NV_ENC_PIC_PARAMS *pic_params) {
     if (!encoder_initialized) {
         LOG_CRITICAL("Encoder device not found");
         return;
     }
     MapResources();
-    auto start_timer = std::chrono::system_clock::now();
     NVENCSTATUS status = DoEncode(mapped_input_buffers[active_input_frame],
         bitstream_output[active_input_frame], pic_params);
-    auto e1 = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - start_timer);
-    //LOG_INFO("Encode time?: {}", e1.count());
     if (status == NV_ENC_SUCCESS || status == NV_ENC_ERR_NEED_MORE_INPUT) {
         GetEncodedPacket(packets_out);
     } else {
@@ -242,7 +236,7 @@ void NvEncoder::EncodeActiveFrame(std::vector<std::vector<uint8_t>> &packets_out
     }
 }
 
-void NvEncoder::GetSequenceParams(std::vector<uint8_t> &seq_params) {
+void NvEncoder::GetSequenceParams(std::string& ppssps) {
     uint8_t spspps_data[1024]; // Assume maximum spspps data is 1KB or less
     memset(spspps_data, 0, sizeof(spspps_data));
     NV_ENC_SEQUENCE_PARAM_PAYLOAD payload = { NV_ENC_SEQUENCE_PARAM_PAYLOAD_VER };
@@ -253,8 +247,7 @@ void NvEncoder::GetSequenceParams(std::vector<uint8_t> &seq_params) {
     payload.outSPSPPSPayloadSize = &spspps_size;
     (nvenc_fns.nvEncGetSequenceParams(encoder_ptr, &payload));
 
-    seq_params.clear();
-    seq_params.insert(seq_params.end(), &spspps_data[0], &spspps_data[spspps_size]);
+    ppssps.assign(&spspps_data[0], &spspps_data[spspps_size]);
 }
 
 NVENCSTATUS NvEncoder::DoEncode(NV_ENC_INPUT_PTR input_buffer, NV_ENC_OUTPUT_PTR output_buffer, NV_ENC_PIC_PARAMS *in_params) {
@@ -282,18 +275,7 @@ void NvEncoder::SendEOS() {
     nvenc_fns.nvEncEncodePicture(encoder_ptr, &picParams);
 }
 
-void NvEncoder::EndEncode(std::vector<std::vector<uint8_t>> &out_packets) {
-    out_packets.clear();
-    if (!encoder_initialized) {
-        LOG_CRITICAL("Encoder device not initialized");
-        return;
-    }
-
-    SendEOS();
-    GetEncodedPacket(out_packets);
-}
-
-void NvEncoder::GetEncodedPacket(std::vector<std::vector<uint8_t>> &packets_out) {
+void NvEncoder::GetEncodedPacket(std::string& packets_out) {
     // WaitForCompletionEvent(active_input_frame);
     NV_ENC_LOCK_BITSTREAM lock_bitstream_data = { NV_ENC_LOCK_BITSTREAM_VER };
     lock_bitstream_data.outputBitstream = bitstream_output[active_input_frame];
@@ -301,9 +283,7 @@ void NvEncoder::GetEncodedPacket(std::vector<std::vector<uint8_t>> &packets_out)
     nvenc_fns.nvEncLockBitstream(encoder_ptr, &lock_bitstream_data);
 
     uint8_t* data_ptr = reinterpret_cast<uint8_t*>(lock_bitstream_data.bitstreamBufferPtr);
-    packets_out.push_back({});
-    packets_out[0].clear();
-    packets_out[0].insert(packets_out[0].end(), &data_ptr[0], &data_ptr[lock_bitstream_data.bitstreamSizeInBytes]);
+    packets_out.append(&data_ptr[0], &data_ptr[lock_bitstream_data.bitstreamSizeInBytes]);
 
     nvenc_fns.nvEncUnlockBitstream(encoder_ptr, lock_bitstream_data.outputBitstream);
 
@@ -389,14 +369,7 @@ void NvEncoder::RegisterInputResources() {
     }
 }
 
-void NvEncoder::FlushEncoder() {
-    std::vector<std::vector<uint8_t>> tmp;
-    EndEncode(tmp);
-}
-
 void NvEncoder::UnregisterInputResources() {
-    FlushEncoder();
-    
     for (uint32_t i = 0; i < mapped_input_buffers.size(); ++i) {
         if (mapped_input_buffers[i]) {
             nvenc_fns.nvEncUnmapInputResource(encoder_ptr, mapped_input_buffers[i]);

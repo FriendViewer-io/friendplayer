@@ -1,8 +1,6 @@
 #pragma once
 
-#include <atomic>
 #include <stdint.h>
-#include <mutex>
 #include <string_view>
 #include <vector>
 
@@ -30,9 +28,9 @@ class FrameRingBuffer {
 public:
     FrameRingBuffer(std::string name, size_t num_frames, size_t frame_capacity);
 
-    void AddFrameChunk(const fp_proto::HostDataFrame& frame);
+    void AddFrameChunk(const fp_network::HostDataFrame& frame);
     // Returns # of bytes needed to fix decryption
-    uint32_t GetFront(RetrievedBuffer& buf_in);
+    uint32_t GetFront(std::string& buffer_out);
     
 private:
     std::vector<Frame> buffer;
@@ -41,10 +39,6 @@ private:
     uint32_t frame_number;
     uint32_t stream_point;
     constexpr uint32_t frame_index() const { return frame_number % frame_count; }
-    
-    std::mutex buffer_m;
-    std::condition_variable frame_ready_cv;
-    std::atomic_bool frame_ready;
 
     std::string buffer_name;
 };

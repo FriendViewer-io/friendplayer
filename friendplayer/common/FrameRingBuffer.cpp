@@ -9,10 +9,9 @@ FrameRingBuffer::FrameRingBuffer(std::string name, size_t num_frames, size_t fra
         buffer[i].data.resize(frame_capacity);
         buffer[i].num = i;
     }
-    frame_ready.store(false);
 }
 
-void FrameRingBuffer::AddFrameChunk(const fp_proto::HostDataFrame& frame) {
+void FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
     std::string data;
     uint32_t chunk_offset;
 
@@ -24,7 +23,6 @@ void FrameRingBuffer::AddFrameChunk(const fp_proto::HostDataFrame& frame) {
         chunk_offset = frame.audio().chunk_offset();
     }
 
-    std::lock_guard<std::mutex> lock(buffer_m);
     // Invalid frame
     if (frame.frame_num() < frame_number) { 
         //LOG_WARNING("{}: Decoder got frame number behind {} < {}", buffer_name, frame.frame_num(), frame_number);
@@ -52,28 +50,17 @@ void FrameRingBuffer::AddFrameChunk(const fp_proto::HostDataFrame& frame) {
     buffer_frame.stream_point = frame.stream_point();
     buffer_frame.current_read_size += data.size();
     std::copy(data.begin(), data.end(), buffer_frame.data.begin() + chunk_offset);
-
-    // Frame is ready
-    if (buffer_frame.current_read_size == buffer_frame.size && frame_number == buffer_frame.num) {
-        frame_ready.store(true);
-        frame_ready_cv.notify_one();
-    }
 }
 
-uint32_t FrameRingBuffer::GetFront(RetrievedBuffer& buf_in) {
-    std::unique_lock<std::mutex> lock(buffer_m);
-    bool got_frame = frame_ready_cv.wait_for(lock, std::chrono::milliseconds(frame_number == 0 ? 100000 : 100), [this]{ return frame_ready.load(); });
+uint32_t FrameRingBuffer::GetFront(std::string& buffer_out) {
 
     const auto& data = buffer[frame_index()].data;
     if (data.size() < buffer[frame_index()].size) {
         LOG_CRITICAL("{}: Invalid frame size reported by AddFrameChunk, stream restarting!", buffer_name);
         return -1;
     }
-
-    size_t max_copy = std::min(static_cast<size_t>(buffer[frame_index()].size), buf_in.data_out.size());
-    std::copy(data.begin(), data.begin() + max_copy, const_cast<uint8_t*>(buf_in.data_out.data()));
-    buf_in.data_out = buf_in.data_out.substr(0, max_copy);
-    buf_in.bytes_received = buffer[frame_index()].current_read_size;
+    buffer_out.resize(buffer[frame_index()].size);
+    std::copy(data.begin(), data.begin() + buffer_out.size(), reinterpret_cast<uint8_t*>(buffer_out.data()));
     
     uint32_t num_missed_bytes = 0;
     if (buffer[frame_index()].size > 0) {
@@ -90,11 +77,6 @@ uint32_t FrameRingBuffer::GetFront(RetrievedBuffer& buf_in) {
     buffer[frame_index()].current_read_size = 0;
     buffer[frame_index()].stream_point = 0;
     frame_number++;
-    if (buffer[frame_index()].current_read_size == buffer[frame_index()].size && buffer[frame_index()].size > 0) {
-        LOG_INFO("Next frame is already done, so skipping frame_ready false");
-    } else {
-        frame_ready.store(false);
-    }
 
     return num_missed_bytes;
 }

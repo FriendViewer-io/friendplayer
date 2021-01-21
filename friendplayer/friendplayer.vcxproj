@@ -7,6 +7,22 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="actors\Actor.cpp" />
+    <ClCompile Include="actors\ActorEnvironment.cpp" />
+    <ClCompile Include="actors\ActorGenerator.cpp" />
+    <ClCompile Include="actors\ActorMap.cpp" />
+    <ClCompile Include="actors\AdminActor.cpp" />
+    <ClCompile Include="actors\BaseActor.cpp" />
+    <ClCompile Include="actors\ClientActor.cpp" />
+    <ClCompile Include="actors\ClientManagerActor.cpp" />
+    <ClCompile Include="actors\DataBuffer.cpp" />
+    <ClCompile Include="actors\HeartbeatActor.cpp" />
+    <ClCompile Include="actors\HostActor.cpp" />
+    <ClCompile Include="actors\ProtocolActor.cpp" />
+    <ClCompile Include="actors\SocketActor.cpp" />
+    <ClCompile Include="actors\TimerActor.cpp" />
+    <ClCompile Include="actors\VideoDecodeActor.cpp" />
+    <ClCompile Include="actors\VideoEncodeActor.cpp" />
     <ClCompile Include="common\HostProtocolHandler.cpp" />
     <ClCompile Include="common\ProtocolHandler.cpp" />
     <ClCompile Include="common\ProtocolManager.cpp" />
@@ -21,14 +37,32 @@
     <ClCompile Include="encoder\DDAImpl.cpp" />
     <ClCompile Include="encoder\NvEncoder.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
+    <ClCompile Include="protobuf\actor_messages.pb.cc" />
     <ClCompile Include="protobuf\client_messages.pb.cc" />
-    <ClCompile Include="protobuf\common_messages.pb.cc" />
     <ClCompile Include="protobuf\host_messages.pb.cc" />
+    <ClCompile Include="protobuf\network_messages.pb.cc" />
     <ClCompile Include="streamer\AudioStreamer.cpp" />
     <ClCompile Include="streamer\InputStreamer.cpp" />
     <ClCompile Include="streamer\VideoStreamer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="actors\Actor.h" />
+    <ClInclude Include="actors\ActorEnvironment.h" />
+    <ClInclude Include="actors\ActorGenerator.h" />
+    <ClInclude Include="actors\ActorMap.h" />
+    <ClInclude Include="actors\ActorType.h" />
+    <ClInclude Include="actors\AdminActor.h" />
+    <ClInclude Include="actors\BaseActor.h" />
+    <ClInclude Include="actors\ClientActor.h" />
+    <ClInclude Include="actors\ClientManagerActor.h" />
+    <ClInclude Include="actors\DataBuffer.h" />
+    <ClInclude Include="actors\HeartbeatActor.h" />
+    <ClInclude Include="actors\HostActor.h" />
+    <ClInclude Include="actors\ProtocolActor.h" />
+    <ClInclude Include="actors\SocketActor.h" />
+    <ClInclude Include="actors\TimerActor.h" />
+    <ClInclude Include="actors\VideoDecodeActor.h" />
+    <ClInclude Include="actors\VideoEncodeActor.h" />
     <ClInclude Include="common\HostProtocolHandler.h" />
     <ClInclude Include="common\ProtocolHandler.h" />
     <ClInclude Include="common\ProtocolManager.h" />
@@ -46,20 +80,16 @@
     <ClInclude Include="decoder\NvDecoder.h" />
     <ClInclude Include="encoder\DDAImpl.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
+    <ClInclude Include="protobuf\actor_messages.pb.h" />
     <ClInclude Include="protobuf\client_messages.pb.h" />
-    <ClInclude Include="protobuf\common_messages.pb.h" />
     <ClInclude Include="protobuf\host_messages.pb.h" />
+    <ClInclude Include="protobuf\network_messages.pb.h" />
     <ClInclude Include="streamer\AudioStreamer.h" />
     <ClInclude Include="streamer\InputStreamer.h" />
     <ClInclude Include="streamer\VideoStreamer.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="common\ColorSpace.cu" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="protobuf\client_messages.proto" />
-    <None Include="protobuf\common_messages.proto" />
-    <None Include="protobuf\host_messages.proto" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

@@ -3,8 +3,8 @@
 #include <cuda.h>
 #include <vector>
 #include <memory>
+#include <string>
 
-#include "common/Socket.h"
 #include "nvEncodeAPI.h"
 
 class NvEncoder;
@@ -24,16 +24,13 @@ public:
     ~VideoStreamer();
 
     bool InitEncode();
-    void Encode(bool send_idr);
-//    void CaptureFrame(int wait_ms);
+    void Encode(bool send_idr, bool send_pps_sps, std::string& data_out);
 
     bool InitDecode();
-    void Demux();
-    void Decode();
+    bool InitDisplay();
+    void Decode(std::string* video_packet);
     void PresentVideo();
-
-    void SetSocket(std::shared_ptr<HostSocket> socket);
-    void SetSocket(std::shared_ptr<ClientSocket> socket);
+    bool IsDisplayInit();
 
 private:
     // Decoder
@@ -41,10 +38,8 @@ private:
     CUdeviceptr cuda_frame;
     NvDecoder* decoder = nullptr;
     FramePresenterD3D11* presenter = nullptr;
-    uint8_t* video_packet = nullptr;
-    int video_packet_size;
-    int64_t video_packet_ts;
     int num_frames;
+    bool display_init;
 
     // Encoder
     bool InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD w, DWORD h);
@@ -66,8 +61,6 @@ private:
 
     uint32_t encoder_frame_num = 0;
 
-    // Common    
-    std::shared_ptr<HostSocket> host_socket;
-    std::shared_ptr<ClientSocket> client_socket;
+    // Common
     LARGE_INTEGER counter_freq;
 };

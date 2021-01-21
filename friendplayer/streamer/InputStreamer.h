@@ -18,9 +18,9 @@ class InputStreamer {
         void RegisterPhysicalController(const DWORD user_index);
 
         //for now, passing params that i have types for
-        bool UpdateVirtualController(const fp_proto::ControllerFrame& input);
+        bool UpdateVirtualController(const fp_network::ControllerFrame& input);
 
-        std::optional<fp_proto::ControllerFrame> CapturePhysicalController();
+        std::optional<fp_network::ControllerFrame> CapturePhysicalController();
 
         bool is_virtual_controller_registered() { return virtual_controller_registered; }
         bool is_physical_controller_registered() { return physical_controller_registered; }

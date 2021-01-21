@@ -1,82 +1,123 @@
-//#include <iostream>
-//
-//bool diffiehellman(){
-//    CryptoPP::AutoSeededRandomPool rng;
-//    CryptoPP::PrimeAndGenerator gen;
-//    gen.Generate(1, rng, 1024, 160);
-//    
-//
-//    auto p = gen.Prime();
-//    auto q = gen.SubPrime();
-//    auto g = gen.Generator();
-//
-//    CryptoPP::DH dhA;
-//    dhA.AccessGroupParameters().Initialize(p, q, g);
-//
-//    
-//    CryptoPP::DH dhB;
-//    dhB.AccessGroupParameters().Initialize(p, q, g);
-//
-//    CryptoPP::SecByteBlock privateA(dhA.PrivateKeyLength()), 
-//                           publicA(dhA.PublicKeyLength()),
-//                           privateB(dhB.PrivateKeyLength()),
-//                           publicB(dhB.PublicKeyLength());
-//
-//    
-//    dhA.GenerateKeyPair(rng, privateA, publicA);
-//    dhB.GenerateKeyPair(rng, privateB, publicB);
-//    
-//    CryptoPP::SecByteBlock sharedA(dhA.AgreedValueLength()), sharedB(dhB.AgreedValueLength());
-//
-//    dhA.Agree(sharedA, privateA, publicB);
-//    dhB.Agree(sharedB, privateB, publicA);
-//
-//    CryptoPP::Integer a, b;
-//    
-//    a.Decode(sharedA, sharedA.SizeInBytes());
-//    b.Decode(sharedB, sharedB.SizeInBytes());
-//
-//    std::cout << sharedA.SizeInBytes() << std::endl;
-//
-//    return true;
-//}
+#include "Crypto.h"
+#include <cryptopp\aes.h>
+#include <cryptopp\gcm.h>
+#include <cryptopp\nbtheory.h>
+#include <cryptopp\dh.h>
 
 
+/**
+ *  @int gen_bit_value: creates a l-bit value to generate a prime p.
+ *  Generates public info: p, q, and g 
+ *  creates a public private key pair with diffie-hellman
+ * */
+Crypto::Crypto(int gen_bit_value) {
+    CryptoPP::PrimeAndGenerator gen;
+    gen.Generate(1, rng, gen_bit_value, 160);
+    
+    p = gen.Prime();
+    q = gen.SubPrime();
+    g = gen.Generator();
+    
+    CryptoPP::DH dh;
+    dh.AccessGroupParameters().Initialize(p, q, g);
 
-// AES
-    //CryptoPP::AutoSeededRandomPool rnd;
+    private_key = CryptoPP::SecByteBlock(dh.PrivateKeyLength());
+    public_key = CryptoPP::SecByteBlock(dh.PublicKeyLength());
 
-    //CryptoPP::SecByteBlock key(0x00, CryptoPP::AES::DEFAULT_KEYLENGTH);
-    //rnd.GenerateBlock( key, key.size() );
+    dh.GenerateKeyPair(rng, private_key, public_key);
+}
 
-    //CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
-    //rnd.GenerateBlock(iv, iv.size());
+Crypto::Crypto(const std::string& p_byte, const std::string& q_byte, const std::string& g_byte)
+    : p(reinterpret_cast<const CryptoPP::byte*>(p_byte.data()), p_byte.size()),
+      q(reinterpret_cast<const CryptoPP::byte*>(q_byte.data()), q_byte.size()),
+      g(reinterpret_cast<const CryptoPP::byte*>(g_byte.data()), g_byte.size()) {
+    CryptoPP::DH dh;
+    dh.AccessGroupParameters().Initialize(p, q, g);
 
-    //
+    private_key = CryptoPP::SecByteBlock(dh.PrivateKeyLength());
+    public_key = CryptoPP::SecByteBlock(dh.PublicKeyLength());
 
-    //CryptoPP::byte plainText1[] = "Hello! How are you - message 123";
-    //CryptoPP::byte plainText2[] = "Hello! How ame you - message 134";
-    //CryptoPP::byte plainText3[] = "Hello! How aqe you - message 145";
-    //size_t messageLen = std::strlen((char*)plainText1);
+    dh.GenerateKeyPair(rng, private_key, public_key);
+}
 
-    //
+/** 
+* @return int id of the shared secret
+* */
+void Crypto::SharedKeyAgreement(CryptoPP::SecByteBlock other_pub_key) {
+    CryptoPP::DH dh;
+    dh.AccessGroupParameters().Initialize(p, q, g);
 
-    //CryptoPP::GCM<CryptoPP::AES>::Encryption cfbEncryption;
-    //cfbEncryption.SetKeyWithIV(key, key.size(), iv);
-    //cfbEncryption.ProcessData(plainText1, plainText1, messageLen);
-    //cfbEncryption.ProcessData(plainText2, plainText2, messageLen);
-    //cfbEncryption.ProcessData(plainText3, plainText3, messageLen);
+    shared_key = CryptoPP::SecByteBlock(dh.AgreedValueLength());
+    dh.Agree(shared_key, private_key, other_pub_key);
 
-    //std::cout << plainText1 << std::endl;
-    //
-    //std::fill(plainText1, plainText1 + 5, 0);
+    // Faster way of getting keys
+    CryptoPP::byte digest[CryptoPP::SHA256::DIGESTSIZE];
+    CryptoPP::SHA256 hash;
+    hash.CalculateDigest(digest, shared_key, shared_key.size());
+    int L_128 = CryptoPP::SHA256::DIGESTSIZE / 2;
+    CryptoPP::SecByteBlock key(digest, L_128);
+    password = key;
+}
 
-    //CryptoPP::GCM<CryptoPP::AES>::Decryption cfbDecryption;
-    //cfbDecryption.SetKeyWithIV(key, key.size(), iv);
-    //cfbDecryption.ProcessData(plainText1, plainText1, messageLen);
-    //CryptoPP::byte bunk[32];
-    //cfbDecryption.ProcessData(bunk, bunk, 32);
-    //cfbDecryption.ProcessData(plainText3, plainText3, messageLen);
+/**
+* Give out 32 more bytes to use for iv
+* */
+void Crypto::Encrypt(const std::string& in, std::string& out) {
+    // RESIZE THIS SHIT
+    
+    int L_128 = CryptoPP::SHA256::DIGESTSIZE / 2;
 
-    //std::cout << plainText1 << std::endl;
-    //std::cout << plainText3 << std::endl;
+    CryptoPP::SecByteBlock iv(L_128);
+    rng.GenerateBlock(iv, L_128);
+    
+    CryptoPP::SecByteBlock key(password, L_128);
+    CryptoPP::GCM<CryptoPP::AES>::Encryption gcm_encryption;
+
+    gcm_encryption.SetKeyWithIV(key, key.size(), iv);
+    std::copy(iv.begin(), iv.end(), out.data());
+
+    gcm_encryption.ProcessData(reinterpret_cast<CryptoPP::byte*>(out.data()) + L_128,
+        reinterpret_cast<const CryptoPP::byte*>(in.data()), in.size());
+}
+
+void Crypto::Decrypt(const std::string& in, std::string& out) {
+    // RESIZE THIS SHIT
+    int L_128 = CryptoPP::SHA256::DIGESTSIZE / 2;
+
+    // Take out vector from data
+    CryptoPP::SecByteBlock iv(reinterpret_cast<const CryptoPP::byte*>(in.data()), L_128);
+    CryptoPP::SecByteBlock key(password, L_128);
+    CryptoPP::GCM<CryptoPP::AES>::Decryption gcm_decryption;
+
+    gcm_decryption.SetKeyWithIV(key, key.size(), iv);
+    gcm_decryption.ProcessData(reinterpret_cast<CryptoPP::byte*>(out.data()), 
+        reinterpret_cast<const CryptoPP::byte*>(in.data()) + L_128, in.size() - L_128);
+}
+
+std::string Crypto::GetPublicKey() const {
+    std::string ret;
+    ret.resize(public_key.SizeInBytes());
+    ret.assign(public_key.data(), public_key.data() + public_key.SizeInBytes());
+    return std::move(ret);
+}
+
+std::string Crypto::P() const {
+    std::string ret;
+    ret.resize(p.MinEncodedSize());
+    p.Encode(reinterpret_cast<CryptoPP::byte*>(ret.data()), ret.size(), CryptoPP::Integer::UNSIGNED);
+    return std::move(ret);
+}
+
+std::string Crypto::Q() const {
+    std::string ret;
+    ret.resize(q.MinEncodedSize());
+    q.Encode(reinterpret_cast<CryptoPP::byte*>(ret.data()), ret.size(), CryptoPP::Integer::UNSIGNED);
+    return std::move(ret);
+}   
+
+std::string Crypto::G() const {
+    std::string ret;
+    ret.resize(g.MinEncodedSize());
+    g.Encode(reinterpret_cast<CryptoPP::byte*>(ret.data()), ret.size(), CryptoPP::Integer::UNSIGNED);
+    return std::move(ret);
+}   

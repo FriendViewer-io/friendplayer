@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+import "network_messages.proto";
+
+package fp_actor;
+
+message Kill { } // Any actor --> Any actor \ AdminActor
+
+// Administrator Messages
+
+message Cleanup { // Any actor --> AdminActor
+    string actor_name = 1;
+}
+
+message Create {
+    string actor_type_name = 1;
+    string actor_name = 2;
+    optional google.protobuf.Any init_msg = 3;
+    string response_actor = 4;
+}
+
+message CreateFinish { // 
+    string actor_name = 1;
+    bool succeeded = 2;
+}
+
+// Network Messages
+
+message NetworkRecv {
+    uint64 address = 1;
+    fp_network.Network msg = 2;
+}
+
+message NetworkSend {
+    uint64 address = 1;
+    fp_network.Network msg = 2;
+}
+
+// Timer messages
+
+message FireTimer { }
+
+message StartTimer {
+    uint32 period_ms = 1;
+    bool periodic = 2;
+}
+
+message StopTimer { }
+
+// ClientManagerActor
+
+message ClientManagerInit {
+    bool is_host = 1;
+}
+
+message ClientHandshakeDone {
+    uint64 address = 1;
+}
+
+message ClientDisconnect { // ProtocolActor --> ClientManager
+    string client_name = 1;
+}
+
+// SocketActor
+
+message SocketInit {
+    optional string ip = 1;
+    uint32 port = 2;
+}
+
+// ProtocolActor
+
+message ProtocolInit {
+    uint64 address = 1;
+}
+
+// HeartbeatActor
+
+message HeartbeatActorInit {
+    uint32 timeout_ms = 1;
+    uint32 heartbeat_send_ms = 2;
+}
+
+message ClientActorHeartbeatState { // ClientManagerActor --> HeartbeatManager
+    string client_actor_name = 1;
+    // false -> heartbeat
+    // true  -> remove tracker
+    bool disconnected = 2;
+}
+
+message HeartbeatRequest { } // HeartbeatManager --> ClientActor
+
+message ClientTimeoutNotify { // HeartbeatManager --> ClientManagerActor
+    string client_actor_name = 1;
+}
+
+
+// VideoEncodeActor
+
+message VideoData {
+    enum FrameType {
+        NORMAL = 0;
+        IDR = 1;
+        PPS_SPS = 2;
+    }
+    uint64 handle = 1;
+    FrameType type = 2;
+}
+
+// VideoDecodeActor
+
+message VideoDecoderReady { }
+
+message VideoDataRequest { }
+
+// VideoEncodeActor
+
+message SpecialFrameRequest { // ClientActor --> VideoEncodeActor
+    enum FrameType {
+        IDR = 0;
+        PPS_SPS = 1;
+    }
+    FrameType type = 1;
+}
+
+// AudioActor
+
+message AudioData {
+    uint64 handle = 1;
+    uint64 size = 2;
+}

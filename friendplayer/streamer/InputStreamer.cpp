@@ -72,7 +72,7 @@ void InputStreamer::RegisterPhysicalController(const DWORD user_index)
 }
 
 //TODO:take a protobuf struct as input
-bool InputStreamer::UpdateVirtualController(const fp_proto::ControllerFrame& input)
+bool InputStreamer::UpdateVirtualController(const fp_network::ControllerFrame& input)
 {
     if(!this->virtual_controller_registered)
     {
@@ -99,7 +99,7 @@ bool InputStreamer::UpdateVirtualController(const fp_proto::ControllerFrame& inp
 }
 
 //TODO: return into a protobuf struct
-std::optional<fp_proto::ControllerFrame> InputStreamer::CapturePhysicalController()
+std::optional<fp_network::ControllerFrame> InputStreamer::CapturePhysicalController()
 {
 
     if(!this->physical_controller_registered)
@@ -110,7 +110,7 @@ std::optional<fp_proto::ControllerFrame> InputStreamer::CapturePhysicalControlle
     XINPUT_STATE state;
     XInputGetState(this->dw_user_index, &state);
 
-    fp_proto::ControllerFrame return_frame;
+    fp_network::ControllerFrame return_frame;
 
     return_frame.set_sequence_num(state.dwPacketNumber);
     return_frame.set_b_left_trigger(state.Gamepad.bLeftTrigger);

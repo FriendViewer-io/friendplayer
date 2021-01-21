@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package fp_proto;
+package fp_network;
 
 message ClientState {
     enum State {
