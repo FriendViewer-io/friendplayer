@@ -39,7 +39,9 @@ message NetworkSend {
 
 // Timer messages
 
-message FireTimer { }
+message FireTimer {
+    uint64 timer_timestamp = 1;
+}
 
 message StartTimer {
     uint32 period_ms = 1;
@@ -52,6 +54,8 @@ message StopTimer { }
 
 message ClientManagerInit {
     bool is_host = 1;
+    optional string host_ip = 2;
+    optional uint32 host_port = 3;
 }
 
 message ClientHandshakeDone {
@@ -60,6 +64,10 @@ message ClientHandshakeDone {
 
 message ClientDisconnect { // ProtocolActor --> ClientManager
     string client_name = 1;
+}
+
+message CreateHostActor {
+    uint64 host_address = 1;
 }
 
 // SocketActor

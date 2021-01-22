@@ -15,6 +15,8 @@ private:
     static constexpr size_t VIDEO_FRAME_SIZE = 20000;
     static constexpr size_t AUDIO_FRAME_SIZE = 1795;
 
+    static constexpr uint32_t IDR_SEND_TIMEOUT = 20;
+
 public:
     HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
@@ -25,7 +27,11 @@ public:
 private:
 //    InputStreamer input_streamer;
 
+    void SendFrameToDecoder();
+
     FrameRingBuffer video_buffer;
+    bool has_completed_video_frame;
+    uint32_t idr_send_timeout;
     FrameRingBuffer audio_buffer;
 
     bool OnHandshakeMessage(const fp_network::Handshake& msg) override;

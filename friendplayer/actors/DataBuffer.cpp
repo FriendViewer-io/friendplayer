@@ -57,7 +57,7 @@ uint64_t DataBufferMap::Wrap(std::string* data) {
 uint64_t DataBufferMap::Wrap(std::unique_ptr<std::string> data) {
     uint64_t new_handle;
     std::unique_lock<std::shared_mutex> w_lock(buffer_list_m);
-    if (free_list.empty()) {
+    if (!free_list.empty()) {
         // Use existing slot
         new_handle = free_list.back();
         free_list.pop_back();

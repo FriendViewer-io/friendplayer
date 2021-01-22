@@ -23,7 +23,7 @@ public:
     void OnMessage(const any_msg& msg) override;
     void OnInit(const std::optional<any_msg>& init_msg) override;
 
-    virtual void NetworkWorker() = 0;
+    void NetworkWorker();
 
     virtual ~SocketActor() {
         network_is_running = false;
@@ -55,7 +55,7 @@ public:
     HostSocketActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
       : SocketActor(actor_map, buffer_map, std::move(name)) {}
 
-    void OnInit(const std::optional<any_msg>& init_msg) {
+    void OnInit(const std::optional<any_msg>& init_msg) override {
         if (init_msg) {
             if (init_msg->Is<fp_actor::SocketInit>()) {
                 fp_actor::SocketInit msg;

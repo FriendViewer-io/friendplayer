@@ -1,6 +1,7 @@
 #include "actors/Actor.h"
 
 #include "actors/AdminActor.h"
+#include "actors/CommonActorNames.h" 
 #include "common/Log.h"
 #include "protobuf/actor_messages.pb.h"
 

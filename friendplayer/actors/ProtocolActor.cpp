@@ -1,6 +1,8 @@
 #include "actors/ProtocolActor.h"
 
-#include "actors/ClientManagerActor.h"
+#include "common/Log.h"
+
+#include "actors/CommonActorNames.h"
 #include "protobuf/network_messages.pb.h"
 #include "protobuf/actor_messages.pb.h"
 
@@ -59,8 +61,9 @@ void ProtocolActor::OnMessage(const any_msg& msg) {
         fp_network::Network network_msg;
         msg.UnpackTo(&network_msg);
         SendToSocket(network_msg);
+    } else {
+        TimerActor::OnMessage(msg);
     }
-    TimerActor::OnMessage(msg);
 }
 
 void ProtocolActor::SendToSocket(fp_network::Network& msg, bool is_retransmit) {
@@ -84,18 +87,34 @@ void ProtocolActor::SendToSocket(fp_network::Network& msg, bool is_retransmit) {
         }
     }
     send_msg.mutable_msg()->CopyFrom(msg);
-    SendTo("SocketActor", send_msg);
+    SendTo(SOCKET_ACTOR_NAME, send_msg);
 }
 
 void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
     switch (msg.Payload_case()) {
-    case fp_network::Network::kAckMsg:
+    case fp_network::Network::kAckMsg: {
         OnAcknowledge(msg.ack_msg());
         break;
-    case fp_network::Network::kHbMsg:
-        SendTo("HeartbeatActor", msg);
+    }
+    case fp_network::Network::kHbMsg: {
+        if (msg.hb_msg().is_response()) {
+            auto arrival_time = clock::now();
+            RTT_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(arrival_time.time_since_epoch() - clock::duration(msg.hb_msg().timestamp())).count();
+            fp_actor::ClientActorHeartbeatState heartbeat_state;
+            heartbeat_state.set_client_actor_name(GetName());
+            heartbeat_state.set_disconnected(false);
+            SendTo(HEARTBEAT_ACTOR_NAME, heartbeat_state);
+            LOG_INFO("Got heartbeat response from client {}, RTT={}", GetName(), RTT_milliseconds);
+        } else {
+            fp_network::Network send_heartbeat_msg;
+            send_heartbeat_msg.CopyFrom(msg);
+            send_heartbeat_msg.mutable_hb_msg()->set_is_response(true);
+            SendToSocket(send_heartbeat_msg);
+        }
         break;
-    case fp_network::Network::kHsMsg:
+    }
+    case fp_network::Network::kHsMsg: {
+        LOG_INFO("Received handshake message");
         if (!OnHandshakeMessage(msg.hs_msg())) {
             // If handshake fails kill this client
             fp_actor::ClientDisconnect dc_msg;
@@ -103,16 +122,19 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
             SendTo(CLIENT_MANAGER_ACTOR_NAME, dc_msg);
         }
         break;
-    case fp_network::Network::kDataMsg:
+    }
+    case fp_network::Network::kDataMsg: {
         if (protocol_state == HandshakeState::HS_READY) {
             OnDataMessage(msg.data_msg());
         }
         break;
-    case fp_network::Network::kStateMsg:
+    }
+    case fp_network::Network::kStateMsg: {
         if (protocol_state == HandshakeState::HS_READY) {
             OnStateMessage(msg.state_msg());
         }
         break;
+    }
     }
 }
 

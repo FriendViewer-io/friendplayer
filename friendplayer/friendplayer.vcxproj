@@ -55,6 +55,7 @@
     <ClInclude Include="actors\BaseActor.h" />
     <ClInclude Include="actors\ClientActor.h" />
     <ClInclude Include="actors\ClientManagerActor.h" />
+    <ClInclude Include="actors\CommonActorNames.h" />
     <ClInclude Include="actors\DataBuffer.h" />
     <ClInclude Include="actors\HeartbeatActor.h" />
     <ClInclude Include="actors\HostActor.h" />

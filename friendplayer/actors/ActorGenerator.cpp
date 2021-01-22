@@ -1,5 +1,17 @@
 #include "actors/ActorGenerator.h"
 
+#include "actors/AdminActor.h"
+#include "actors/BaseActor.h"
+#include "actors/ClientActor.h"
+#include "actors/ClientManagerActor.h"
+#include "actors/HeartbeatActor.h"
+#include "actors/HostActor.h"
+#include "actors/ProtocolActor.h"
+#include "actors/SocketActor.h"
+#include "actors/TimerActor.h"
+#include "actors/VideoDecodeActor.h"
+#include "actors/VideoEncodeActor.h"
+
 #include <tuple>
 #include <string_view>
 

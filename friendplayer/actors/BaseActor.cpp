@@ -2,6 +2,7 @@
 
 #include "protobuf/actor_messages.pb.h"
 #include "actors/ActorMap.h"
+#include "common/Log.h"
 
 BaseActor::BaseActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
   : actor_map(actor_map),

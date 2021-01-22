@@ -39,7 +39,7 @@ struct actor_type_counter {};
         template<std::size_t type_uid, std::enable_if_t<(type_uid == actor_name##_TYPEUID) && (!std::is_abstract_v<actor_name>), bool> = true> \
         actor_name* generate(std::string_view val, const ActorMap& actor_map, DataBufferMap& data_map, std::string_view name) { \
             if (val == #actor_name) { \
-                return new actor_name(actor_map, data_map, name); \
+                return new actor_name(actor_map, data_map, std::string(name)); \
             } \
             return nullptr; \
         } \

@@ -5,7 +5,6 @@
 
 #include "actors/ActorType.h"
 
-constexpr const char ADMIN_ACTOR_NAME[] = "admin";
 
 class AdminActor : public BaseActor {
 public:
@@ -14,6 +13,7 @@ public:
     void OnInit(const std::optional<any_msg>&) override {}
     void OnMessage(const any_msg& msg) override;
     void StartActor() override;
+    void OnFinish() override {}
 
 private:
     ActorMap& writable_actor_map;

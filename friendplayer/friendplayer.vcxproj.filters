@@ -269,6 +269,9 @@
     <ClInclude Include="protobuf\network_messages.pb.h">
       <Filter>Source Files\protobuf</Filter>
     </ClInclude>
+    <ClInclude Include="actors\CommonActorNames.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="common\ColorSpace.cu">

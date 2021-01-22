@@ -28,9 +28,9 @@ class FrameRingBuffer {
 public:
     FrameRingBuffer(std::string name, size_t num_frames, size_t frame_capacity);
 
-    void AddFrameChunk(const fp_network::HostDataFrame& frame);
+    bool AddFrameChunk(const fp_network::HostDataFrame& frame);
     // Returns # of bytes needed to fix decryption
-    uint32_t GetFront(std::string& buffer_out);
+    uint32_t GetFront(std::string& buffer_out, bool& was_full_frame);
     
 private:
     std::vector<Frame> buffer;

@@ -1,7 +1,8 @@
 #include "actors/VideoEncodeActor.h"
 
-#include "actors/ClientManagerActor.h"
+#include "actors/CommonActorNames.h"
 #include "encoder/DDAImpl.h"
+#include "common/Log.h"
 
 void VideoEncodeActor::OnInit(const std::optional<any_msg>& init_msg) {
     host_streamer.InitEncode();
@@ -19,6 +20,8 @@ void VideoEncodeActor::OnMessage(const any_msg& msg) {
             idr_requested = true;
             pps_sps_requested = true;
         }
+    } else {
+        TimerActor::OnMessage(msg);
     }
 }
 

@@ -1,8 +1,8 @@
 #include "actors/SocketActor.h"
 
-#include "actors/ClientManagerActor.h"
+#include "actors/CommonActorNames.h"
 #include "protobuf/actor_messages.pb.h"
-
+#include "common/Log.h"
 
 void SocketActor::OnInit(const std::optional<any_msg>& init_msg) {
     Actor::OnInit(init_msg);
@@ -27,7 +27,7 @@ void SocketActor::OnMessage(const any_msg& msg) {
             if (host_frame.has_video()) {
                 handle = host_frame.video().data_handle();
                 host_frame.mutable_video()->clear_DataBacking();
-                std::string* buf = buffer_map.GetBuffer(host_frame.mutable_video()->data_handle());
+                std::string* buf = buffer_map.GetBuffer(handle);
                 for (size_t chunk_offset = 0; chunk_offset < buf->size(); chunk_offset += MAX_DATA_CHUNK) {
                     const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, buf->size());
                     network_msg.mutable_data_msg()->set_sequence_number(seq_num);
@@ -56,8 +56,9 @@ void SocketActor::OnMessage(const any_msg& msg) {
     } else if (msg.Is<fp_actor::Kill>()) {
         network_is_running = false;
         socket.close();
+    } else {
+        Actor::OnMessage(msg);
     }
-    Actor::OnMessage(msg);
 }
 
 void SocketActor::NetworkWorker() {
@@ -73,7 +74,7 @@ void SocketActor::NetworkWorker() {
         }
         fp_actor::NetworkRecv msg;
         uint64_t address = endpoint.address().to_v4().to_uint();
-        address |= endpoint.port() << 32;
+        address |= static_cast<uint64_t>(endpoint.port()) << 32;
         msg.set_address(address);
 
         fp_network::Network recv_msg;

@@ -1,5 +1,6 @@
 #include "actors/AdminActor.h"
 
+#include "actors/CommonActorNames.h"
 #include "protobuf/actor_messages.pb.h"
 #include "actors/ActorGenerator.h"
 
@@ -17,9 +18,9 @@ void AdminActor::OnMessage(const any_msg& msg) {
         if (new_actor != nullptr) {
             finish_msg.set_succeeded(true);
             if (create_message.has_init_msg()) {
-                new_actor->SetInitMessage(create_message.init_msg());
+                new_actor->SetInitMessage(create_message.init_msg()); 
             }
-            writable_actor_map.AddActor(std::unique_ptr<BaseActor>(new_actor));
+            writable_actor_map.AddAndStartActor(std::unique_ptr<BaseActor>(new_actor));
         } else {
             finish_msg.set_succeeded(false);
         }

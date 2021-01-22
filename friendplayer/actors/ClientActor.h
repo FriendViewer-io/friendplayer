@@ -19,8 +19,6 @@ private:
     bool mouse_enabled;
     bool controller_enabled;
 
-//    InputStreamer input_streamer;
-
     uint32_t video_stream_point;
     uint32_t audio_stream_point;
     uint32_t audio_frame_num;
@@ -43,7 +41,6 @@ private:
     void OnKeyboardFrame(const fp_network::KeyboardFrame& msg);
     void OnMouseFrame(const fp_network::MouseFrame& msg);
     void OnControllerFrame(const fp_network::ControllerFrame& msg);
-
 };
 
 DEFINE_ACTOR_GENERATOR(ClientActor)

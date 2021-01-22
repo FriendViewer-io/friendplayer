@@ -6,8 +6,8 @@
 class WinMMTimer {
 public:
     static void CALLBACK TimerCall(UINT, UINT, DWORD_PTR user, DWORD_PTR, DWORD_PTR) {
-        TimerActor* inst = reinterpret_cast<TimerActor*>(user);
-        inst->SendTimerFire(false);
+        TimerActor::TimerCapture* inst = reinterpret_cast<TimerActor::TimerCapture*>(user);
+        inst->this_actor->SendTimerFire(false, inst->timestamp);
     }
 };
 
@@ -22,19 +22,29 @@ void TimerActor::OnMessage(const any_msg& msg) {
     } else if (msg.Is<fp_actor::StopTimer>()) {
         StopTimer();
     } else if (msg.Is<fp_actor::FireTimer>()) {
-        fire_in_queue->store(false);
-        if (!is_periodic) { timer_handle = 0; }
-        OnTimerFire();
+        fp_actor::FireTimer fire_msg;
+        msg.UnpackTo(&fire_msg);
+        if (fire_msg.timer_timestamp() >= ignore_before) {    
+            if (!is_periodic) {
+                timer_handle = 0;
+                delete capture;
+                capture = nullptr;
+            }
+            OnTimerFire();
+        }
     } else {
         Actor::OnMessage(msg);
     }
 }
 
 void TimerActor::SetTimerInternal(uint32_t period_ms, bool periodic) {
+    StopTimer();
+    is_periodic = periodic;
     UINT flags = TIME_KILL_SYNCHRONOUS;
-    flags |= (is_periodic) ? TIME_PERIODIC : TIME_ONESHOT;
+    flags |= (periodic) ? TIME_PERIODIC : TIME_ONESHOT;
+    capture = new TimerCapture{this, static_cast<uint64_t>(clock::now().time_since_epoch().count()), periodic};
     timer_handle = timeSetEvent(static_cast<UINT>(period_ms),
-        0, &WinMMTimer::TimerCall, reinterpret_cast<DWORD_PTR>(this), flags);
+        0, &WinMMTimer::TimerCall, reinterpret_cast<DWORD_PTR>(capture), flags);
 }
 
 void TimerActor::StopTimer() {
@@ -43,20 +53,26 @@ void TimerActor::StopTimer() {
         timeKillEvent(timer_handle);
     }
     timer_handle = 0;
+    if (is_periodic && capture != nullptr) {
+        delete capture;
+        capture = nullptr;
+    }
+    IgnoreBeforeNow();
 }
 
-void TimerActor::SendTimerFire(bool disarm) {
-    if (fire_in_queue->exchange(true)) {
-        // Fire already enqueued, avoid double-fire from MM thread & our own
-        return;
-    }
+void TimerActor::SendTimerFire(bool disarm, uint64_t timer_timestamp) {
     if (disarm) {
         StopTimer();
     }
     fp_actor::FireTimer msg;
     google::protobuf::Any any_msg;
+    msg.set_timer_timestamp(timer_timestamp);
     any_msg.PackFrom(msg);
     EnqueueMessage(std::move(any_msg));
+}
+
+void TimerActor::IgnoreBeforeNow() {
+    ignore_before = clock::now().time_since_epoch().count();
 }
 
 TimerActor::~TimerActor() {

@@ -11,7 +11,7 @@ FrameRingBuffer::FrameRingBuffer(std::string name, size_t num_frames, size_t fra
     }
 }
 
-void FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
+bool FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
     std::string data;
     uint32_t chunk_offset;
 
@@ -26,7 +26,7 @@ void FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
     // Invalid frame
     if (frame.frame_num() < frame_number) { 
         //LOG_WARNING("{}: Decoder got frame number behind {} < {}", buffer_name, frame.frame_num(), frame_number);
-        return;
+        return false;
     } else if (frame.frame_num() >= frame_number + frame_count) {
         // Frame is beyond current buffer (probably decoder isn't taking them out fast enough)
         for (int i = frame.frame_num(); i < frame.frame_num() + frame_count; ++i) {
@@ -50,9 +50,11 @@ void FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
     buffer_frame.stream_point = frame.stream_point();
     buffer_frame.current_read_size += data.size();
     std::copy(data.begin(), data.end(), buffer_frame.data.begin() + chunk_offset);
+
+    return buffer[frame_index()].current_read_size == buffer[frame_index()].size;
 }
 
-uint32_t FrameRingBuffer::GetFront(std::string& buffer_out) {
+uint32_t FrameRingBuffer::GetFront(std::string& buffer_out, bool& was_full_frame) {
 
     const auto& data = buffer[frame_index()].data;
     if (data.size() < buffer[frame_index()].size) {
@@ -71,6 +73,8 @@ uint32_t FrameRingBuffer::GetFront(std::string& buffer_out) {
         }
         stream_point = buffer[frame_index()].stream_point + buffer[frame_index()].size;
     }
+
+    was_full_frame = buffer[frame_index()].current_read_size == buffer[frame_index()].size;
     
     buffer[frame_index()].num = frame_number + frame_count;
     buffer[frame_index()].size = 0;

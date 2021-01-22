@@ -1,6 +1,7 @@
 #include "actors/ClientActor.h"
 
-#include "actors/ClientManagerActor.h"
+#include "actors/CommonActorNames.h"
+
 #include "common/Log.h"
 #include "protobuf/actor_messages.pb.h"
 #include "protobuf/network_messages.pb.h"
@@ -22,7 +23,13 @@ ClientActor::ClientActor(const ActorMap& actor_map, DataBufferMap& buffer_map, s
 
 void ClientActor::OnMessage(const any_msg& msg) {
     if (protocol_state != HandshakeState::HS_READY) {
-        ProtocolActor::OnMessage(msg);
+        if (msg.Is<fp_actor::VideoData>()) {
+            fp_actor::VideoData data_msg;
+            msg.UnpackTo(&data_msg);
+            buffer_map.Decrement(data_msg.handle());
+        } else {
+            ProtocolActor::OnMessage(msg);
+        }
         return;
     }
     if (msg.Is<fp_actor::VideoData>()) {
@@ -62,14 +69,18 @@ void ClientActor::OnMessage(const any_msg& msg) {
             SendToSocket(out_msg);
         }
         buffer_map.Decrement(data_msg.handle());
+    } else {
+        // pass it up to parent class
+        ProtocolActor::OnMessage(msg);
     }
-    ProtocolActor::OnMessage(msg);
 }
 
 bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
     bool handshake_success = false;
+    LOG_INFO("Client actor {} received handshake, current state={}", GetName(), protocol_state);
     if (protocol_state == HandshakeState::HS_UNINITIALIZED) {
         if (msg.magic() == 0x46524E44504C5952ull) {
+            LOG_INFO("Client actor {} received first handshake", GetName());
             fp_network::Network send_handshake_msg;
             send_handshake_msg.mutable_hs_msg()->set_magic(0x46524E44504C5953ull);
             SendToSocket(send_handshake_msg);
@@ -80,6 +91,7 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
         }
     } else if (protocol_state == HandshakeState::HS_WAITING_SHAKE_ACK) {
         if (msg.magic() == 0x46524E44504C5954ull) {
+            LOG_INFO("Client actor {} received last handshake", GetName());
             protocol_state = HandshakeState::HS_READY;
 
             handshake_success = true;
@@ -96,13 +108,18 @@ void ClientActor::OnStateMessage(const fp_network::State& msg) {
     auto& state = msg.client_state();
     switch (state.state()) {
         case fp_network::ClientState::READY_FOR_PPS_SPS_IDR: {
+            LOG_INFO("Received ready for PPS_SPS");
             fp_actor::SpecialFrameRequest req;
             req.set_type(fp_actor::SpecialFrameRequest::PPS_SPS);
-            SendTo("VideoEncodeActor", req);
+            SendTo(VIDEO_ENCODER_ACTOR_NAME, req);
             stream_state = StreamState::WAITING_FOR_VIDEO;
         }
         break;
         case fp_network::ClientState::READY_FOR_VIDEO: {
+            LOG_INFO("Received ready for video");
+            fp_actor::SpecialFrameRequest req;
+            req.set_type(fp_actor::SpecialFrameRequest::IDR);
+            SendTo(VIDEO_ENCODER_ACTOR_NAME, req);
             stream_state = StreamState::READY;
         }
         break;
@@ -136,10 +153,12 @@ void ClientActor::OnDataMessage(const fp_network::Data& msg) {
 }
 
 void ClientActor::OnHostRequest(const fp_network::RequestToHost& msg) {
-    LOG_INFO("Client request to host = {}", static_cast<int>(msg.type()));
+    LOG_INFO("Client {} request to host = {}", GetName(), static_cast<int>(msg.type()));
     switch(msg.type()) {
         case fp_network::RequestToHost::SEND_IDR: {
-            //host_socket->SetNeedIDR(true);
+            fp_actor::SpecialFrameRequest sfr;
+            sfr.set_type(fp_actor::SpecialFrameRequest::IDR);
+            SendTo(VIDEO_DECODER_ACTOR_NAME, sfr);
         }
         break;
         case fp_network::RequestToHost::MUTE_AUDIO: {

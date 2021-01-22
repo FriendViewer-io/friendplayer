@@ -1,6 +1,6 @@
 #include "actors/HeartbeatActor.h"
 
-#include "actors/ClientManagerActor.h"
+#include "actors/CommonActorNames.h"
 #include "protobuf/actor_messages.pb.h"
 
 
@@ -28,6 +28,8 @@ void HeartbeatActor::OnMessage(const any_msg& msg) {
         } else {
             heartbeat_map[response.client_actor_name()] = clock::now();
         }
+    } else {
+        TimerActor::OnMessage(msg);
     }
 }
 
@@ -39,6 +41,9 @@ void HeartbeatActor::OnTimerFire() {
             timeout_msg.set_client_actor_name(it->first);
             SendTo(CLIENT_MANAGER_ACTOR_NAME, timeout_msg);
             heartbeat_map.erase(it);
+        } else {
+            fp_actor::HeartbeatRequest heartbeat_send_rq;
+            SendTo(it->first, heartbeat_send_rq);
         }
     }
 }
