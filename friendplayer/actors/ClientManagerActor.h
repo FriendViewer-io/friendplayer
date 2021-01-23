@@ -17,14 +17,17 @@ public:
     void OnInit(const std::optional<any_msg>& init_msg) override;
 
 private:
-
     void CreateClient(uint64_t address);
+    void OnEncoderCreated(const std::string& name, bool succeeded);
+    void OnClientCreated(const std::string& name, bool succeeded);
 
     std::map<uint64_t, std::string> address_to_client;
     std::map<uint64_t, std::queue<fp_network::Network>> saved_messages;
     std::map<std::string, uint64_t> create_req_to_address;
 
     uint32_t request_id_counter;
+    
+    uint32_t stream_count;
     bool is_host;
 };
 

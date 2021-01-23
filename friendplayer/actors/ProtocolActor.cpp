@@ -135,6 +135,10 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
         }
         break;
     }
+    case fp_network::Network::kInfoMsg: {
+        OnStreamInfoMessage(msg.info_msg());
+        break;
+    }
     }
 }
 

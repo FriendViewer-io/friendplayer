@@ -78,7 +78,7 @@ bool VideoStreamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD
     return true;
 }
 
-bool VideoStreamer::InitEncode() {
+bool VideoStreamer::InitEncode(int monitor_idx) {
     LOG_INFO("Called VideoStreamer::InitEncode");
     // InitDXGI
     HRESULT hr = S_OK;
@@ -122,7 +122,7 @@ bool VideoStreamer::InitEncode() {
     d3d_ctx = dx_unique_ptr<ID3D11DeviceContext>(d3d_ctx_ptr, DxDeleter<ID3D11DeviceContext>);
 
     // DXGI dup
-    dxgi_provider = std::make_unique<DDAImpl>(d3d_dev.get(), d3d_ctx.get(), Config::MonitorIndex);
+    dxgi_provider = std::make_unique<DDAImpl>(d3d_dev.get(), d3d_ctx.get(), monitor_idx);
     hr = dxgi_provider->Init();
 
     if (FAILED(hr)) {
@@ -134,7 +134,7 @@ bool VideoStreamer::InitEncode() {
     }
 
     DWORD width = dxgi_provider->getWidth(), height = dxgi_provider->getHeight();
-    LOG_INFO("Successfully created & initialized DXGI output duplicator for monitor {} ({}x{})", Config::MonitorIndex, width, height);
+    LOG_INFO("Successfully created & initialized DXGI output duplicator for monitor {} ({}x{})", monitor_idx, width, height);
 
     // InitEnc
     NV_ENC_BUFFER_FORMAT fmt = NV_ENC_BUFFER_FORMAT_ARGB;

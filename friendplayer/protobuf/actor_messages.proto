@@ -22,7 +22,8 @@ message Create {
 
 message CreateFinish { // 
     string actor_name = 1;
-    bool succeeded = 2;
+    string actor_type_name = 2;
+    bool succeeded = 3;
 }
 
 // Network Messages
@@ -52,10 +53,14 @@ message StopTimer { }
 
 // ClientManagerActor
 
-message ClientManagerInit {
-    bool is_host = 1;
-    optional string host_ip = 2;
-    optional uint32 host_port = 3;
+message ClientClientManagerInit {
+    string host_ip = 1;
+    uint32 host_port = 2;
+}
+
+message HostClientManagerInit {
+    repeated uint32 monitor_indices = 1;
+    uint32 port = 2;
 }
 
 message ClientHandshakeDone {
@@ -81,6 +86,11 @@ message SocketInit {
 
 message ProtocolInit {
     uint64 address = 1;
+}
+
+message ClientProtocolInit {
+    ProtocolInit base_init = 1;
+    uint32 stream_count = 2;
 }
 
 // HeartbeatActor
@@ -114,13 +124,27 @@ message VideoData {
     }
     uint64 handle = 1;
     FrameType type = 2;
+    uint32 stream_num = 3;
+}
+
+message VideoEncodeInit {
+    uint32 monitor_idx = 1;
+    uint32 stream_num = 2;
 }
 
 // VideoDecodeActor
 
-message VideoDecoderReady { }
+message VideoDecodeInit { 
+    uint32 stream_num = 1;
+}
 
-message VideoDataRequest { }
+message VideoDecoderReady {
+    uint32 stream_num = 1;
+}
+
+message VideoDataRequest {
+    uint32 stream_num = 1;
+}
 
 // VideoEncodeActor
 
@@ -136,5 +160,11 @@ message SpecialFrameRequest { // ClientActor --> VideoEncodeActor
 
 message AudioData {
     uint64 handle = 1;
-    uint64 size = 2;
+    uint32 stream_num = 2;
+}
+
+// AudioDecodeActor
+
+message AudioDecodeInit { 
+    uint32 stream_num = 1;
 }

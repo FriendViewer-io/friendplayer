@@ -13,10 +13,10 @@ public:
     void OnTimerFire() override;
 
 private:
-
     void OnVideoFrame(const fp_actor::VideoData& video_data);
 
     VideoStreamer video_streamer;
+    uint32_t stream_num;
 };
 
 DEFINE_ACTOR_GENERATOR(VideoDecodeActor)

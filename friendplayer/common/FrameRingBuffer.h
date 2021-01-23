@@ -25,12 +25,19 @@ struct RetrievedBuffer {
 };
 
 class FrameRingBuffer {
+private:
+    static constexpr uint32_t CORRUPT_FRAME_TIMEOUT = 20;
+
 public:
     FrameRingBuffer(std::string name, size_t num_frames, size_t frame_capacity);
 
     bool AddFrameChunk(const fp_network::HostDataFrame& frame);
     // Returns # of bytes needed to fix decryption
-    uint32_t GetFront(std::string& buffer_out, bool& was_full_frame);
+    uint32_t GetFront(std::string& buffer_out, bool& frame_was_corrupt);
+    uint32_t GetFront(std::string& buffer_out) {
+        bool unused;
+        return GetFront(buffer_out, unused);
+    }
     
 private:
     std::vector<Frame> buffer;
@@ -41,4 +48,6 @@ private:
     constexpr uint32_t frame_index() const { return frame_number % frame_count; }
 
     std::string buffer_name;
+
+    uint32_t corrupt_frame_timeout;
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace Config {
 	extern int LoadConfig(int argc, char** argv);
@@ -9,6 +10,6 @@ namespace Config {
 	extern int AverageBitrate;
 	extern std::string ServerIP;
 	extern unsigned short Port;
-	extern int MonitorIndex;
+	extern std::vector<int> MonitorIndecies;
 	extern bool EnableTracing;
 }

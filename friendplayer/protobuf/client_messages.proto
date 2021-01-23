@@ -9,6 +9,7 @@ message ClientState {
         DISCONNECTING = 2;
     }
     State state = 1;
+    uint32 stream_num = 2;
 }
 
 message KeyboardFrame {

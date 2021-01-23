@@ -35,6 +35,11 @@ message Handshake {
     // add diffie hellman? adam :)
 }
 
+message StreamInfo {
+    uint32 num_video_streams = 1;
+    uint32 num_audio_streams = 2;
+}
+
 message Network {
     oneof Payload {
         Handshake hs_msg = 1;
@@ -42,5 +47,6 @@ message Network {
         Ack ack_msg = 3;
         Heartbeat hb_msg = 4;
         State state_msg = 5;
+        StreamInfo info_msg = 6;
     }
 }

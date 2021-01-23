@@ -15,6 +15,7 @@ void AdminActor::OnMessage(const any_msg& msg) {
         BaseActor* new_actor = generate_actor(create_message.actor_type_name(), writable_actor_map, buffer_map, create_message.actor_name());
         fp_actor::CreateFinish finish_msg;
         finish_msg.set_actor_name(create_message.actor_name());
+        finish_msg.set_actor_type_name(create_message.actor_type_name());
         if (new_actor != nullptr) {
             finish_msg.set_succeeded(true);
             if (create_message.has_init_msg()) {

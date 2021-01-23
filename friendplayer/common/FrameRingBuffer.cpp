@@ -3,7 +3,7 @@
 #include "common/Log.h"
 
 FrameRingBuffer::FrameRingBuffer(std::string name, size_t num_frames, size_t frame_capacity) 
-        : buffer_name(name), frame_count(static_cast<uint32_t>(num_frames)), frame_number(0), stream_point(0) {
+        : buffer_name(name), frame_count(static_cast<uint32_t>(num_frames)), frame_number(0), stream_point(0), corrupt_frame_timeout(-1) {
     buffer.resize(num_frames);
     for (int i = 0; i < num_frames; ++i) {
         buffer[i].data.resize(frame_capacity);
@@ -54,7 +54,7 @@ bool FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
     return buffer[frame_index()].current_read_size == buffer[frame_index()].size;
 }
 
-uint32_t FrameRingBuffer::GetFront(std::string& buffer_out, bool& was_full_frame) {
+uint32_t FrameRingBuffer::GetFront(std::string& buffer_out, bool& frame_was_corrupt) {
 
     const auto& data = buffer[frame_index()].data;
     if (data.size() < buffer[frame_index()].size) {
@@ -74,8 +74,17 @@ uint32_t FrameRingBuffer::GetFront(std::string& buffer_out, bool& was_full_frame
         stream_point = buffer[frame_index()].stream_point + buffer[frame_index()].size;
     }
 
-    was_full_frame = buffer[frame_index()].current_read_size == buffer[frame_index()].size;
-    
+    if (buffer[frame_index()].current_read_size != buffer[frame_index()].size
+        || buffer[frame_index()].size == 0
+        || num_missed_bytes != 0) {
+        corrupt_frame_timeout = CORRUPT_FRAME_TIMEOUT;
+    } else if (corrupt_frame_timeout >= 0) {
+        if (corrupt_frame_timeout == 0) {
+            frame_was_corrupt = true;
+        }
+        corrupt_frame_timeout--;
+    }
+
     buffer[frame_index()].num = frame_number + frame_count;
     buffer[frame_index()].size = 0;
     buffer[frame_index()].current_read_size = 0;

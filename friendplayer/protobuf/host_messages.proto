@@ -37,8 +37,9 @@ message HostDataFrame {
     uint32 frame_num = 1;
     uint32 frame_size = 2;
     uint32 stream_point = 3;
+    uint32 stream_num = 4;
     oneof DataFrame {
-        VideoFrame video = 4;
-        AudioFrame audio = 5;
+        VideoFrame video = 5;
+        AudioFrame audio = 6;
     }
 }

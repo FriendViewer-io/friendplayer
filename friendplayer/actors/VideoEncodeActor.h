@@ -19,6 +19,7 @@ private:
     VideoStreamer host_streamer;
     bool idr_requested;
     bool pps_sps_requested;
+    uint32_t stream_num;
 };
 
 DEFINE_ACTOR_GENERATOR(VideoEncodeActor)

@@ -5,9 +5,20 @@
 #include "common/Log.h"
 
 void VideoEncodeActor::OnInit(const std::optional<any_msg>& init_msg) {
-    host_streamer.InitEncode();
-    SetTimerInternal(16, true);
     TimerActor::OnInit(init_msg);
+    if (init_msg) {
+        if (init_msg->Is<fp_actor::VideoEncodeInit>()) {
+            fp_actor::VideoEncodeInit encode_init_msg;
+            init_msg->UnpackTo(&encode_init_msg);
+            host_streamer.InitEncode(static_cast<int>(encode_init_msg.monitor_idx()));
+            stream_num = encode_init_msg.stream_num();
+            LOG_INFO("Created encoder {} for monitor {}", stream_num, encode_init_msg.monitor_idx());
+        }
+    } else {
+        host_streamer.InitEncode(0);
+        stream_num = 0;
+    }
+    SetTimerInternal(16, true);
 }
 
 void VideoEncodeActor::OnMessage(const any_msg& msg) {
@@ -30,6 +41,7 @@ void VideoEncodeActor::OnTimerFire() {
     host_streamer.Encode(idr_requested, pps_sps_requested, *data);
     uint64_t handle = buffer_map.Wrap(data);
     fp_actor::VideoData video_data;
+    video_data.set_stream_num(stream_num);
     video_data.set_handle(handle);
     if (pps_sps_requested) {
         video_data.set_type(fp_actor::VideoData::PPS_SPS);

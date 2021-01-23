@@ -6,6 +6,7 @@
 #include "protobuf/network_messages.pb.h"
 
 #include <chrono>
+#include <vector>
 
 class ProtocolActor : public TimerActor {
 public:
@@ -27,6 +28,7 @@ protected:
     virtual bool OnHandshakeMessage(const fp_network::Handshake& msg) = 0;
     virtual void OnDataMessage(const fp_network::Data& msg) = 0;
     virtual void OnStateMessage(const fp_network::State& msg) = 0;
+    virtual void OnStreamInfoMessage(const fp_network::StreamInfo& msg) { }
 
     void SendToSocket(fp_network::Network& msg, bool is_retransmit = false);
 
