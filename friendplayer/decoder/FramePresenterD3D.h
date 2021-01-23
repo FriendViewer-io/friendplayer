@@ -65,7 +65,7 @@ protected:
         wndclass.hInstance = (HINSTANCE)GetModuleHandle(NULL);
         wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
         wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wndclass.hbrBackground = (HBRUSH)CreateSolidBrush(RGB(0,0,0));
+        wndclass.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
         wndclass.lpszMenuName = NULL;
         wndclass.lpszClassName = szAppName;
         RegisterClass(&wndclass);
@@ -91,10 +91,10 @@ protected:
         };
         AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
-        HWND hwndMain = CreateWindow(szAppName, szAppName, WS_OVERLAPPEDWINDOW,
+        HWND hwndMain = CreateWindow(szAppName, szAppName, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
             rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
             NULL, NULL, wndclass.hInstance, NULL);
-        
+
         int x = (rc.right - rc.left) - width;
         int y = (rc.bottom - rc.top) - height;
         HWND childWindow = CreateWindow(szAppNameChild, szAppNameChild, WS_CHILD | WS_VISIBLE,
@@ -175,18 +175,6 @@ private:
         case WM_SIZING:
             //self->HandleResize(wParam, *(RECT*) lParam);
             break;
-        case WM_WINDOWPOSCHANGING: {
-            auto ret = DefWindowProc(hwnd, msg, wParam, lParam);
-            WINDOWPOS* wp = (WINDOWPOS*)lParam;
-            wp->flags |= SWP_NOCOPYBITS;
-            return ret;
-        }
-        case WM_NCCALCSIZE: {
-            if (wParam == 1) {
-                return WVR_VALIDRECTS;
-            }
-            break;
-        }
         }
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }

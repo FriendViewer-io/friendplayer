@@ -178,8 +178,4 @@ void ProtocolActor::TryDecrementHandle(const fp_network::Data& msg) {
             buffer_map.Decrement(msg.host_frame().audio().data_handle());
         }
     }
-}       } else if (msg.host_frame().DataFrame_case() == fp_network::HostDataFrame::kAudio) {
-            buffer_map.Decrement(msg.host_frame().audio().data_handle());
-        }
-    }
 }
