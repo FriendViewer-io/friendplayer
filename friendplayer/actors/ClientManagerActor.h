@@ -7,6 +7,7 @@
 #include <set>
 
 #include "protobuf/network_messages.pb.h"
+#include "protobuf/actor_messages.pb.h"
 
 class ClientManagerActor : public Actor {
 public:
@@ -18,6 +19,9 @@ public:
 
 private:
     void CreateClient(uint64_t address);
+    
+    void ClientInit(const fp_actor::ClientClientManagerInit& msg);
+    void HostInit(const fp_actor::HostClientManagerInit& msg);
     void OnEncoderCreated(const std::string& name, bool succeeded);
     void OnClientCreated(const std::string& name, bool succeeded);
 
@@ -27,7 +31,8 @@ private:
 
     uint32_t request_id_counter;
     
-    uint32_t stream_count;
+    uint32_t video_stream_count;
+    uint32_t audio_stream_count;
     bool is_host;
 };
 

@@ -14,9 +14,7 @@ ClientActor::ClientActor(const ActorMap& actor_map, DataBufferMap& buffer_map, s
       audio_enabled(true),
       keyboard_enabled(false),
       mouse_enabled(false),
-      controller_enabled(true),
-      audio_stream_point(0),
-      audio_frame_num(0)
+      controller_enabled(true)
       //input_streamer()
       { }
 
@@ -26,9 +24,13 @@ void ClientActor::OnInit(const std::optional<any_msg>& init_msg) {
             fp_actor::ClientProtocolInit client_init_msg;
             init_msg->UnpackTo(&client_init_msg);
 
-            video_streams.resize(client_init_msg.stream_count());
-            for (int i = 0; i < client_init_msg.stream_count(); i++) {
+            video_streams.resize(client_init_msg.video_stream_count());
+            for (int i = 0; i < client_init_msg.video_stream_count(); i++) {
                 video_streams[i].actor_name = fmt::format(VIDEO_ENCODER_ACTOR_NAME_FORMAT, i);
+            }
+            audio_streams.resize(client_init_msg.audio_stream_count());
+            for (int i = 0; i < client_init_msg.audio_stream_count(); i++) {
+                audio_streams[i].actor_name = fmt::format(AUDIO_ENCODER_ACTOR_NAME_FORMAT, i);
             }
             // base class init
             any_msg base_msg;
@@ -48,6 +50,10 @@ void ClientActor::OnMessage(const any_msg& msg) {
             fp_actor::VideoData data_msg;
             msg.UnpackTo(&data_msg);
             buffer_map.Decrement(data_msg.handle());
+        } else if (msg.Is<fp_actor::AudioData>()) {
+            fp_actor::AudioData data_msg;
+            msg.UnpackTo(&data_msg);
+            buffer_map.Decrement(data_msg.handle());
         } else {
             ProtocolActor::OnMessage(msg);
         }
@@ -57,6 +63,10 @@ void ClientActor::OnMessage(const any_msg& msg) {
         fp_actor::VideoData data_msg;
         msg.UnpackTo(&data_msg);
         OnVideoData(data_msg);
+    } else if (msg.Is<fp_actor::AudioData>()) {
+        fp_actor::AudioData data_msg;
+        msg.UnpackTo(&data_msg);
+        OnAudioData(data_msg);
     } else {
         // pass it up to parent class
         ProtocolActor::OnMessage(msg);
@@ -69,7 +79,6 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
 
     uint32_t stream_num = data_msg.stream_num();
 
-    LOG_INFO("Sending frame to stream num {}", stream_num);
     if (stream_num > video_streams.size()) {
         LOG_WARNING("Received video data from invalid stream number {}", stream_num);
         return;
@@ -77,33 +86,70 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
 
     StreamInfo& stream_info = video_streams[stream_num];
 
-    std::string* handle_data = buffer_map.GetBuffer(data_msg.handle());
-    fp_network::Network out_msg;
-    *out_msg.mutable_data_msg() = fp_network::Data();
-    out_msg.mutable_data_msg()->set_sequence_number(sequence_number);
-    *out_msg.mutable_data_msg()->mutable_host_frame() = fp_network::HostDataFrame();
-    out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
-    out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(handle_data->size());
-    out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
-    out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
-    *out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video() = fp_network::VideoFrame();
-    out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_data_handle(data_msg.handle());
-    out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_chunk_offset(0);
-    
-    if (data_msg.type() == fp_actor::VideoData::PPS_SPS) {
-        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::PPS_SPS);
-        out_msg.mutable_data_msg()->set_needs_ack(true);
-    } else if (data_msg.type() == fp_actor::VideoData::IDR) {
-        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::IDR);
-    } else {
-        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::NORMAL);
-    }
     if ((stream_info.stream_state == StreamState::WAITING_FOR_VIDEO && data_msg.type() == fp_actor::VideoData::PPS_SPS)
         || stream_info.stream_state == StreamState::READY) {
+        std::string* handle_data = buffer_map.GetBuffer(data_msg.handle());
+        fp_network::Network out_msg;
+        *out_msg.mutable_data_msg() = fp_network::Data();
+        out_msg.mutable_data_msg()->set_sequence_number(sequence_number);
+        *out_msg.mutable_data_msg()->mutable_host_frame() = fp_network::HostDataFrame();
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(handle_data->size());
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
+        *out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video() = fp_network::VideoFrame();
+        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_data_handle(data_msg.handle());
+        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_chunk_offset(0);
+        
+        if (data_msg.type() == fp_actor::VideoData::PPS_SPS) {
+            out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::PPS_SPS);
+            out_msg.mutable_data_msg()->set_needs_ack(true);
+        } else if (data_msg.type() == fp_actor::VideoData::IDR) {
+            out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::IDR);
+        } else {
+            out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::NORMAL);
+        }
         sequence_number += ((handle_data->size() + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
         stream_info.stream_point += handle_data->size();
         stream_info.frame_num++;
 
+        buffer_map.Increment(data_msg.handle());
+        SendToSocket(out_msg);
+    }
+    buffer_map.Decrement(data_msg.handle());
+}
+
+void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
+    // INSERT ENCRYPTION HERE!!
+    // INSERT ENCRYPTION HERE!!
+
+    uint32_t stream_num = data_msg.stream_num();
+
+    if (stream_num > audio_streams.size()) {
+        LOG_WARNING("Received audio data from invalid stream number {}", stream_num);
+        return;
+    }
+
+    StreamInfo& stream_info = audio_streams[stream_num];
+
+    if (stream_info.stream_state == StreamState::READY) {
+        std::string* handle_data = buffer_map.GetBuffer(data_msg.handle());
+        fp_network::Network out_msg;
+        *out_msg.mutable_data_msg() = fp_network::Data();
+        out_msg.mutable_data_msg()->set_sequence_number(sequence_number);
+        *out_msg.mutable_data_msg()->mutable_host_frame() = fp_network::HostDataFrame();
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(handle_data->size());
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
+        *out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio() = fp_network::AudioFrame();
+        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_data_handle(data_msg.handle());
+        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_chunk_offset(0);
+    
+        sequence_number += ((handle_data->size() + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
+        stream_info.stream_point += handle_data->size();
+        stream_info.frame_num++;
+        LOG_INFO("Sending audio data size {} to stream num {}", handle_data->size(), stream_num);
         buffer_map.Increment(data_msg.handle());
         SendToSocket(out_msg);
     }
@@ -129,7 +175,7 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
             LOG_INFO("Client actor {} received last handshake", GetName());
             fp_network::Network stream_info_msg;
             stream_info_msg.mutable_info_msg()->set_num_video_streams(video_streams.size());
-            stream_info_msg.mutable_info_msg()->set_num_audio_streams(0);
+            stream_info_msg.mutable_info_msg()->set_num_audio_streams(audio_streams.size());
             SendToSocket(stream_info_msg);            
             protocol_state = HandshakeState::HS_READY;
             handshake_success = true;
@@ -146,7 +192,7 @@ void ClientActor::OnStateMessage(const fp_network::State& msg) {
     auto& state = msg.client_state();
     switch (state.state()) {
         case fp_network::ClientState::READY_FOR_PPS_SPS_IDR: {
-            LOG_INFO("Received ready for PPS_SPS");
+            LOG_INFO("Received ready for PPSSPS from {}", state.stream_num());
             fp_actor::SpecialFrameRequest req;
             req.set_type(fp_actor::SpecialFrameRequest::PPS_SPS);
             if (state.stream_num() > video_streams.size()) {
@@ -159,12 +205,15 @@ void ClientActor::OnStateMessage(const fp_network::State& msg) {
         }
         break;
         case fp_network::ClientState::READY_FOR_VIDEO: {
-            LOG_INFO("Received ready for video");
+            LOG_INFO("Received ready for video from {}", state.stream_num());
             fp_actor::SpecialFrameRequest req;
             req.set_type(fp_actor::SpecialFrameRequest::IDR);
             StreamInfo& info = video_streams[state.stream_num()];
             SendTo(info.actor_name, req);
             info.stream_state = StreamState::READY;
+            for (auto& audio_stream : audio_streams) {
+                audio_stream.stream_state = StreamState::READY;
+            }
         }
         break;
         case fp_network::ClientState::DISCONNECTING: {

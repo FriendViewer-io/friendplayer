@@ -37,9 +37,9 @@ void SocketActor::OnMessage(const any_msg& msg) {
                     socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint);
                 }
             } else if (host_frame.has_audio()) {
-                handle = host_frame.video().data_handle();
+                handle = host_frame.audio().data_handle();
                 host_frame.mutable_audio()->clear_DataBacking();
-                std::string* buf = buffer_map.GetBuffer(host_frame.mutable_audio()->data_handle());
+                std::string* buf = buffer_map.GetBuffer(handle);
                 for (size_t chunk_offset = 0; chunk_offset < buf->size(); chunk_offset += MAX_DATA_CHUNK) {
                     const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, buf->size());
                     network_msg.mutable_data_msg()->set_sequence_number(seq_num);

@@ -61,6 +61,7 @@ message ClientClientManagerInit {
 message HostClientManagerInit {
     repeated uint32 monitor_indices = 1;
     uint32 port = 2;
+    uint32 num_audio_streams = 3;
 }
 
 message ClientHandshakeDone {
@@ -90,7 +91,8 @@ message ProtocolInit {
 
 message ClientProtocolInit {
     ProtocolInit base_init = 1;
-    uint32 stream_count = 2;
+    uint32 video_stream_count = 2;
+    uint32 audio_stream_count = 3;
 }
 
 // HeartbeatActor
@@ -166,5 +168,11 @@ message AudioData {
 // AudioDecodeActor
 
 message AudioDecodeInit { 
+    uint32 stream_num = 1;
+}
+
+// AudioEncodeActor
+
+message AudioEncodeInit { 
     uint32 stream_num = 1;
 }

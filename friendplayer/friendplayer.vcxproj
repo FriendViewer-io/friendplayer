@@ -12,6 +12,8 @@
     <ClCompile Include="actors\ActorGenerator.cpp" />
     <ClCompile Include="actors\ActorMap.cpp" />
     <ClCompile Include="actors\AdminActor.cpp" />
+    <ClCompile Include="actors\AudioDecodeActor.cpp" />
+    <ClCompile Include="actors\AudioEncodeActor.cpp" />
     <ClCompile Include="actors\BaseActor.cpp" />
     <ClCompile Include="actors\ClientActor.cpp" />
     <ClCompile Include="actors\ClientManagerActor.cpp" />
@@ -47,6 +49,8 @@
     <ClInclude Include="actors\ActorMap.h" />
     <ClInclude Include="actors\ActorType.h" />
     <ClInclude Include="actors\AdminActor.h" />
+    <ClInclude Include="actors\AudioDecodeActor.h" />
+    <ClInclude Include="actors\AudioEncodeActor.h" />
     <ClInclude Include="actors\BaseActor.h" />
     <ClInclude Include="actors\ClientActor.h" />
     <ClInclude Include="actors\ClientManagerActor.h" />

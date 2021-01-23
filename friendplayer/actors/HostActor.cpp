@@ -107,7 +107,7 @@ void HostActor::OnVideoFrame(const fp_network::HostDataFrame& msg) {
 
 void HostActor::OnAudioFrame(const fp_network::HostDataFrame& msg) {
     fp_network::HostDataFrame frame;
-    uint64_t handle = msg.video().data_handle();
+    uint64_t handle = msg.audio().data_handle();
     frame.CopyFrom(msg);
     frame.mutable_audio()->clear_DataBacking();
     frame.mutable_audio()->set_allocated_data(buffer_map.GetBuffer(handle));
@@ -129,13 +129,13 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
         audio_stream_num_to_name[i] = actor_name;
         name_to_stream_num[actor_name] = i;
         fp_actor::Create create_msg;
-        create_msg.set_actor_type_name("AudioDeocdeActor");
+        create_msg.set_actor_type_name("AudioDecodeActor");
         create_msg.set_response_actor(GetName());
         create_msg.set_actor_name(actor_name);
-        fp_actor::AudioDecodeInit video_init;
-        video_init.set_stream_num(i);
+        fp_actor::AudioDecodeInit audio_init;
+        audio_init.set_stream_num(i);
         *create_msg.mutable_init_msg() = google::protobuf::Any();
-        create_msg.mutable_init_msg()->PackFrom(video_init);
+        create_msg.mutable_init_msg()->PackFrom(audio_init);
         SendTo(ADMIN_ACTOR_NAME, create_msg);
         audio_streams.push_back(std::move(std::make_unique<FrameRingBuffer>(fmt::format("AudioBuffer{}", i), AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE)));
     }

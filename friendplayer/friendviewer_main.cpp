@@ -20,62 +20,6 @@ void exit_handler(int signal) {
     exit(1);
 }
 
-
-// void audio_thread_host(std::shared_ptr<HostSocket> sock) {
-//     moodycamel::BlockingConcurrentQueue<int> test;
-//     AudioStreamer audio_streamer;
-//     audio_streamer.InitEncoder(64000);
-//     while (true) {
-//         auto begin_tm = std::chrono::system_clock::now();
-//         std::vector<uint8_t> raw_frame_in, enc_frame;
-//         audio_streamer.CaptureAudio(raw_frame_in);
-//         auto capture_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_tm);
-//         if (raw_frame_in.size() == 0) {
-//             LOG_TRACE("Skipped a whole 10ms, was there no audio???");
-//             continue;
-//         }
-//         begin_tm = std::chrono::system_clock::now();
-//         audio_streamer.EncodeAudio(raw_frame_in, enc_frame);
-//         auto encode_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_tm);
-//
-//         begin_tm = std::chrono::system_clock::now();
-//         int sz = enc_frame.size();
-//         sock->WriteAudioFrame(enc_frame);
-//         auto write_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - begin_tm);
-//         LOG_TRACE("Capture times={} {} {}", capture_elapsed.count(), encode_elapsed.count(), write_elapsed.count());
-//     }
-// }
-//
-// void audio_thread_client(std::shared_ptr<ClientSocket> sock) {
-//     AudioStreamer audio_streamer;
-//    
-//     audio_streamer.InitDecoder();
-//    
-//     std::vector<uint8_t> enc_frame_out, raw_frame_out;
-//     enc_frame_out.resize(20 * 1024);
-//
-//     while (protocol_mgr->HasClients()) {
-//         auto frame_start = std::chrono::system_clock::now();
-//         auto last_now = frame_start;
-//         RetrievedBuffer enc_frame_wrapper(enc_frame_out.data(), enc_frame_out.size());
-//         sock->GetAudioFrame(enc_frame_wrapper);
-//         auto get_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
-//         last_now = std::chrono::system_clock::now();
-//         std::vector<uint8_t> enc_frame(enc_frame_wrapper.data_out.begin(), enc_frame_wrapper.data_out.end());
-//
-//         if (enc_frame.empty()) { continue; }
-//
-//         audio_streamer.DecodeAudio(enc_frame, raw_frame_out);
-//         auto decode_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
-//         last_now = std::chrono::system_clock::now();
-//         if (raw_frame_out.size() > 0) {
-//             audio_streamer.PlayAudio(raw_frame_out);
-//         }
-//         auto play_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - last_now);
-//         LOG_TRACE("Elapsed times: {} {} {}", get_elapsed.count(), decode_elapsed.count(), play_elapsed.count());
-//     }
-// }
-
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
 
@@ -109,6 +53,7 @@ int main(int argc, char** argv) {
         for (int monitor_index : Config::MonitorIndecies) {
             client_mgr_init.add_monitor_indices(monitor_index);
         }
+        client_mgr_init.set_num_audio_streams(1);
         client_mgr_init.set_port(Config::Port);
         any_msg.PackFrom(client_mgr_init);
     }

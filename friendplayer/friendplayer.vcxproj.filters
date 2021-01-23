@@ -129,6 +129,12 @@
     <ClCompile Include="protobuf\network_messages.pb.cc">
       <Filter>Source Files\protobuf</Filter>
     </ClCompile>
+    <ClCompile Include="actors\AudioDecodeActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
+    <ClCompile Include="actors\AudioEncodeActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
@@ -241,6 +247,12 @@
     </ClInclude>
     <ClInclude Include="protobuf\network_messages.pb.h">
       <Filter>Source Files\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\AudioDecodeActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\AudioEncodeActor.h">
+      <Filter>Source Files\actor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

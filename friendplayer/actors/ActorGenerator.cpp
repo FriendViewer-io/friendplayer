@@ -1,6 +1,8 @@
 #include "actors/ActorGenerator.h"
 
 #include "actors/AdminActor.h"
+#include "actors/AudioDecodeActor.h"
+#include "actors/AudioEncodeActor.h"
 #include "actors/BaseActor.h"
 #include "actors/ClientActor.h"
 #include "actors/ClientManagerActor.h"

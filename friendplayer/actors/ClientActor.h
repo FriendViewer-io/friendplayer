@@ -37,14 +37,13 @@ private:
         std::string actor_name;
     };
     std::vector<StreamInfo> video_streams;
-    
-    uint32_t audio_stream_point;
-    uint32_t audio_frame_num;
+    std::vector<StreamInfo> audio_streams;
 
     uint32_t sequence_number;
 
     // Internal messages
     void OnVideoData(const fp_actor::VideoData& msg);
+    void OnAudioData(const fp_actor::AudioData& msg);
 
     // Network messages
     bool OnHandshakeMessage(const fp_network::Handshake& msg) override;

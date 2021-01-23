@@ -2,7 +2,6 @@
 
 #include "actors/CommonActorNames.h"
 #include "common/Log.h"
-#include "protobuf/actor_messages.pb.h"
 
 #include <asio/ip/udp.hpp>
 #include <fmt/format.h>
@@ -14,30 +13,12 @@ void ClientManagerActor::OnInit(const std::optional<any_msg>& init_msg) {
             is_host = false;
             fp_actor::ClientClientManagerInit msg;
             init_msg->UnpackTo(&msg);
-            uint64_t addr = static_cast<uint64_t>(msg.host_port()) << 32;
-            addr |= asio::ip::address::from_string(msg.host_ip()).to_v4().to_uint();
-            
-            fp_actor::CreateHostActor host_actor;
-            host_actor.set_host_address(addr);
-            any_msg any;
-            any.PackFrom(host_actor);
-            EnqueueMessage(std::move(any));
+            ClientInit(msg);
         } else if (init_msg->Is<fp_actor::HostClientManagerInit>()) {
             is_host = true;
             fp_actor::HostClientManagerInit msg;
             init_msg->UnpackTo(&msg);
-            stream_count = msg.monitor_indices_size();
-            fp_actor::Create encoder_create_msg;
-            encoder_create_msg.set_response_actor(GetName());
-            encoder_create_msg.set_actor_type_name("VideoEncodeActor");
-            fp_actor::VideoEncodeInit encode_init;
-            for (int i = 0; i < stream_count; i++) {
-                encoder_create_msg.set_actor_name(fmt::format(VIDEO_ENCODER_ACTOR_NAME_FORMAT, i));
-                encode_init.set_monitor_idx(msg.monitor_indices(i));
-                encode_init.set_stream_num(i);
-                encoder_create_msg.mutable_init_msg()->PackFrom(encode_init);
-                SendTo(ADMIN_ACTOR_NAME, encoder_create_msg);
-            }
+            HostInit(msg);
         } else {
             LOG_CRITICAL("ClientManagerActor initialized with unhandled init_msg of type {}!", init_msg->type_url());
         }
@@ -70,7 +51,8 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
         // then add to our address -> client actor name map
         fp_actor::CreateFinish create_finish_msg;
         msg.UnpackTo(&create_finish_msg);
-        if (create_finish_msg.actor_type_name() == "VideoEncodeActor") {
+        if (create_finish_msg.actor_type_name() == "VideoEncodeActor" ||
+            create_finish_msg.actor_type_name() == "AudioEncodeActor") {
             OnEncoderCreated(create_finish_msg.actor_name(), create_finish_msg.succeeded());
         } else if (create_finish_msg.actor_type_name() == "ClientActor"
             || create_finish_msg.actor_type_name() == "HostActor") {
@@ -106,6 +88,14 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
             SendTo(client_name, video_data_msg);
         }
         buffer_map.Decrement(video_data_msg.handle());
+    } else if (msg.Is<fp_actor::AudioData>()) {
+        fp_actor::AudioData audio_data_msg;
+        msg.UnpackTo(&audio_data_msg);
+        for (auto&& [address, client_name] : address_to_client) {
+            buffer_map.Increment(audio_data_msg.handle());
+            SendTo(client_name, audio_data_msg);
+        }
+        buffer_map.Decrement(audio_data_msg.handle());
     } else {
         // pass it up to parent class
         Actor::OnMessage(msg);
@@ -119,7 +109,8 @@ void ClientManagerActor::CreateClient(uint64_t address) {
         create_msg.set_actor_type_name("ClientActor");
         create_msg.set_actor_name(fmt::format(CLIENT_ACTOR_NAME_TEMPLATE, request_id_counter++));
         fp_actor::ClientProtocolInit protocol_init_msg;
-        protocol_init_msg.set_stream_count(stream_count);
+        protocol_init_msg.set_video_stream_count(video_stream_count);
+        protocol_init_msg.set_audio_stream_count(audio_stream_count);
         protocol_init_msg.mutable_base_init()->set_address(address);
         *create_msg.mutable_init_msg() = google::protobuf::Any();
         create_msg.mutable_init_msg()->PackFrom(protocol_init_msg);
@@ -135,9 +126,45 @@ void ClientManagerActor::CreateClient(uint64_t address) {
     SendTo(ADMIN_ACTOR_NAME, create_msg);
 }
 
+void ClientManagerActor::ClientInit(const fp_actor::ClientClientManagerInit& msg) {
+    uint64_t addr = static_cast<uint64_t>(msg.host_port()) << 32;
+    addr |= asio::ip::address::from_string(msg.host_ip()).to_v4().to_uint();
+    
+    fp_actor::CreateHostActor host_actor;
+    host_actor.set_host_address(addr);
+    any_msg any;
+    any.PackFrom(host_actor);
+    EnqueueMessage(std::move(any));
+}
+
+void ClientManagerActor::HostInit(const fp_actor::HostClientManagerInit& msg) {
+    video_stream_count = msg.monitor_indices_size();
+    audio_stream_count = msg.num_audio_streams();
+    fp_actor::Create encoder_create_msg;
+    encoder_create_msg.set_response_actor(GetName());
+    encoder_create_msg.set_actor_type_name("VideoEncodeActor");
+    fp_actor::VideoEncodeInit video_encode_init;
+    for (int i = 0; i < video_stream_count; i++) {
+        encoder_create_msg.set_actor_name(fmt::format(VIDEO_ENCODER_ACTOR_NAME_FORMAT, i));
+        video_encode_init.set_monitor_idx(msg.monitor_indices(i));
+        video_encode_init.set_stream_num(i);
+        encoder_create_msg.mutable_init_msg()->PackFrom(video_encode_init);
+        SendTo(ADMIN_ACTOR_NAME, encoder_create_msg);
+    }
+
+    encoder_create_msg.set_actor_type_name("AudioEncodeActor");
+    fp_actor::AudioEncodeInit audio_encode_init;
+    for (int i = 0; i < audio_stream_count; i++) {
+        encoder_create_msg.set_actor_name(fmt::format(AUDIO_ENCODER_ACTOR_NAME_FORMAT, i));
+        audio_encode_init.set_stream_num(i);
+        encoder_create_msg.mutable_init_msg()->PackFrom(audio_encode_init);
+        SendTo(ADMIN_ACTOR_NAME, encoder_create_msg);
+    }
+}
+
 void ClientManagerActor::OnEncoderCreated(const std::string& encoder_name, bool succeeded) {
     if (!succeeded) {
-        LOG_WARNING("Failed to create video encoder {}!", encoder_name);
+        LOG_WARNING("Failed to create encoder {}!", encoder_name);
     }
 }
 

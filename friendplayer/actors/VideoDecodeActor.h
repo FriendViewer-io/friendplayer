@@ -2,7 +2,7 @@
 
 #include "actors/TimerActor.h"
 
-#include "streamer/VideoStreamer.h"
+class VideoStreamer;
 
 class VideoDecodeActor : public TimerActor {
 public:
@@ -15,7 +15,7 @@ public:
 private:
     void OnVideoFrame(const fp_actor::VideoData& video_data);
 
-    VideoStreamer video_streamer;
+    std::unique_ptr<VideoStreamer> video_streamer;
     uint32_t stream_num;
 };
 
