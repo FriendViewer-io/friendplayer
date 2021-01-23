@@ -38,7 +38,6 @@ void AudioDecodeActor::OnAudioFrame(const fp_actor::AudioData& audio_data) {
     std::string* data = buffer_map.GetBuffer(audio_data.handle());
     std::string* out_data = new std::string();
     audio_streamer->DecodeAudio(*data, *out_data);
-    LOG_INFO("Received frame size {} decoded to {}", data->size(), out_data->size());
     buffer_map.Decrement(audio_data.handle());
     audio_streamer->PlayAudio(*out_data);
     delete out_data;

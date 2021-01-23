@@ -149,7 +149,6 @@ void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
         sequence_number += ((handle_data->size() + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
         stream_info.stream_point += handle_data->size();
         stream_info.frame_num++;
-        LOG_INFO("Sending audio data size {} to stream num {}", handle_data->size(), stream_num);
         buffer_map.Increment(data_msg.handle());
         SendToSocket(out_msg);
     }

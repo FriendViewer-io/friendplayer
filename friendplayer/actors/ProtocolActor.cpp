@@ -32,6 +32,7 @@ void ProtocolActor::OnTimerFire() {
             saved_msg.last_send_ts = now;
             fp_network::Network retransmitted_msg;
             *retransmitted_msg.mutable_data_msg() = saved_msg.msg;
+            TryIncrementHandle(retransmitted_msg.data_msg());
             SendToSocket(retransmitted_msg, true);
             auto blocking_acks_it = std::find(blocking_acks.begin(), blocking_acks.end(), seqnum);
             // ensure we don't have to re-add the blocking ack
@@ -149,6 +150,7 @@ void ProtocolActor::OnAcknowledge(const fp_network::Ack& msg) {
         auto remove_seqnum_it = unacked_messages.find(msg.sequence_ack());
         auto remove_blocking_ack_it = std::find(blocking_acks.begin(), blocking_acks.end(), msg.sequence_ack());
         if (remove_seqnum_it != unacked_messages.end()) {
+            TryDecrementHandle(remove_seqnum_it->second.msg);
             unacked_messages.erase(remove_seqnum_it);
         }
         if (remove_blocking_ack_it != blocking_acks.end()) {
@@ -173,6 +175,10 @@ void ProtocolActor::TryDecrementHandle(const fp_network::Data& msg) {
         if (msg.host_frame().DataFrame_case() == fp_network::HostDataFrame::kVideo) {
             buffer_map.Decrement(msg.host_frame().video().data_handle());
         } else if (msg.host_frame().DataFrame_case() == fp_network::HostDataFrame::kAudio) {
+            buffer_map.Decrement(msg.host_frame().audio().data_handle());
+        }
+    }
+}       } else if (msg.host_frame().DataFrame_case() == fp_network::HostDataFrame::kAudio) {
             buffer_map.Decrement(msg.host_frame().audio().data_handle());
         }
     }

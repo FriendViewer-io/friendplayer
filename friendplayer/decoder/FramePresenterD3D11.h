@@ -74,104 +74,23 @@ public:
 
     void HandleResize(WPARAM edge, RECT& rect)
     {
-        int size_x_desired = static_cast<int>((rect.right - rect.left) - window_adjust_x);
-        int size_y_desired = static_cast<int>((rect.bottom - rect.top) - window_adjust_y);
+        int new_width = rect.right - rect.left;
+        int new_height = rect.bottom - rect.top;
+        float new_ratio = (new_width) / static_cast<float>(new_height);
+        float source_ratio = window_ratio_x / (float)window_ratio_y;
+        int inner_window_width, inner_window_height;
 
-        switch (edge)
-        {
-        case WMSZ_BOTTOM:
-        case WMSZ_TOP:
-        {
-            int size_x = static_cast<int>(window_adjust_x + (size_y_desired * window_ratio_x) / window_ratio_y);
-            rect.left = (rect.left + rect.right) / 2 - size_x / 2;
-            rect.right = rect.left + size_x;
+        if (new_ratio > source_ratio) {
+            inner_window_height = new_height;
+            inner_window_width = new_height * source_ratio;
+        } else {
+            inner_window_width = new_width;
+            inner_window_height = new_width / source_ratio;
         }
-        break;
-        case WMSZ_BOTTOMLEFT:
-        {
-            int size_x, size_y;
-
-            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
-            {
-                size_x = rect.right - rect.left;
-                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
-            }
-            else
-            {
-                size_y = rect.bottom - rect.top;
-                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
-            }
-
-            rect.left = rect.right - size_x;
-            rect.bottom = rect.top + size_y;
-        }
-        break;
-        case WMSZ_BOTTOMRIGHT:
-        {
-            int size_x, size_y;
-
-            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
-            {
-                size_x = rect.right - rect.left;
-                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
-            }
-            else
-            {
-                size_y = rect.bottom - rect.top;
-                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
-            }
-
-            rect.right = rect.left + size_x;
-            rect.bottom = rect.top + size_y;
-        }
-        break;
-        case WMSZ_LEFT:
-        case WMSZ_RIGHT:
-        {
-            int size_y = static_cast<int>(window_adjust_y + (size_x_desired * window_ratio_y) / window_ratio_x);
-            rect.top = (rect.top + rect.bottom) / 2 - size_y / 2;
-            rect.bottom = rect.top + size_y;
-        }
-        break;
-        case WMSZ_TOPLEFT:
-        {
-            int size_x, size_y;
-
-            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
-            {
-                size_x = rect.right - rect.left;
-                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
-            }
-            else
-            {
-                size_y = rect.bottom - rect.top;
-                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
-            }
-
-            rect.left = rect.right - size_x;
-            rect.top = rect.bottom - size_y;
-        }
-        break;
-        case WMSZ_TOPRIGHT:
-        {
-            int size_x, size_y;
-
-            if (size_x_desired * window_ratio_y > size_y_desired * window_ratio_x)
-            {
-                size_x = rect.right - rect.left;
-                size_y = static_cast<int>(window_adjust_y + ((size_x - window_adjust_x) * window_ratio_y) / window_ratio_x);
-            }
-            else
-            {
-                size_y = rect.bottom - rect.top;
-                size_x = static_cast<int>(window_adjust_x + ((size_y - window_adjust_y) * window_ratio_x) / window_ratio_y);
-            }
-
-            rect.right = rect.left + size_x;
-            rect.top = rect.bottom - size_y;
-        }
-        break;
-        }
+        int inner_window_x = (new_width / 2) - (inner_window_width / 2);
+        int inner_window_y = (new_height / 2) - (inner_window_height / 2);
+        
+        SetWindowPos(childWindow, HWND_TOP, inner_window_x, inner_window_y, inner_window_width, inner_window_height, SWP_NOCOPYBITS);
     }
 
 private:
@@ -205,7 +124,7 @@ private:
     *          with cuda.
     */
     void Run() {
-        HWND hwndMain = CreateAndShowWindow(nWindowWidth, nWindowHeight);
+        childWindow = CreateAndShowWindow(nWindowWidth, nWindowHeight);
 
         DXGI_SWAP_CHAIN_DESC sc = { 0 };
         sc.BufferCount = 1;
@@ -214,11 +133,13 @@ private:
         sc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         sc.BufferDesc.RefreshRate.Numerator = 0;
         sc.BufferDesc.RefreshRate.Denominator = 1;
+        sc.BufferDesc.Scaling = DXGI_MODE_SCALING_STRETCHED;
         sc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        sc.OutputWindow = hwndMain;
+        sc.OutputWindow = childWindow;
         sc.SampleDesc.Count = 1;
         sc.SampleDesc.Quality = 0;
         sc.Windowed = TRUE;
+        sc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
         // Determine resizing aspect ratio numbers
         window_ratio_x = nWidth / std::gcd(nWidth, nHeight);
@@ -269,7 +190,7 @@ private:
         pContext->Release();
         pDevice->Release();
         pSwapChain->Release();
-        DestroyWindow(hwndMain);
+        DestroyWindow(childWindow);
         mtx.unlock();
     }
 

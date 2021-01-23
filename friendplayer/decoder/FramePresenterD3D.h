@@ -56,6 +56,7 @@ protected:
     static HWND CreateAndShowWindow(int width, int height) {
 
         static char szAppName[] = "D3DPresenter";
+        static char szAppNameChild[] = "D3DPresenterChild";
         WNDCLASS wndclass;
         wndclass.style = CS_HREDRAW | CS_VREDRAW;
         wndclass.lpfnWndProc = WndProc;
@@ -64,10 +65,23 @@ protected:
         wndclass.hInstance = (HINSTANCE)GetModuleHandle(NULL);
         wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
         wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
-        wndclass.hbrBackground = NULL;
+        wndclass.hbrBackground = (HBRUSH)CreateSolidBrush(RGB(0,0,0));
         wndclass.lpszMenuName = NULL;
         wndclass.lpszClassName = szAppName;
         RegisterClass(&wndclass);
+
+        WNDCLASS wndclass_child;
+        wndclass_child.style = CS_HREDRAW | CS_VREDRAW;
+        wndclass_child.lpfnWndProc = WndProc2;
+        wndclass_child.cbClsExtra = 0;
+        wndclass_child.cbWndExtra = 0;
+        wndclass_child.hInstance = (HINSTANCE)GetModuleHandle(NULL);
+        wndclass_child.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+        wndclass_child.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wndclass_child.hbrBackground = NULL;
+        wndclass_child.lpszMenuName = NULL;
+        wndclass_child.lpszClassName = szAppNameChild;
+        RegisterClass(&wndclass_child);
 
         RECT rc{
             (GetSystemMetrics(SM_CXSCREEN) - width) / 2,
@@ -80,10 +94,17 @@ protected:
         HWND hwndMain = CreateWindow(szAppName, szAppName, WS_OVERLAPPEDWINDOW,
             rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
             NULL, NULL, wndclass.hInstance, NULL);
+        
+        int x = (rc.right - rc.left) - width;
+        int y = (rc.bottom - rc.top) - height;
+        HWND childWindow = CreateWindow(szAppNameChild, szAppNameChild, WS_CHILD | WS_VISIBLE,
+            0, 0, width, height,
+            hwndMain, NULL, wndclass.hInstance, NULL);
         ShowWindow(hwndMain, SW_SHOW);
         UpdateWindow(hwndMain);
+        abc = childWindow;
 
-        return hwndMain;
+        return childWindow;
     }
 
     /**
@@ -134,8 +155,38 @@ private:
             PostQuitMessage(0);
             return 0;
         case WM_SIZING:
-            self->HandleResize(wParam, *(RECT*) lParam);
+            //self->HandleResize(wParam, *(RECT*) lParam);
             break;
+        case WM_SIZE:
+            if (hwnd != abc && (wParam == SIZE_MAXIMIZED || wParam == SIZE_RESTORED)) {
+                RECT rect{ 0, 0, lParam & 0xFFFF, lParam >> 16 };
+                self->HandleResize(wParam, rect);
+            }
+            break;
+        }
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+
+    static LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+        switch (msg) {
+        case WM_CLOSE:
+            PostQuitMessage(0);
+            return 0;
+        case WM_SIZING:
+            //self->HandleResize(wParam, *(RECT*) lParam);
+            break;
+        case WM_WINDOWPOSCHANGING: {
+            auto ret = DefWindowProc(hwnd, msg, wParam, lParam);
+            WINDOWPOS* wp = (WINDOWPOS*)lParam;
+            wp->flags |= SWP_NOCOPYBITS;
+            return ret;
+        }
+        case WM_NCCALCSIZE: {
+            if (wParam == 1) {
+                return WVR_VALIDRECTS;
+            }
+            break;
+        }
         }
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
@@ -146,4 +197,6 @@ protected:
     CUcontext cuContext = NULL;
     CUgraphicsResource cuResource = NULL;
     inline static FramePresenterD3D* self = nullptr;
+    HWND childWindow;
+    inline static HWND abc = 0;
 };

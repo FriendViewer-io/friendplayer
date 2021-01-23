@@ -27,8 +27,10 @@ void TimerActor::OnMessage(const any_msg& msg) {
         if (fire_msg.timer_timestamp() >= ignore_before) {    
             if (!is_periodic) {
                 timer_handle = 0;
-                delete capture;
-                capture = nullptr;
+                if (capture != nullptr) {
+                    delete capture;
+                    capture = nullptr;
+                }
             }
             OnTimerFire();
         }
@@ -53,7 +55,7 @@ void TimerActor::StopTimer() {
         timeKillEvent(timer_handle);
     }
     timer_handle = 0;
-    if (is_periodic && capture != nullptr) {
+    if (capture != nullptr) {
         delete capture;
         capture = nullptr;
     }
