@@ -12,7 +12,7 @@ private:
     static constexpr size_t BLOCK_SIZE = 16;
     // maximum chunk size over UDP accounding for proto overhead
     // and AES block encryption
-    static constexpr size_t MAX_DATA_CHUNK = 476 - (476 % BLOCK_SIZE);
+    static constexpr size_t MAX_DATA_CHUNK = 476;
 public:
     SocketActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
       : Actor(actor_map, buffer_map, std::move(name)),
@@ -49,7 +49,7 @@ DEFINE_ACTOR_GENERATOR(SocketActor)
 
 class HostSocketActor : public SocketActor {
 private:
-    static constexpr size_t CLIENT_SEND_SIZE = 1024 * 256;
+    static constexpr size_t CLIENT_SEND_SIZE = 1024 * 1024;
 
 public:
     HostSocketActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
@@ -75,7 +75,7 @@ DEFINE_ACTOR_GENERATOR(HostSocketActor)
 
 class ClientSocketActor : public SocketActor {
 private:
-    static constexpr size_t CLIENT_RECV_SIZE = 1024 * 256;
+    static constexpr size_t CLIENT_RECV_SIZE = 1024 * 1024;
     using asio_endpoint = asio::ip::udp::endpoint;
 
 public:

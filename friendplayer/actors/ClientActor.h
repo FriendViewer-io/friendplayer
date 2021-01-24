@@ -7,10 +7,9 @@
 
 class ClientActor : public ProtocolActor {
 private:
-    static constexpr size_t BLOCK_SIZE = 16;
     // maximum chunk size over UDP accounding for proto overhead
     // and AES block encryption
-    static constexpr size_t MAX_DATA_CHUNK = 476 - (476 % BLOCK_SIZE);
+    static constexpr size_t MAX_DATA_CHUNK = 476;
 public:
     ClientActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 

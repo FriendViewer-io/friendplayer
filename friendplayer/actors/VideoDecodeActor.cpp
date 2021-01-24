@@ -47,7 +47,7 @@ void VideoDecodeActor::OnVideoFrame(const fp_actor::VideoData& video_data) {
     }
     video_streamer->PresentVideo();
     // Stop the existing timer and reset to the next 50ms interval
-    SetTimerInternal(50, false);
+    SetTimerInternal(150, false);
 }
 
 void VideoDecodeActor::OnTimerFire() {

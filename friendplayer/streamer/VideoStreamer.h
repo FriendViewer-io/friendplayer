@@ -14,7 +14,6 @@ struct ID3D11Texture2D;
 class DDAImpl;
 
 class NvDecoder;
-class FramePresenterD3D11;
 
 class UDPSocket;
 
@@ -37,7 +36,6 @@ private:
     CUcontext cuda_context;
     CUdeviceptr cuda_frame;
     NvDecoder* decoder = nullptr;
-    FramePresenterD3D11* presenter = nullptr;
     int num_frames;
     bool display_init;
 
@@ -56,8 +54,6 @@ private:
 
     std::unique_ptr<NvEncoder> nvenc;
     std::unique_ptr<DDAImpl> dxgi_provider;
-
-    ID3D11Texture2D* cur_frame = nullptr;
 
     uint32_t encoder_frame_num = 0;
 

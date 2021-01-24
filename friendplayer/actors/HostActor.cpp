@@ -1,10 +1,12 @@
 #include "actors/HostActor.h"
 
+#include "decoder/FramePresenterGLUT.h"
+
 #include "actors/CommonActorNames.h"
 #include "common/Log.h"
 
 HostActor::HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
-    : ProtocolActor(actor_map, buffer_map, std::move(name)) {}
+    : ProtocolActor(actor_map, buffer_map, std::move(name)), presenter(nullptr) {}
 
 void HostActor::OnInit(const std::optional<any_msg>& init_msg) {
     ProtocolActor::OnInit(init_msg);
@@ -27,8 +29,8 @@ void HostActor::OnMessage(const any_msg& msg) {
     else if (msg.Is<fp_actor::VideoDataRequest>()) {
         fp_actor::VideoDataRequest video_request_msg;
         msg.UnpackTo(&video_request_msg);
-        SendVideoFrameToDecoder(video_request_msg.stream_num());
         LOG_INFO("Frame for decoder {} timed out waiting for frame", video_request_msg.stream_num());
+        SendVideoFrameToDecoder(video_request_msg.stream_num());
     } else if (msg.Is<fp_actor::CreateFinish>()) {
         fp_actor::CreateFinish create_finish_msg;
         msg.UnpackTo(&create_finish_msg);
@@ -139,6 +141,7 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
         SendTo(ADMIN_ACTOR_NAME, create_msg);
         audio_streams.push_back(std::move(std::make_unique<FrameRingBuffer>(fmt::format("AudioBuffer{}", i), AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE)));
     }
+    presenter = new FramePresenterGLUT(msg.num_video_streams());
     for (int i = 0; i < msg.num_video_streams(); ++i) {
         std::string actor_name = fmt::format(VIDEO_DECODER_ACTOR_NAME_FORMAT, i);
         video_stream_num_to_name[i] = actor_name;
@@ -160,7 +163,9 @@ void HostActor::SendVideoFrameToDecoder(uint32_t stream_num) {
     std::string* video_frame = new std::string();
     bool needs_idr = false;
     uint32_t size_to_decrypt = video_streams[stream_num]->GetFront(*video_frame, needs_idr);
-
+    if (video_frame->size() == 0) {
+        LOG_INFO("Zero frame size");
+    }
     // Run decryption
     if (needs_idr) {
         fp_network::Network idr_req_msg;

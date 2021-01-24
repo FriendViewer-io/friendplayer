@@ -41,10 +41,10 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
                 CreateClient(recv_msg.address());
             }
             // Save messages until client has been created by admin
-            saved_messages[recv_msg.address()].emplace(std::move(recv_msg.msg()));
+            saved_messages[recv_msg.address()].emplace(recv_msg.msg());
         } else {
             // Client exists, so send to them
-            SendTo(address_to_client[recv_msg.address()], std::move(recv_msg.msg()));
+            SendTo(address_to_client[recv_msg.address()], recv_msg.msg());
         }
     } else if (msg.Is<fp_actor::CreateFinish>()) {
         // Admin has finished creating our client, pop all saved messages and send them

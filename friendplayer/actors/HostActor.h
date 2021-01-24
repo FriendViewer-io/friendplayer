@@ -6,6 +6,7 @@
 #include "protobuf/actor_messages.pb.h"
 #include "protobuf/network_messages.pb.h"
 
+class FramePresenterGLUT;
 
 class HostActor : public ProtocolActor {
 private:
@@ -43,6 +44,8 @@ private:
     void OnVideoFrame(const fp_network::HostDataFrame& msg);
     void OnAudioFrame(const fp_network::HostDataFrame& msg);
     void OnHostState(const fp_network::HostState& msg);
+
+    FramePresenterGLUT* presenter;
 
 };
 

@@ -14,7 +14,7 @@
 
 // Decoder
 #include "decoder/NvDecoder.h"
-#include "decoder/FramePresenterD3D11.h"
+#include "decoder/FramePresenterGLUT.h"
 
 // Encoder
 #include "nvEncodeAPI.h"
@@ -39,7 +39,6 @@ VideoStreamer::VideoStreamer()
 }
 
 VideoStreamer::~VideoStreamer() {
-    check(cuMemFree(cuda_frame));
     if (decoder != nullptr) {
         delete decoder;
     }
@@ -226,8 +225,7 @@ bool VideoStreamer::InitDecode() {
     }
     LOG_TRACE("Creating decoder");
     decoder = new NvDecoder(cuda_context, true, cudaVideoCodec_H264, true, false, NULL, NULL, 0, 0, 1000);
-    LOG_TRACE("Ready for PPS SPS");
-
+    LOG_TRACE("Done initializing decoder");
     display_init = false;
     num_frames = 0;
 
@@ -239,15 +237,8 @@ bool VideoStreamer::IsDisplayInit() {
 }
 
 bool VideoStreamer::InitDisplay() {
-    LOG_INFO("Initializing display with first frame");
-    LOG_TRACE("Allocating CUDA frame");
-    if (!check(cuMemAlloc(&cuda_frame, decoder->GetDecodeWidth() * decoder->GetHeight() * 4))) {
-        LOG_CRITICAL("Failed to allocate cuda frame memory");
-        return false;
-    }
-
-    LOG_TRACE("Creating FramePresenterType");
-    presenter = new FramePresenterD3D11(cuda_context, decoder->GetDecodeWidth() , decoder->GetHeight());
+    LOG_TRACE("Registering cuda context");
+    cuda_frame = FramePresenterGLUT::RegisterContext(cuda_context, decoder->GetWidth(), decoder->GetHeight());
     LOG_TRACE("Finished initializing display");
     display_init = true;
     return true;
@@ -264,16 +255,15 @@ void VideoStreamer::Decode(std::string* video_packet) {
 }
 
 void VideoStreamer::PresentVideo() {
-    
     uint8_t* pFrame;
     int iMatrix = 0;
     int64_t timestamp = 0;
     int nRGBWidth = decoder->GetDecodeWidth();
 
-    for (int i = 0; i < num_frames; i++)
-    {
+    for (int i = 0; i < num_frames; i++) {
         pFrame = decoder->GetFrame(&timestamp);
         iMatrix = decoder->GetVideoFormatInfo().video_signal_description.matrix_coefficients;
+
         if (decoder->GetBitDepth() == 8)
         {
             if (decoder->GetOutputFormat() == cudaVideoSurfaceFormat_YUV444)
@@ -288,8 +278,6 @@ void VideoStreamer::PresentVideo() {
             else // default assumed as P016
                 P016ToColor32<BGRA32>(pFrame, 2 * decoder->GetWidth(), (uint8_t*)cuda_frame, 4 * nRGBWidth, decoder->GetWidth(), decoder->GetHeight(), iMatrix);
         }
-
-        presenter->PresentDeviceFrame((uint8_t*)cuda_frame, nRGBWidth * 4);
     }
 
     num_frames = 0;

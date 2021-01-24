@@ -140,12 +140,6 @@
     <ClInclude Include="encoder\DDAImpl.h">
       <Filter>Source Files\encoder</Filter>
     </ClInclude>
-    <ClInclude Include="decoder\FramePresenterD3D.h">
-      <Filter>Source Files\decoder</Filter>
-    </ClInclude>
-    <ClInclude Include="decoder\FramePresenterD3D11.h">
-      <Filter>Source Files\decoder</Filter>
-    </ClInclude>
     <ClInclude Include="common\Log.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
@@ -253,6 +247,9 @@
     </ClInclude>
     <ClInclude Include="actors\AudioEncodeActor.h">
       <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="decoder\FramePresenterGLUT.h">
+      <Filter>Source Files\decoder</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

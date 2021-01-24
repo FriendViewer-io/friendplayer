@@ -70,8 +70,7 @@
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
     <ClInclude Include="common\Timer.h" />
-    <ClInclude Include="decoder\FramePresenterD3D.h" />
-    <ClInclude Include="decoder\FramePresenterD3D11.h" />
+    <ClInclude Include="decoder\FramePresenterGLUT.h" />
     <ClInclude Include="decoder\NvDecoder.h" />
     <ClInclude Include="encoder\DDAImpl.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
@@ -138,7 +137,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)dependencies\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Setupapi.lib;XInput.lib;XInput9_1_0.lib;ViGEmClient.lib;cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Setupapi.lib;XInput.lib;XInput9_1_0.lib;ViGEmClient.lib;cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;freeglut_static.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /s /y /I $(SolutionDir)dependencies\x64\bin\ $(OutputPath)
