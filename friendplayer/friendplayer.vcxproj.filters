@@ -135,6 +135,9 @@
     <ClCompile Include="actors\AudioEncodeActor.cpp">
       <Filter>Source Files\actor</Filter>
     </ClCompile>
+    <ClCompile Include="FramePresenterGLUT.cpp">
+      <Filter>Source Files\decoder</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">

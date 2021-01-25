@@ -141,7 +141,7 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
         SendTo(ADMIN_ACTOR_NAME, create_msg);
         audio_streams.push_back(std::move(std::make_unique<FrameRingBuffer>(fmt::format("AudioBuffer{}", i), AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE)));
     }
-    presenter = new FramePresenterGLUT(msg.num_video_streams());
+    presenter = new FramePresenterGLUT(this, msg.num_video_streams());
     for (int i = 0; i < msg.num_video_streams(); ++i) {
         std::string actor_name = fmt::format(VIDEO_DECODER_ACTOR_NAME_FORMAT, i);
         video_stream_num_to_name[i] = actor_name;
@@ -188,4 +188,16 @@ void HostActor::SendAudioFrameToDecoder(uint32_t stream_num) {
     audio_data.set_handle(buffer_map.Wrap(audio_frame));
     audio_data.set_stream_num(stream_num);
     SendTo(audio_stream_num_to_name[stream_num], audio_data);
+}
+
+void HostActor::OnKeyPress(int key, bool pressed) {
+
+}
+
+void HostActor::OnMousePress(int stream, int x, int y, int button, bool pressed) {
+
+}
+
+void HostActor::OnMouseMove(int stream, int x, int y) {
+
 }

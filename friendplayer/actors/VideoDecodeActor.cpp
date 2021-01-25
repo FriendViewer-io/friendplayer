@@ -38,7 +38,7 @@ void VideoDecodeActor::OnVideoFrame(const fp_actor::VideoData& video_data) {
     video_streamer->Decode(data);
     buffer_map.Decrement(video_data.handle());
     if (!video_streamer->IsDisplayInit()) {
-        video_streamer->InitDisplay();
+        video_streamer->InitDisplay(stream_num);
         LOG_INFO("Ready for video");
         // Have host start sending video data after receiving PPS SPS
         fp_actor::VideoDecoderReady ready_msg;

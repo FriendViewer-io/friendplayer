@@ -236,9 +236,9 @@ bool VideoStreamer::IsDisplayInit() {
     return display_init;
 }
 
-bool VideoStreamer::InitDisplay() {
+bool VideoStreamer::InitDisplay(int stream_num) {
     LOG_TRACE("Registering cuda context");
-    cuda_frame = FramePresenterGLUT::RegisterContext(cuda_context, decoder->GetWidth(), decoder->GetHeight());
+    cuda_frame = FramePresenterGLUT::RegisterContext(cuda_context, decoder->GetWidth(), decoder->GetHeight(), stream_num);
     LOG_TRACE("Finished initializing display");
     display_init = true;
     return true;

@@ -26,7 +26,7 @@ public:
     void Encode(bool send_idr, bool send_pps_sps, std::string& data_out);
 
     bool InitDecode();
-    bool InitDisplay();
+    bool InitDisplay(int stream_num);
     void Decode(std::string* video_packet);
     void PresentVideo();
     bool IsDisplayInit();

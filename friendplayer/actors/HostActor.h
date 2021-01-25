@@ -23,6 +23,10 @@ public:
 
     void OnMessage(const any_msg& msg) override;
 
+    void OnKeyPress(int key, bool pressed);
+    void OnMouseMove(int stream, int x, int y);
+    void OnMousePress(int stream, int x, int y, int button, bool pressed);
+
 private:
 //    InputStreamer input_streamer;
 

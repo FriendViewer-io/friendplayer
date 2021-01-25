@@ -33,6 +33,7 @@
     <ClCompile Include="decoder\NvDecoder.cpp" />
     <ClCompile Include="encoder\DDAImpl.cpp" />
     <ClCompile Include="encoder\NvEncoder.cpp" />
+    <ClCompile Include="FramePresenterGLUT.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
     <ClCompile Include="protobuf\actor_messages.pb.cc" />
     <ClCompile Include="protobuf\client_messages.pb.cc" />
