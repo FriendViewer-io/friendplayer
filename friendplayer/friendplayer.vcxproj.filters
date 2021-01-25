@@ -135,7 +135,7 @@
     <ClCompile Include="actors\AudioEncodeActor.cpp">
       <Filter>Source Files\actor</Filter>
     </ClCompile>
-    <ClCompile Include="FramePresenterGLUT.cpp">
+    <ClCompile Include="decoder\FramePresenterGL.cpp">
       <Filter>Source Files\decoder</Filter>
     </ClCompile>
   </ItemGroup>
@@ -251,7 +251,7 @@
     <ClInclude Include="actors\AudioEncodeActor.h">
       <Filter>Source Files\actor</Filter>
     </ClInclude>
-    <ClInclude Include="decoder\FramePresenterGLUT.h">
+    <ClInclude Include="decoder\FramePresenterGL.h">
       <Filter>Source Files\decoder</Filter>
     </ClInclude>
   </ItemGroup>

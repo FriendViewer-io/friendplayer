@@ -30,10 +30,10 @@
     <ClCompile Include="common\FrameRingBuffer.cpp" />
     <ClCompile Include="common\Log.cpp" />
     <ClCompile Include="common\Timer.cpp" />
+    <ClCompile Include="decoder\FramePresenterGL.cpp" />
     <ClCompile Include="decoder\NvDecoder.cpp" />
     <ClCompile Include="encoder\DDAImpl.cpp" />
     <ClCompile Include="encoder\NvEncoder.cpp" />
-    <ClCompile Include="FramePresenterGLUT.cpp" />
     <ClCompile Include="friendviewer_main.cpp" />
     <ClCompile Include="protobuf\actor_messages.pb.cc" />
     <ClCompile Include="protobuf\client_messages.pb.cc" />
@@ -71,7 +71,7 @@
     <ClInclude Include="common\Log.h" />
     <ClInclude Include="common\NvCodecUtils.h" />
     <ClInclude Include="common\Timer.h" />
-    <ClInclude Include="decoder\FramePresenterGLUT.h" />
+    <ClInclude Include="decoder\FramePresenterGL.h" />
     <ClInclude Include="decoder\NvDecoder.h" />
     <ClInclude Include="encoder\DDAImpl.h" />
     <ClInclude Include="encoder\NvEncoder.h" />
@@ -138,7 +138,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)dependencies\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Setupapi.lib;XInput.lib;XInput9_1_0.lib;ViGEmClient.lib;cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;freeglut_static.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Setupapi.lib;XInput.lib;XInput9_1_0.lib;ViGEmClient.lib;cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;glew32.lib;glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /s /y /I $(SolutionDir)dependencies\x64\bin\ $(OutputPath)

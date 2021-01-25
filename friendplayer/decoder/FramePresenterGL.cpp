@@ -1,16 +1,16 @@
-#include "decoder/FramePresenterGLUT.h"
+#include "decoder/FramePresenterGL.h"
 
-#include <GL/glut.h>
-#include <GL/freeglut_ext.h>
 #include <cudaGL.h>
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 #include <sstream>
 
 #include "common/Log.h"
 #include "actors/HostActor.h"
 
-static FramePresenterGLUT* pInstance;
+static FramePresenterGL* pInstance;
 
-CUdeviceptr FramePresenterGLUT::RegisterContext(CUcontext context, int width, int height, int stream_num) {
+CUdeviceptr FramePresenterGL::RegisterContext(CUcontext context, int width, int height, int stream_num) {
     CUdeviceptr device_frame = NULL;
     cuMemAlloc(&device_frame, width * height * 4);
     cuMemsetD8(device_frame, 0, width * height * 4);
@@ -25,22 +25,7 @@ CUdeviceptr FramePresenterGLUT::RegisterContext(CUcontext context, int width, in
     return device_frame;
 }
 
-void FramePresenterGLUT::DisplayProc() {
-    if (!pInstance) {
-        return;
-    }
-    pInstance->Render(pInstance->presenters[glutGetWindow()]);
-}
-
-void FramePresenterGLUT::CloseWindowProc() {
-    if (!pInstance) {
-        return;
-    }
-    // Enable the flag to break glutMainLoopEvent
-    pInstance->stop = true;
-}
-
-bool FramePresenterGLUT::TranslateCoords(PresenterInfo& info, int& x, int& y) {
+bool FramePresenterGL::TranslateCoords(PresenterInfo& info, double& x, double& y) {
     if (x >= info.display_rect.left && x <= info.display_rect.right
         && y >= info.display_rect.top && y < info.display_rect.bottom) {
         x = static_cast<int>((x - info.display_rect.left) * (info.width / static_cast<float>(info.display_rect.right - info.display_rect.left)));
@@ -51,124 +36,59 @@ bool FramePresenterGLUT::TranslateCoords(PresenterInfo& info, int& x, int& y) {
     return false;
 }
 
-void FramePresenterGLUT::KeyProc(unsigned char key, int x, int y) {
+int ConvertToVK(int glfw_key) {
+
+    return 0;
+}
+
+void FramePresenterGL::KeyProc(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (!pInstance) {
         return;
     }
-    if (glutGetModifiers() & GLUT_ACTIVE_ALT && key == '\r') {
+    /*if (glutGetModifiers() & GLUT_ACTIVE_ALT && key == '\r') {
         glutFullScreenToggle();
-    }
-    int virtual_key = VkKeyScan(key) & 0xFF;
+    }*/
+    /*int virtual_key = ConvertToVK(key);
     if (!pInstance->key_press_map[virtual_key]) {
         pInstance->key_press_map[virtual_key] = 1;
         pInstance->callback_inst->OnKeyPress(virtual_key, true);
         LOG_INFO("Key down: {}", key);
-    }
+    }*/
 }
 
-int GLUTtoVirtualKey(int glut_key) {
+void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int action, int mods) {
+    if (!pInstance) {
+        return;
+    }
+    LOG_INFO("Mouse button {} {}", button, action);
     
-    switch (glut_key) {
-    case GLUT_KEY_F1:
-    case GLUT_KEY_F2:
-    case GLUT_KEY_F3:
-    case GLUT_KEY_F4:
-    case GLUT_KEY_F5:
-    case GLUT_KEY_F6:
-    case GLUT_KEY_F7:
-    case GLUT_KEY_F8:
-    case GLUT_KEY_F9:
-    case GLUT_KEY_F10:
-    case GLUT_KEY_F11:
-    case GLUT_KEY_F12:
-        return VK_F1 + glut_key - GLUT_KEY_F1;
-    case GLUT_KEY_LEFT:
-    case GLUT_KEY_RIGHT:
-    case GLUT_KEY_UP:
-    case GLUT_KEY_DOWN:
-        return VK_LEFT + glut_key - GLUT_KEY_LEFT;
-    case GLUT_KEY_PAGE_UP:
-    case GLUT_KEY_PAGE_DOWN:
-    case GLUT_KEY_HOME:
-    case GLUT_KEY_END:
-        return VK_PRIOR + glut_key - GLUT_KEY_PAGE_UP;
-    case GLUT_KEY_INSERT:
-        return VK_INSERT;
-    }
-    
-    return 0;
-}
-
-void FramePresenterGLUT::KeyUpProc(unsigned char key, int x, int y) {
-    if (!pInstance) {
-        return;
-    }
-    int virtual_key = VkKeyScan(key) & 0xFF;
-    if (pInstance->key_press_map[virtual_key]) {
-        pInstance->key_press_map[virtual_key] = 0;
-        // THis shit should be fixed :) smiley-face
-        pInstance->callback_inst->OnKeyPress(virtual_key, false);
-        LOG_INFO("Key up: {}", key);
-    }
-}
-
-void FramePresenterGLUT::SpecialKeyProc(int key, int x, int y) {
-    if (!pInstance) {
-        return;
-    }
-    int virtual_key = GLUTtoVirtualKey(key);
-    if (!pInstance->key_press_map[virtual_key]) {
-        pInstance->key_press_map[virtual_key] = 0;
-        // THis shit should be fixed :) smiley-face
-        pInstance->callback_inst->OnKeyPress(virtual_key, true);
-        LOG_INFO("Key up: {}", key);
-    }
-}
-
-void FramePresenterGLUT::SpecialKeyUpProc(int key, int x, int y) {
-    if (!pInstance) {
-        return;
-    }
-    int virtual_key = GLUTtoVirtualKey(key);
-    if (pInstance->key_press_map[virtual_key]) {
-        pInstance->key_press_map[virtual_key] = 0;
-        // THis shit should be fixed :) smiley-face
-        pInstance->callback_inst->OnKeyPress(virtual_key, false);
-        LOG_INFO("Key down: {}", key);
-    }
-}
-
-void FramePresenterGLUT::MouseButtonProc(int button, int state, int x, int y) {
-    if (!pInstance) {
-        return;
-    }
-    if (!pInstance->mouse_press_map[button] && state == GLUT_DOWN
-        || pInstance->mouse_press_map[button] && state == GLUT_UP) {
-        PresenterInfo& info = pInstance->presenters[glutGetWindow()];
+    if (action != GLFW_REPEAT) {
+        PresenterInfo& info = pInstance->presenters[window];
+        double x, y;
+        glfwGetCursorPos(window, &x, &y);
         if (pInstance->TranslateCoords(info, x, y)) {
-            pInstance->mouse_press_map[button] = !pInstance->mouse_press_map[button];
+            pInstance->mouse_press_map[button].flip();
 
-            pInstance->callback_inst->OnMousePress(info.stream_num, x, y, button, state == GLUT_DOWN);
+            pInstance->callback_inst->OnMousePress(info.stream_num, x, y, button, action == GLFW_PRESS);
             LOG_INFO("Mouse click: {} {} {}", x, y, button);
         }
     }
 }
 
-void FramePresenterGLUT::MouseMotionProc(int x, int y) {
+void FramePresenterGL::MousePosProc(GLFWwindow* window, double x, double y) {
     if (!pInstance) {
         return;
     }
-    PresenterInfo& info = pInstance->presenters[glutGetWindow()];
-    if (pInstance->TranslateCoords(info, x, y)) {
+    
+    PresenterInfo& info = pInstance->presenters[window];
+    if (pInstance->TranslateCoords(info, x, y) && glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
         pInstance->callback_inst->OnMouseMove(info.stream_num, x, y);
         LOG_INFO("Mouse motion: {} {}", x, y);
     }
 }
 
-void FramePresenterGLUT::Run(int num_presenters) {
-    int argc = 1;
-    const char* argv[] = { "dummy" };
-    glutInit(&argc, (char**)argv);
+void FramePresenterGL::Run(int num_presenters) {
+    glfwInit();
 
     while (presenters.size() < num_presenters) {
         PresenterInfo new_info;
@@ -177,12 +97,13 @@ void FramePresenterGLUT::Run(int num_presenters) {
         float aspect_ratio = static_cast<float>(new_info.width) / new_info.height;
         int width = static_cast<int>(GetSystemMetrics(SM_CXSCREEN) * 0.75f);
         int height = static_cast<int>(new_info.width / aspect_ratio);
-        glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-        glutInitWindowSize(width, height);
+        new_info.window = glfwCreateWindow(width, height, "Simple example", NULL, NULL);
 
-        new_info.window_id = glutCreateWindow("FramePresenterGLUT");
-        glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
-        glutSetCursor(GLUT_CURSOR_NONE);
+        glfwMakeContextCurrent(new_info.window);
+        
+        glfwSetMouseButtonCallback(new_info.window, MouseButtonProc);
+        glfwSetCursorPosCallback(new_info.window, MousePosProc);
+        glfwSetKeyCallback(new_info.window, KeyProc);
 
         glViewport(0, 0, width, height);
         glMatrixMode(GL_MODELVIEW);
@@ -215,42 +136,35 @@ void FramePresenterGLUT::Run(int num_presenters) {
         glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, new_info.shader);
         glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB, (GLsizei)strlen(code), (GLubyte*)code);
 
-        // Register display function
-        glutDisplayFunc(DisplayProc);
-        // Register window close event callback function
-        glutCloseFunc(CloseWindowProc);
-
-        glutKeyboardFunc(KeyProc);
-        glutKeyboardUpFunc(KeyUpProc);
-        glutMouseFunc(MouseButtonProc);
-        glutPassiveMotionFunc(MouseMotionProc);
-        glutSpecialFunc(SpecialKeyProc);
-        glutSpecialUpFunc(SpecialKeyUpProc);
-
-        presenters.emplace(new_info.window_id, new_info);
+        presenters.emplace(new_info.window, new_info);
     }
 
     LOG_INFO("All presenters registered, beginning render");
     pInstance = this;
-    // Launch the rendering loop
-    while (!stop) {
-        glutMainLoopEvent();
+
+    while (true) {
+        for (auto& [window, info] : presenters) {
+            Render(info);
+        }
+        glfwPollEvents();
     }
+
+
     pInstance = NULL;
 
-    for (auto& [id, info] : presenters) {
+    /*for (auto& [id, info] : presenters) {
         cuMemFree(info.frame);
         glDeleteBuffersARB(1, &info.pbo);
         glDeleteTextures(1, &info.tex);
         glDeleteProgramsARB(1, &info.shader);
-    }
+    }*/
 }
 
 /**
 *   @brief  Rendering function called by glut
 *   @return void
 */
-void FramePresenterGLUT::Render(PresenterInfo& info) {
+void FramePresenterGL::Render(PresenterInfo& info) {
     // Register the OpenGL buffer object with CUDA and map a CUdeviceptr onto it
     // The decoder code will receive this CUdeviceptr and copy the decoded frame into the associated device memory allocation
     CUgraphicsResource cuResource;
@@ -279,6 +193,8 @@ void FramePresenterGLUT::Render(PresenterInfo& info) {
     cuGraphicsUnregisterResource(cuResource);
     cuCtxPopCurrent(NULL);
 
+    glfwMakeContextCurrent(info.window);
+
     // Bind OpenGL buffer object and upload the data
     glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, info.pbo);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, info.tex);
@@ -289,8 +205,9 @@ void FramePresenterGLUT::Render(PresenterInfo& info) {
     glEnable(GL_FRAGMENT_PROGRAM_ARB);
     glDisable(GL_DEPTH_TEST);
 
-    int window_width = glutGet(GLUT_WINDOW_WIDTH);
-    int window_height = glutGet(GLUT_WINDOW_HEIGHT);
+    int window_width;
+    int window_height;
+    glfwGetWindowSize(info.window, &window_width, &window_height);
 
     float new_ratio = (window_width) / static_cast<float>(window_height);
     float source_ratio = info.width / (float)info.height;
@@ -304,6 +221,14 @@ void FramePresenterGLUT::Render(PresenterInfo& info) {
         inner_window_width = window_width;
         inner_window_height = window_width / source_ratio;
     }
+    
+    glViewport(0, 0, window_width, window_height);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
+
     info.display_rect.left = (window_width / 2) - (inner_window_width / 2);
     info.display_rect.top = (window_height / 2) - (inner_window_height / 2);
     info.display_rect.right = info.display_rect.left + inner_window_width;
@@ -330,19 +255,18 @@ void FramePresenterGLUT::Render(PresenterInfo& info) {
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
     glDisable(GL_FRAGMENT_PROGRAM_ARB);
 
-    glutSwapBuffers();
-    glutPostRedisplay();
+    glfwSwapBuffers(info.window);
 }
 
-void FramePresenterGLUT::PrintText(int iFont, std::string strText, int x, int y, bool bFillBackground) {
-    struct { void* font; int d1; int d2; } fontData[] = {
-        /*0*/ GLUT_BITMAP_9_BY_15,        13, 4,
-        /*1*/ GLUT_BITMAP_8_BY_13,        11, 4,
-        /*2*/ GLUT_BITMAP_TIMES_ROMAN_10, 9,  3,
-        /*3*/ GLUT_BITMAP_TIMES_ROMAN_24, 20, 7,
-        /*4*/ GLUT_BITMAP_HELVETICA_10,   10, 3,
-        /*5*/ GLUT_BITMAP_HELVETICA_12,   11, 4,
-        /*6*/ GLUT_BITMAP_HELVETICA_18,   16, 5,
+void FramePresenterGL::PrintText(int iFont, std::string strText, int x, int y, bool bFillBackground) {
+    /*struct { void* font; int d1; int d2; } fontData[] = {
+         GLUT_BITMAP_9_BY_15,        13, 4,
+         GLUT_BITMAP_8_BY_13,        11, 4,
+         GLUT_BITMAP_TIMES_ROMAN_10, 9,  3,
+         GLUT_BITMAP_TIMES_ROMAN_24, 20, 7,
+         GLUT_BITMAP_HELVETICA_10,   10, 3,
+         GLUT_BITMAP_HELVETICA_12,   11, 4,
+         GLUT_BITMAP_HELVETICA_18,   16, 5,
     };
     const int nFont = sizeof(fontData) / sizeof(fontData[0]);
 
@@ -380,5 +304,5 @@ void FramePresenterGLUT::PrintText(int iFont, std::string strText, int x, int y,
         iLine++;
     }
 
-    glPopMatrix();
+    glPopMatrix();*/
 }

@@ -20,15 +20,17 @@
 #include <concurrentqueue/blockingconcurrentqueue.h>
 
 class HostActor;
+struct GLFWwindow;
 
 /**
 * @brief OpenGL utility class to display decoded frames using OpenGL textures
 */
-class FramePresenterGLUT
+class FramePresenterGL
 {
 private:
     struct PresenterInfo {
-        int width = 0, height = 0, window_id = -1;
+        int width = 0, height = 0;
+        GLFWwindow* window = nullptr;
         CUcontext context = NULL;
         CUdeviceptr frame;
         int stream_num;
@@ -46,15 +48,15 @@ private:
 public:
 
     /**
-    *   @brief  FramePresenterGLUT constructor function. This will launch a rendering thread which will be fed by decoded frames
+    *   @brief  FramePresenterGL constructor function. This will launch a rendering thread which will be fed by decoded frames
     *   @param  cuContext - CUDA Context handle
     *   @param  nWidth - Width of OpenGL texture
     *   @param  nHeight - Height of OpenGL texture
     */
-    FramePresenterGLUT(HostActor* callback_inst, int num_presenters)
+    FramePresenterGL(HostActor* callback_inst, int num_presenters)
         : callback_inst(callback_inst)
     {
-        message_loop = std::make_unique<std::thread>(&FramePresenterGLUT::Run, this, num_presenters);
+        message_loop = std::make_unique<std::thread>(&FramePresenterGL::Run, this, num_presenters);
 
         // This loop will ensure that OpenGL/glew/glut initialization is finished before we return from this constructor
         /*while (!pInstance) {
@@ -65,7 +67,7 @@ public:
     /**
     *   @brief  Destructor function. Also breaks glutMainLoopEvent
     */
-    ~FramePresenterGLUT() {
+    ~FramePresenterGL() {
         stop = true;
         message_loop->join();
     }
@@ -77,21 +79,12 @@ private:
      *   @brief  Registered with glutDisplayFunc() as rendering function
      *   @return void
      */
-    static void DisplayProc();
 
-    static void CloseWindowProc();
+    static void KeyProc(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-    static void KeyProc(unsigned char key, int x, int y);
+    static void MouseButtonProc(GLFWwindow* window, int button, int action, int mods);
 
-    static void KeyUpProc(unsigned char key, int x, int y);
-
-    static void MouseButtonProc(int button, int state, int x, int y);
-
-    static void MouseMotionProc(int x, int y);
-
-    static void SpecialKeyProc(int key, int x, int y);
-
-    static void SpecialKeyUpProc(int key, int x, int y);
+    static void MousePosProc(GLFWwindow* window, double x, double y);
 
     /**
     *   @brief  This function is responsible for OpenGL/glew/glut initialization and also for initiating display loop
@@ -104,17 +97,17 @@ private:
     */
     void Render(PresenterInfo& info);
 
-    bool TranslateCoords(PresenterInfo& info, int& x, int& y);
+    bool TranslateCoords(PresenterInfo& info, double& x, double& y);
 
     static void PrintText(int iFont, std::string strText, int x, int y, bool bFillBackground);
 
 private:
 
     bool stop = false;
-    std::map<int, PresenterInfo> presenters;
+    std::map<GLFWwindow*, PresenterInfo> presenters;
     inline static moodycamel::BlockingConcurrentQueue<PresenterInfo> new_presenter_queue;
     std::unique_ptr<std::thread> message_loop = NULL;
-    std::bitset<3> mouse_press_map;
+    std::bitset<12> mouse_press_map;
     std::bitset<256> key_press_map;
     HostActor* callback_inst;
 };

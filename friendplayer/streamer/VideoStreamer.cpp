@@ -14,7 +14,7 @@
 
 // Decoder
 #include "decoder/NvDecoder.h"
-#include "decoder/FramePresenterGLUT.h"
+#include "decoder/FramePresenterGL.h"
 
 // Encoder
 #include "nvEncodeAPI.h"
@@ -238,7 +238,7 @@ bool VideoStreamer::IsDisplayInit() {
 
 bool VideoStreamer::InitDisplay(int stream_num) {
     LOG_TRACE("Registering cuda context");
-    cuda_frame = FramePresenterGLUT::RegisterContext(cuda_context, decoder->GetWidth(), decoder->GetHeight(), stream_num);
+    cuda_frame = FramePresenterGL::RegisterContext(cuda_context, decoder->GetWidth(), decoder->GetHeight(), stream_num);
     LOG_TRACE("Finished initializing display");
     display_init = true;
     return true;

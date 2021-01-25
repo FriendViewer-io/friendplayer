@@ -1,6 +1,6 @@
 #include "actors/HostActor.h"
 
-#include "decoder/FramePresenterGLUT.h"
+#include "decoder/FramePresenterGL.h"
 
 #include "actors/CommonActorNames.h"
 #include "common/Log.h"
@@ -141,7 +141,7 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
         SendTo(ADMIN_ACTOR_NAME, create_msg);
         audio_streams.push_back(std::move(std::make_unique<FrameRingBuffer>(fmt::format("AudioBuffer{}", i), AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE)));
     }
-    presenter = new FramePresenterGLUT(this, msg.num_video_streams());
+    presenter = new FramePresenterGL(this, msg.num_video_streams());
     for (int i = 0; i < msg.num_video_streams(); ++i) {
         std::string actor_name = fmt::format(VIDEO_DECODER_ACTOR_NAME_FORMAT, i);
         video_stream_num_to_name[i] = actor_name;
