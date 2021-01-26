@@ -5,6 +5,10 @@
 #include <GLFW/glfw3.h>
 #include <sstream>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include "common/Log.h"
 #include "actors/HostActor.h"
 
@@ -37,7 +41,100 @@ bool FramePresenterGL::TranslateCoords(PresenterInfo& info, double& x, double& y
 }
 
 int ConvertToVK(int glfw_key) {
-    
+    if (glfw_key == GLFW_KEY_SPACE) {
+        return VK_SPACE;
+    } else if (glfw_key == GLFW_KEY_APOSTROPHE) {
+        return VK_OEM_7;
+    } else if (glfw_key == GLFW_KEY_COMMA) {
+        return VK_OEM_COMMA;
+    } else if (glfw_key == GLFW_KEY_MINUS) {
+        return VK_OEM_MINUS;
+    } else if (glfw_key == GLFW_KEY_PERIOD) {
+        return VK_OEM_PERIOD;
+    } else if (glfw_key == GLFW_KEY_SLASH) {
+        return VK_OEM_2;
+    } else if (glfw_key >= GLFW_KEY_0 && glfw_key <= GLFW_KEY_9) {
+        return 0x30 + glfw_key - GLFW_KEY_0;
+    } else if (glfw_key == GLFW_KEY_SEMICOLON) {
+        return VK_OEM_1;
+    } else if (glfw_key == GLFW_KEY_EQUAL) {
+        return VK_OEM_PLUS;
+    } else if (glfw_key >= GLFW_KEY_A && glfw_key <= GLFW_KEY_Z) {
+        return 0x41 + glfw_key - GLFW_KEY_A;
+    } else if (glfw_key == GLFW_KEY_LEFT_BRACKET) {
+        return VK_OEM_4;
+    } else if (glfw_key == GLFW_KEY_BACKSLASH) {
+        return VK_OEM_5;
+    } else if (glfw_key == GLFW_KEY_RIGHT_BRACKET) {
+        return VK_OEM_6;
+    } else if (glfw_key == GLFW_KEY_GRAVE_ACCENT) {
+        return VK_OEM_3;
+    } else if (glfw_key == GLFW_KEY_ESCAPE) {
+        return VK_ESCAPE;
+    } else if (glfw_key == GLFW_KEY_ENTER) {
+        return VK_RETURN;
+    } else if (glfw_key == GLFW_KEY_TAB) {
+        return VK_TAB;
+    } else if (glfw_key == GLFW_KEY_BACKSPACE) {
+        return VK_BACK;
+    } else if (glfw_key == GLFW_KEY_INSERT) {
+        return VK_INSERT;
+    } else if (glfw_key == GLFW_KEY_DELETE) {
+        return VK_DELETE;
+    } else if (glfw_key == GLFW_KEY_RIGHT) {
+        return VK_RIGHT;
+    } else if (glfw_key == GLFW_KEY_LEFT) {
+        return VK_LEFT;
+    } else if (glfw_key == GLFW_KEY_DOWN) {
+        return VK_DOWN;
+    } else if (glfw_key == GLFW_KEY_UP) {
+        return VK_UP;
+    } else if (glfw_key == GLFW_KEY_PAGE_UP) {
+        return VK_NEXT;
+    } else if (glfw_key == GLFW_KEY_PAGE_DOWN) {
+        return VK_PRIOR;
+    } else if (glfw_key == GLFW_KEY_HOME) {
+        return VK_HOME;
+    } else if (glfw_key == GLFW_KEY_END) {
+        return VK_END;
+    } else if (glfw_key == GLFW_KEY_CAPS_LOCK) {
+        return VK_CAPITAL;
+    } else if (glfw_key == GLFW_KEY_SCROLL_LOCK) {
+        return VK_SCROLL;
+    } else if (glfw_key == GLFW_KEY_NUM_LOCK) {
+        return VK_NUMLOCK;
+    } else if (glfw_key == GLFW_KEY_PRINT_SCREEN) {
+        return VK_SNAPSHOT;
+    } else if (glfw_key == GLFW_KEY_PAUSE) {
+        return VK_PAUSE;
+    } else if (glfw_key >= GLFW_KEY_F1 && glfw_key <= GLFW_KEY_F24) {
+        return VK_F1 + glfw_key - GLFW_KEY_F1;
+    } else if (glfw_key >= GLFW_KEY_KP_0 && glfw_key <= GLFW_KEY_KP_9) {
+        return VK_NUMPAD0 + glfw_key - GLFW_KEY_KP_0;
+    } else if (glfw_key == GLFW_KEY_KP_DECIMAL) {
+        return VK_DECIMAL;
+    } else if (glfw_key == GLFW_KEY_KP_DIVIDE) {
+        return VK_DIVIDE;
+    } else if (glfw_key == GLFW_KEY_KP_SUBTRACT) {
+        return VK_SUBTRACT;
+    } else if (glfw_key == GLFW_KEY_KP_ADD) {
+        return VK_ADD;
+    } else if (glfw_key == GLFW_KEY_KP_ENTER) {
+        return VK_RETURN;
+    } else if (glfw_key == GLFW_KEY_LEFT_SHIFT) {
+        return VK_LSHIFT;
+    } else if (glfw_key == GLFW_KEY_LEFT_CONTROL) {
+        return VK_LCONTROL;
+    } else if (glfw_key == GLFW_KEY_LEFT_ALT) {
+        return VK_MENU;
+    } else if (glfw_key == GLFW_KEY_RIGHT_SHIFT) {
+        return VK_RSHIFT;
+    } else if (glfw_key == GLFW_KEY_RIGHT_CONTROL) {
+        return VK_RCONTROL;
+    } else if (glfw_key == GLFW_KEY_RIGHT_ALT) {
+        return VK_MENU;
+    }
+
     return 0;
 }
 
@@ -48,12 +145,12 @@ void FramePresenterGL::KeyProc(GLFWwindow* window, int key, int scancode, int ac
     /*if (glutGetModifiers() & GLUT_ACTIVE_ALT && key == '\r') {
         glutFullScreenToggle();
     }*/
-    /*int virtual_key = ConvertToVK(key);
-    if (!pInstance->key_press_map[virtual_key]) {
-        pInstance->key_press_map[virtual_key] = 1;
-        pInstance->callback_inst->OnKeyPress(virtual_key, true);
-        LOG_INFO("Key down: {}", key);
-    }*/
+    int virtual_key = ConvertToVK(key);
+    if (action != GLFW_REPEAT) {
+        pInstance->key_press_map[virtual_key].flip();
+        pInstance->callback_inst->OnKeyPress(virtual_key, action == GLFW_PRESS);
+        LOG_INFO("Key: {:04X}", virtual_key);
+    }
 }
 
 void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int action, int mods) {
@@ -94,8 +191,12 @@ void FramePresenterGL::OnWindowClose(GLFWwindow* window) {
     pInstance->callback_inst->OnWindowClosed();
 }
 
+GLFWwindow* main_window;
+
 void FramePresenterGL::Run(int num_presenters) {
     glfwInit();
+
+    ImGuiContext* ctx = nullptr;
 
     while (presenters.size() < num_presenters) {
         PresenterInfo new_info;
@@ -107,18 +208,23 @@ void FramePresenterGL::Run(int num_presenters) {
         new_info.window = glfwCreateWindow(width, height, "Simple example", NULL, NULL);
 
         glfwMakeContextCurrent(new_info.window);
-        
+
         glfwSetMouseButtonCallback(new_info.window, MouseButtonProc);
         glfwSetCursorPosCallback(new_info.window, MousePosProc);
         glfwSetKeyCallback(new_info.window, KeyProc);
         glfwSetWindowCloseCallback(new_info.window, OnWindowClose);
 
-        glViewport(0, 0, width, height);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
+        if (ctx == nullptr) {
+            ctx = ImGui::CreateContext();
+            IMGUI_CHECKVERSION();
+            ImGui_ImplGlfw_InitForOpenGL(new_info.window, true);
+            ImGui_ImplOpenGL3_Init();
+            ImGui::StyleColorsDark();
+            auto& io = ImGui::GetIO();
+            io.IniFilename = NULL;
+            io.Fonts->AddFontDefault();
+            main_window = new_info.window;
+        }
 
         glewInit();
         // Prepare OpenGL buffer object for uploading texture data
@@ -248,6 +354,7 @@ void FramePresenterGL::Render(PresenterInfo& info) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     info.display_rect.left = (window_width / 2) - (inner_window_width / 2);
     info.display_rect.top = (window_height / 2) - (inner_window_height / 2);
@@ -274,11 +381,24 @@ void FramePresenterGL::Render(PresenterInfo& info) {
     glEnd();
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
     glDisable(GL_FRAGMENT_PROGRAM_ARB);
+    
+    if (info.window == main_window) {
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::Begin("Window");
+        ImGui::Button("Button");
+        ImGui::End();
+        ImGui::Render();
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    }
 
     glfwSwapBuffers(info.window);
 }
 
 void FramePresenterGL::PrintText(int iFont, std::string strText, int x, int y, bool bFillBackground) {
+    
     /*struct { void* font; int d1; int d2; } fontData[] = {
          GLUT_BITMAP_9_BY_15,        13, 4,
          GLUT_BITMAP_8_BY_13,        11, 4,

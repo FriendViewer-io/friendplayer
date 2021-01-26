@@ -138,7 +138,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)dependencies\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Setupapi.lib;XInput.lib;XInput9_1_0.lib;ViGEmClient.lib;cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;glew32.lib;glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Setupapi.lib;XInput.lib;XInput9_1_0.lib;ViGEmClient.lib;cuda.lib;nvcuvid.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;d3d11.lib;dxgi.lib;ws2_32.lib;nvencodeapi.lib;winmm.lib;glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /s /y /I $(SolutionDir)dependencies\x64\bin\ $(OutputPath)
