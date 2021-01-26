@@ -23,7 +23,6 @@ protected:
 
     void OnNetworkMessage(const fp_network::Network& msg);
     void OnAcknowledge(const fp_network::Ack& msg);
-    void OnHeartbeat(const fp_network::Heartbeat& msg);
 
     virtual bool OnHandshakeMessage(const fp_network::Handshake& msg) = 0;
     virtual void OnDataMessage(const fp_network::Data& msg) = 0;

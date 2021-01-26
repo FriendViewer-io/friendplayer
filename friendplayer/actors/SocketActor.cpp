@@ -53,12 +53,16 @@ void SocketActor::OnMessage(const any_msg& msg) {
         } else {
             socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint);
         }
-    } else if (msg.Is<fp_actor::Kill>()) {
-        network_is_running = false;
-        socket.close();
     } else {
         Actor::OnMessage(msg);
     }
+}
+
+void SocketActor::OnFinish() {
+    network_is_running = false;
+    socket.close();
+    network_thread->join();
+    Actor::OnFinish();
 }
 
 void SocketActor::NetworkWorker() {

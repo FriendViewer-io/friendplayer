@@ -16,6 +16,7 @@ public:
 
     void OnMessage(const any_msg& msg) override;
     void OnInit(const std::optional<any_msg>& init_msg) override;
+    void OnFinish() override;
 
 private:
     void CreateClient(uint64_t address);

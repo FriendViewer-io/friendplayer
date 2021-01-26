@@ -17,6 +17,7 @@ public:
 
 private:
     ActorMap& writable_actor_map;
+    bool shutting_down;
 };
 
 // DEFINE_ACTOR_GENERATOR(AdminActor)

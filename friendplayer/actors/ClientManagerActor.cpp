@@ -62,24 +62,6 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
         fp_actor::CreateHostActor create_host_msg;
         msg.UnpackTo(&create_host_msg);
         CreateClient(create_host_msg.host_address());
-    } else if (msg.Is<fp_actor::ClientTimeoutNotify>()) {
-        fp_actor::ClientTimeoutNotify timeout_msg;
-        msg.UnpackTo(&timeout_msg);
-        if (is_host) {
-            fp_actor::Kill kill_msg;
-            SendTo(timeout_msg.client_actor_name(), kill_msg);
-            for (auto it = address_to_client.begin(); it != address_to_client.end(); it++) {
-                if (it->second == timeout_msg.client_actor_name()) {
-                    saved_messages.erase(it->first);
-                    address_to_client.erase(it);
-                    break;
-                }
-            }
-            create_req_to_address.erase(timeout_msg.client_actor_name());
-        } else {
-            // send to admin shutdown
-
-        }
     } else if (msg.Is<fp_actor::VideoData>()) {
         fp_actor::VideoData video_data_msg;
         msg.UnpackTo(&video_data_msg);
@@ -96,10 +78,53 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
             SendTo(client_name, audio_data_msg);
         }
         buffer_map.Decrement(audio_data_msg.handle());
+    } else if (msg.Is<fp_actor::ClientDisconnect>()) {
+        fp_actor::ClientDisconnect dc_msg;
+        msg.UnpackTo(&dc_msg);
+
+        // Clean up the client in the HB actor
+        fp_actor::ClientActorHeartbeatState hb_dc;
+        hb_dc.set_disconnected(true);
+        hb_dc.set_client_actor_name(dc_msg.client_name());
+        SendTo(HEARTBEAT_ACTOR_NAME, hb_dc);
+
+        // Clean up the client for us
+        if (is_host) {
+            for (auto it = address_to_client.begin(); it != address_to_client.end(); it++) {
+                if (it->second == dc_msg.client_name()) {
+                    fp_actor::Kill kill_msg;
+                    SendTo(it->second, kill_msg);
+                    saved_messages.erase(it->first);
+                    address_to_client.erase(it);
+                    break;
+                }
+            }
+        } else {
+            fp_actor::Kill kill_msg;
+            EnqueueMessage(kill_msg);
+        }
     } else {
         // pass it up to parent class
         Actor::OnMessage(msg);
     }
+}
+
+void ClientManagerActor::OnFinish() {
+    for (auto&& [addr, name] : address_to_client) {
+        fp_actor::NetworkSend dc_msg;
+        dc_msg.set_address(addr);
+        if (is_host) {
+            dc_msg.mutable_msg()->mutable_state_msg()->mutable_host_state()->set_state(fp_network::HostState::DISCONNECTING);
+        } else {
+            dc_msg.mutable_msg()->mutable_state_msg()->mutable_client_state()->set_state(fp_network::ClientState::DISCONNECTING);
+        }
+        SendTo(SOCKET_ACTOR_NAME, dc_msg);
+    }
+    
+    fp_actor::Shutdown session_shutdown;
+    SendTo(ADMIN_ACTOR_NAME, session_shutdown);
+    
+    Actor::OnFinish();
 }
 
 void ClientManagerActor::CreateClient(uint64_t address) {

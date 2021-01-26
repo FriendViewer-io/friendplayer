@@ -38,11 +38,19 @@ void BaseActor::EnqueueMessage(any_msg&& msg) {
     actor_msg_queue.enqueue(std::move(msg));
 }
 
+void BaseActor::EnqueueMessage(const generic_msg& msg) {
+    any_msg any;
+    any.PackFrom(msg);
+    EnqueueMessage(std::move(any));
+}
+
 void BaseActor::StartActor() {
     is_running = true;
     actor_thread = std::make_unique<std::thread>(&BaseActor::MessageLoop, this);
 }
 
 BaseActor::~BaseActor() {
-    actor_thread->join();
+    if (actor_thread) {
+        actor_thread->join();
+    }
 }

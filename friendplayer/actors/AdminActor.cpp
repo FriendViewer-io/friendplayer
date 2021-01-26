@@ -4,9 +4,12 @@
 #include "protobuf/actor_messages.pb.h"
 #include "actors/ActorGenerator.h"
 
+#include "common/Log.h"
+
 AdminActor::AdminActor(ActorMap& actor_map, DataBufferMap& buffer_map) 
   : BaseActor(actor_map, buffer_map, ADMIN_ACTOR_NAME),
-    writable_actor_map(const_cast<ActorMap&>(actor_map)) {}
+    writable_actor_map(const_cast<ActorMap&>(actor_map)),
+    shutting_down(false) {}
 
 void AdminActor::OnMessage(const any_msg& msg) {
     if (msg.Is<fp_actor::Create>()) {
@@ -30,6 +33,17 @@ void AdminActor::OnMessage(const any_msg& msg) {
         fp_actor::Cleanup cleanup;
         msg.UnpackTo(&cleanup);
         writable_actor_map.RemoveActor(cleanup.actor_name());
+        if (shutting_down && writable_actor_map.IsEmpty()) {
+            is_running = false;
+            LOG_INFO("AdminActor finished all shutdowns, exiting AdminActor");
+        }
+    } else if (msg.Is<fp_actor::Shutdown>()) {
+        // Cleanup all actors
+        shutting_down = true;
+        writable_actor_map.ForAllActors([] (BaseActor* target) {
+            fp_actor::Kill kill_msg;
+            target->EnqueueMessage(std::move(kill_msg));
+        });
     }
 }
 

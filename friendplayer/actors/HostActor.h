@@ -7,6 +7,7 @@
 #include "protobuf/network_messages.pb.h"
 
 class FramePresenterGL;
+class InputStreamer;
 
 class HostActor : public ProtocolActor {
 private:
@@ -26,10 +27,9 @@ public:
     void OnKeyPress(int key, bool pressed);
     void OnMouseMove(int stream, int x, int y);
     void OnMousePress(int stream, int x, int y, int button, bool pressed);
+    void OnWindowClosed();
 
 private:
-//    InputStreamer input_streamer;
-
     void SendVideoFrameToDecoder(uint32_t stream_num);
     void SendAudioFrameToDecoder(uint32_t stream_num);
 
@@ -47,10 +47,10 @@ private:
 
     void OnVideoFrame(const fp_network::HostDataFrame& msg);
     void OnAudioFrame(const fp_network::HostDataFrame& msg);
-    void OnHostState(const fp_network::HostState& msg);
 
-    FramePresenterGL* presenter;
+    std::unique_ptr<FramePresenterGL> presenter;
 
+    std::unique_ptr<InputStreamer> input_streamer;
 };
 
 DEFINE_ACTOR_GENERATOR(HostActor)

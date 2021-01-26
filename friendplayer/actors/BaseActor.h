@@ -24,6 +24,7 @@ public:
     const std::string& GetName() const { return name; }
     void SetInitMessage(const any_msg& init) { init_msg = init; }
     void EnqueueMessage(any_msg&& msg);
+    void EnqueueMessage(const generic_msg& msg);
 
     // Starts thread for this actor
     virtual void StartActor();

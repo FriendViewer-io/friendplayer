@@ -16,12 +16,13 @@ class ActorMap {
 public:
     void FindActor(std::string_view actor_name, std::function<void(BaseActor*)>&& cb) const;
 
+    void ForAllActors(std::function<void(BaseActor*)>&& cb);
     void AddAndStartActor(std::unique_ptr<BaseActor> new_actor);
     void AddActor(std::unique_ptr<BaseActor> new_actor);
     void SetAdminActor(std::shared_ptr<AdminActor> admin);
     std::unique_ptr<BaseActor> RemoveActor(std::string_view actor_name);
+    bool IsEmpty();
     void StartAll();
-    void StopAll() {}
 
 private:
     std::map<std::string, std::unique_ptr<BaseActor>, std::less<>> actors;

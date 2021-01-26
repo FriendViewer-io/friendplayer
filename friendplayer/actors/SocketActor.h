@@ -22,14 +22,9 @@ public:
 
     void OnMessage(const any_msg& msg) override;
     void OnInit(const std::optional<any_msg>& init_msg) override;
+    void OnFinish() override;
 
     void NetworkWorker();
-
-    virtual ~SocketActor() {
-        network_is_running = false;
-        socket.close();
-        network_thread->join();
-    }
 
 protected:
     using asio_service = asio::io_service;
@@ -55,6 +50,8 @@ public:
     HostSocketActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
       : SocketActor(actor_map, buffer_map, std::move(name)) {}
 
+    virtual ~HostSocketActor() { }
+
     void OnInit(const std::optional<any_msg>& init_msg) override {
         if (init_msg) {
             if (init_msg->Is<fp_actor::SocketInit>()) {
@@ -69,6 +66,7 @@ public:
         }
         SocketActor::OnInit(init_msg);
     }
+
 };
 
 DEFINE_ACTOR_GENERATOR(HostSocketActor)
@@ -81,6 +79,8 @@ private:
 public:
     ClientSocketActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
       : SocketActor(actor_map, buffer_map, std::move(name)) {}
+
+    virtual ~ClientSocketActor() { }
 
     void OnInit(const std::optional<any_msg>& init_msg) override {
         if (init_msg) {

@@ -12,7 +12,8 @@ message Ack {
 message State {
     oneof State {
         ClientState client_state = 1;
-        HostState host_state = 2;
+        ClientStreamState client_stream_state = 2;
+        HostState host_state = 3;
     }
 }
 

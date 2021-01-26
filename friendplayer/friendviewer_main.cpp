@@ -1,7 +1,3 @@
-#include <iostream>
-#include <csignal>
-#include <concurrentqueue/blockingconcurrentqueue.h>
-
 #include "actors/ActorEnvironment.h"
 #include "actors/CommonActorNames.h"
 
@@ -9,16 +5,6 @@
 #include "common/Log.h"
 
 #include "protobuf/actor_messages.pb.h"
-
-void exit_handler(int signal) {
-    LOG_INFO("Sending disconnect");
-    // if (client_socket) {
-    //     client_socket->SendStreamState(fp_proto::ClientState::DISCONNECTING);
-    // } else {
-    //     host_socket->SendStreamState(fp_proto::HostState::DISCONNECTING);
-    // }
-    exit(1);
-}
 
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;

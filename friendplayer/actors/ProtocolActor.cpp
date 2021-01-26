@@ -121,6 +121,9 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
             fp_actor::ClientDisconnect dc_msg;
             dc_msg.set_client_name(GetName());
             SendTo(CLIENT_MANAGER_ACTOR_NAME, dc_msg);
+
+            fp_actor::Kill kill_msg;
+            EnqueueMessage(kill_msg);
         }
         break;
     }

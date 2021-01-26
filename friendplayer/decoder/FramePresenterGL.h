@@ -68,8 +68,8 @@ public:
     *   @brief  Destructor function. Also breaks glutMainLoopEvent
     */
     ~FramePresenterGL() {
-        stop = true;
-        message_loop->join();
+        Stop();
+        Cleanup();
     }
 
     static CUdeviceptr RegisterContext(CUcontext context, int width, int height, int stream_num);
@@ -86,6 +86,8 @@ private:
 
     static void MousePosProc(GLFWwindow* window, double x, double y);
 
+    static void OnWindowClose(GLFWwindow* window);
+
     /**
     *   @brief  This function is responsible for OpenGL/glew/glut initialization and also for initiating display loop
     *   @return void
@@ -98,6 +100,10 @@ private:
     void Render(PresenterInfo& info);
 
     bool TranslateCoords(PresenterInfo& info, double& x, double& y);
+
+    void Cleanup();
+
+    void Stop();
 
     static void PrintText(int iFont, std::string strText, int x, int y, bool bFillBackground);
 

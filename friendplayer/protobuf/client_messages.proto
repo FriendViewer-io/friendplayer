@@ -2,14 +2,20 @@ syntax = "proto3";
 
 package fp_network;
 
-message ClientState {
+message ClientStreamState {
     enum State {
         READY_FOR_PPS_SPS_IDR = 0;
         READY_FOR_VIDEO = 1;
-        DISCONNECTING = 2;
     }
     State state = 1;
     uint32 stream_num = 2;
+}
+
+message ClientState {
+    enum State {
+        DISCONNECTING = 0;
+    }
+    State state = 1;
 }
 
 message KeyboardFrame {

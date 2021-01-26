@@ -14,6 +14,17 @@ void ActorMap::FindActor(std::string_view actor_name, std::function<void(BaseAct
     }
 }
 
+void ActorMap::ForAllActors(std::function<void(BaseActor*)>&& cb) {
+    std::shared_lock<std::shared_mutex> w_lock(map_rw_m);
+    for (auto&& [name, actor] : actors) {
+        cb(actor.get());
+    }
+}
+
+bool ActorMap::IsEmpty() {
+    return actors.empty();
+}
+
 void ActorMap::SetAdminActor(std::shared_ptr<AdminActor> admin) {
     admin_actor = std::move(admin);
 }

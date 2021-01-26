@@ -188,37 +188,61 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
 }
 
 void ClientActor::OnStateMessage(const fp_network::State& msg) {
-    auto& state = msg.client_state();
-    switch (state.state()) {
-        case fp_network::ClientState::READY_FOR_PPS_SPS_IDR: {
-            LOG_INFO("Received ready for PPSSPS from {}", state.stream_num());
-            fp_actor::SpecialFrameRequest req;
-            req.set_type(fp_actor::SpecialFrameRequest::PPS_SPS);
-            if (state.stream_num() > video_streams.size()) {
-                LOG_WARNING("Received video data from invalid stream number {}", state.stream_num());
-                return;
+    switch (msg.State_case()) {
+        case fp_network::State::kClientStreamState: {
+            auto& state = msg.client_stream_state();
+            switch (state.state()) {
+                case fp_network::ClientStreamState::READY_FOR_PPS_SPS_IDR: {
+                    LOG_INFO("Received ready for PPSSPS from {}", state.stream_num());
+                    fp_actor::SpecialFrameRequest req;
+                    req.set_type(fp_actor::SpecialFrameRequest::PPS_SPS);
+                    if (state.stream_num() > video_streams.size()) {
+                        LOG_WARNING("Received video data from invalid stream number {}", state.stream_num());
+                        return;
+                    }
+                    StreamInfo& info = video_streams[state.stream_num()];
+                    SendTo(info.actor_name, req);
+                    info.stream_state = StreamState::WAITING_FOR_VIDEO;
+                    break;
+                }
+                case fp_network::ClientStreamState::READY_FOR_VIDEO: {
+                    LOG_INFO("Received ready for video from {}", state.stream_num());
+                    fp_actor::SpecialFrameRequest req;
+                    req.set_type(fp_actor::SpecialFrameRequest::IDR);
+                    StreamInfo& info = video_streams[state.stream_num()];
+                    SendTo(info.actor_name, req);
+                    info.stream_state = StreamState::READY;
+                    for (auto& audio_stream : audio_streams) {
+                        audio_stream.stream_state = StreamState::READY;
+                    }
+                    break;
+                }
             }
-            StreamInfo& info = video_streams[state.stream_num()];
-            SendTo(info.actor_name, req);
-            info.stream_state = StreamState::WAITING_FOR_VIDEO;
+            break;
         }
-        break;
-        case fp_network::ClientState::READY_FOR_VIDEO: {
-            LOG_INFO("Received ready for video from {}", state.stream_num());
-            fp_actor::SpecialFrameRequest req;
-            req.set_type(fp_actor::SpecialFrameRequest::IDR);
-            StreamInfo& info = video_streams[state.stream_num()];
-            SendTo(info.actor_name, req);
-            info.stream_state = StreamState::READY;
-            for (auto& audio_stream : audio_streams) {
-                audio_stream.stream_state = StreamState::READY;
+        case fp_network::State::kClientState: {
+            auto& state = msg.client_state();
+            switch (state.state()) {
+                case fp_network::ClientState::DISCONNECTING: {
+                    fp_actor::ClientDisconnect disconnect;
+                    disconnect.set_client_name(GetName());
+                    SendTo(CLIENT_MANAGER_ACTOR_NAME, disconnect);
+
+                    fp_actor::Kill kill;
+                    any_msg any_kill;
+                    any_kill.PackFrom(kill);
+                    EnqueueMessage(std::move(any_kill));
+
+                    for (auto& video_stream : video_streams) {
+                        video_stream.stream_state = StreamState::DISCONNECTED;
+                    }
+                    for (auto& audio_stream : audio_streams) {
+                        audio_stream.stream_state = StreamState::DISCONNECTED;
+                    }
+                }
             }
+            break;
         }
-        break;
-        case fp_network::ClientState::DISCONNECTING: {
-            // deal with me
-        }
-        break;
     }
 }
 

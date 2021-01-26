@@ -39,6 +39,7 @@ VideoStreamer::VideoStreamer()
 }
 
 VideoStreamer::~VideoStreamer() {
+    cuMemFree(cuda_frame);
     if (decoder != nullptr) {
         delete decoder;
     }

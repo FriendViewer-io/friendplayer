@@ -2,11 +2,14 @@
 
 #include "decoder/FramePresenterGL.h"
 
+#include "streamer/InputStreamer.h"
 #include "actors/CommonActorNames.h"
 #include "common/Log.h"
 
 HostActor::HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
-    : ProtocolActor(actor_map, buffer_map, std::move(name)), presenter(nullptr) {}
+    : ProtocolActor(actor_map, buffer_map, std::move(name)), presenter(nullptr) {
+    input_streamer = std::make_unique<InputStreamer>();
+}
 
 void HostActor::OnInit(const std::optional<any_msg>& init_msg) {
     ProtocolActor::OnInit(init_msg);
@@ -22,8 +25,8 @@ void HostActor::OnMessage(const any_msg& msg) {
         msg.UnpackTo(&ready_msg);
         // Tell host to start sending video frames
         fp_network::Network network_msg;
-        network_msg.mutable_state_msg()->mutable_client_state()->set_state(fp_network::ClientState::READY_FOR_VIDEO);
-        network_msg.mutable_state_msg()->mutable_client_state()->set_stream_num(ready_msg.stream_num());
+        network_msg.mutable_state_msg()->mutable_client_stream_state()->set_state(fp_network::ClientStreamState::READY_FOR_VIDEO);
+        network_msg.mutable_state_msg()->mutable_client_stream_state()->set_stream_num(ready_msg.stream_num());
         SendToSocket(network_msg);
     }
     else if (msg.Is<fp_actor::VideoDataRequest>()) {
@@ -40,8 +43,8 @@ void HostActor::OnMessage(const any_msg& msg) {
             LOG_INFO("Requesting PPSSPS ready for decoder {}", stream_num);
             // Ask host for a PPS SPS
             fp_network::Network ready_msg;
-            ready_msg.mutable_state_msg()->mutable_client_state()->set_state(fp_network::ClientState::READY_FOR_PPS_SPS_IDR);
-            ready_msg.mutable_state_msg()->mutable_client_state()->set_stream_num(stream_num);
+            ready_msg.mutable_state_msg()->mutable_client_stream_state()->set_state(fp_network::ClientStreamState::READY_FOR_PPS_SPS_IDR);
+            ready_msg.mutable_state_msg()->mutable_client_stream_state()->set_stream_num(stream_num);
             SendToSocket(ready_msg);
         }
     } else {
@@ -72,7 +75,19 @@ bool HostActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
 }
 
 void HostActor::OnStateMessage(const fp_network::State& msg) {
-
+    if (msg.State_case() == fp_network::State::kClientState || msg.State_case() == fp_network::State::kClientStreamState) {
+        LOG_ERROR("Got client state from client side");
+        return;
+    }
+    auto& h_msg = msg.host_state();
+    switch(h_msg.state()) {
+        case fp_network::HostState::DISCONNECTING: {
+            fp_actor::ClientDisconnect dc_msg;
+            dc_msg.set_client_name(HOST_ACTOR_NAME);
+            SendTo(CLIENT_MANAGER_ACTOR_NAME, dc_msg);
+            break;
+        }
+    }
 }
 
 void HostActor::OnDataMessage(const fp_network::Data& msg) {
@@ -121,10 +136,6 @@ void HostActor::OnAudioFrame(const fp_network::HostDataFrame& msg) {
     buffer_map.Decrement(handle);
 }
 
-void HostActor::OnHostState(const fp_network::HostState& msg) {
-
-}
-
 void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
     for (int i = 0; i < msg.num_audio_streams(); ++i) {
         std::string actor_name = fmt::format(AUDIO_DECODER_ACTOR_NAME_FORMAT, i);
@@ -141,7 +152,7 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
         SendTo(ADMIN_ACTOR_NAME, create_msg);
         audio_streams.push_back(std::move(std::make_unique<FrameRingBuffer>(fmt::format("AudioBuffer{}", i), AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE)));
     }
-    presenter = new FramePresenterGL(this, msg.num_video_streams());
+    presenter = std::make_unique<FramePresenterGL>(this, msg.num_video_streams());
     for (int i = 0; i < msg.num_video_streams(); ++i) {
         std::string actor_name = fmt::format(VIDEO_DECODER_ACTOR_NAME_FORMAT, i);
         video_stream_num_to_name[i] = actor_name;
@@ -188,6 +199,11 @@ void HostActor::SendAudioFrameToDecoder(uint32_t stream_num) {
     audio_data.set_handle(buffer_map.Wrap(audio_frame));
     audio_data.set_stream_num(stream_num);
     SendTo(audio_stream_num_to_name[stream_num], audio_data);
+}
+
+void HostActor::OnWindowClosed() {
+    fp_actor::Kill kill_msg;
+    SendTo(CLIENT_MANAGER_ACTOR_NAME, kill_msg);
 }
 
 void HostActor::OnKeyPress(int key, bool pressed) {

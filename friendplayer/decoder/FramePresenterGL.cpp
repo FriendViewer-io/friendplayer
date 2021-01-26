@@ -37,7 +37,7 @@ bool FramePresenterGL::TranslateCoords(PresenterInfo& info, double& x, double& y
 }
 
 int ConvertToVK(int glfw_key) {
-
+    
     return 0;
 }
 
@@ -87,6 +87,13 @@ void FramePresenterGL::MousePosProc(GLFWwindow* window, double x, double y) {
     }
 }
 
+void FramePresenterGL::OnWindowClose(GLFWwindow* window) {
+    if (!pInstance) {
+        return;
+    }
+    pInstance->callback_inst->OnWindowClosed();
+}
+
 void FramePresenterGL::Run(int num_presenters) {
     glfwInit();
 
@@ -104,6 +111,7 @@ void FramePresenterGL::Run(int num_presenters) {
         glfwSetMouseButtonCallback(new_info.window, MouseButtonProc);
         glfwSetCursorPosCallback(new_info.window, MousePosProc);
         glfwSetKeyCallback(new_info.window, KeyProc);
+        glfwSetWindowCloseCallback(new_info.window, OnWindowClose);
 
         glViewport(0, 0, width, height);
         glMatrixMode(GL_MODELVIEW);
@@ -142,22 +150,34 @@ void FramePresenterGL::Run(int num_presenters) {
     LOG_INFO("All presenters registered, beginning render");
     pInstance = this;
 
-    while (true) {
+    while (!stop) {
         for (auto& [window, info] : presenters) {
             Render(info);
         }
         glfwPollEvents();
     }
 
+    Cleanup();
+
+    LOG_INFO("FramePresenter exiting");
 
     pInstance = NULL;
+}
 
-    /*for (auto& [id, info] : presenters) {
-        cuMemFree(info.frame);
+void FramePresenterGL::Stop() {
+    if (!stop) {
+        stop = true;
+        message_loop->join();
+    }
+}
+
+void FramePresenterGL::Cleanup() {
+    for (auto& [id, info] : presenters) {
         glDeleteBuffersARB(1, &info.pbo);
         glDeleteTextures(1, &info.tex);
         glDeleteProgramsARB(1, &info.shader);
-    }*/
+    }
+    presenters.clear();
 }
 
 /**
