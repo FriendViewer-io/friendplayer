@@ -138,6 +138,9 @@
     <ClCompile Include="decoder\FramePresenterGL.cpp">
       <Filter>Source Files\decoder</Filter>
     </ClCompile>
+    <ClCompile Include="actors\InputActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
@@ -253,6 +256,9 @@
     </ClInclude>
     <ClInclude Include="decoder\FramePresenterGL.h">
       <Filter>Source Files\decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\InputActor.h">
+      <Filter>Source Files\actor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

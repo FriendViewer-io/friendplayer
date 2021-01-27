@@ -6,6 +6,8 @@
 #include "protobuf/actor_messages.pb.h"
 #include "protobuf/network_messages.pb.h"
 
+#include <thread>
+
 class FramePresenterGL;
 class InputStreamer;
 
@@ -21,7 +23,7 @@ public:
     HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
     void OnInit(const std::optional<any_msg>& init_msg) override;
-
+    void OnFinish() override;
     void OnMessage(const any_msg& msg) override;
 
     void OnKeyPress(int key, bool pressed);
@@ -45,12 +47,16 @@ private:
     void OnStateMessage(const fp_network::State& msg) override;
     void OnStreamInfoMessage(const fp_network::StreamInfo& msg) override;
 
+    void ControllerCaptureThread(int poll_rate);
+
     void OnVideoFrame(const fp_network::HostDataFrame& msg);
     void OnAudioFrame(const fp_network::HostDataFrame& msg);
 
     std::unique_ptr<FramePresenterGL> presenter;
 
-    std::unique_ptr<InputStreamer> input_streamer;
+    InputStreamer* input_streamer;
+
+    std::unique_ptr<std::thread> controller_capture_thread;
 };
 
 DEFINE_ACTOR_GENERATOR(HostActor)

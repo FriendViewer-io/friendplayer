@@ -8,7 +8,7 @@
 
 HostActor::HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
     : ProtocolActor(actor_map, buffer_map, std::move(name)), presenter(nullptr) {
-    input_streamer = std::make_unique<InputStreamer>();
+    input_streamer = new InputStreamer();
 }
 
 void HostActor::OnInit(const std::optional<any_msg>& init_msg) {
@@ -50,6 +50,10 @@ void HostActor::OnMessage(const any_msg& msg) {
     } else {
         ProtocolActor::OnMessage(msg);
     }
+}
+
+void HostActor::OnFinish() {
+    delete input_streamer;
 }
 
 bool HostActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
@@ -168,6 +172,7 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
         SendTo(ADMIN_ACTOR_NAME, create_msg);
         video_streams.push_back(std::move(std::make_unique<FrameRingBuffer>(fmt::format("VideoBuffer{}", i), VIDEO_FRAME_BUFFER, VIDEO_FRAME_SIZE)));
     }
+    controller_capture_thread = std::make_unique<std::thread>(&HostActor::ControllerCaptureThread, this, 16);
 }
 
 void HostActor::SendVideoFrameToDecoder(uint32_t stream_num) {
@@ -216,4 +221,18 @@ void HostActor::OnMousePress(int stream, int x, int y, int button, bool pressed)
 
 void HostActor::OnMouseMove(int stream, int x, int y) {
 
+}
+
+void HostActor::ControllerCaptureThread(int poll_rate) {
+    input_streamer->RegisterPhysicalController(0);
+    while (is_running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(poll_rate));
+        auto controller_capture = input_streamer->CapturePhysicalController();
+        if (controller_capture) {
+            fp_network::Network controller_msg;
+            controller_msg.mutable_data_msg()->set_needs_ack(true);
+            controller_msg.mutable_data_msg()->mutable_client_frame()->mutable_controller()->CopyFrom(*controller_capture);
+            SendToSocket(controller_msg);
+        }
+    }
 }

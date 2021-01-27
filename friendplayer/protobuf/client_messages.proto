@@ -19,11 +19,17 @@ message ClientState {
 }
 
 message KeyboardFrame {
-
+    uint32 key = 1;
+    bool pressed = 2;
 }
 
-message MouseFrame {
-    enum MouseButtons{
+message MouseMotionFrame {
+    uint32 mouse_x = 1;
+    uint32 mouse_y = 2;
+}
+
+message MouseButtonFrame {
+    enum MouseButtons {
         MOUSE_L = 0;
         MOUSE_MIDDLE = 1;
         MOUSE_R  = 2;
@@ -58,8 +64,9 @@ message ClientDataFrame {
     uint32 frame_id = 1;
     oneof DataFrame {
         KeyboardFrame keyboard = 2;
-        MouseFrame mouse = 3;
-        ControllerFrame controller = 4;
-        RequestToHost host_request = 5;
+        MouseButtonFrame mouse_button = 3;
+        MouseMotionFrame mouse_motion = 4;
+        ControllerFrame controller = 5;
+        RequestToHost host_request = 6;
     }
 }

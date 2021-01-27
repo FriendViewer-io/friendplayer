@@ -20,6 +20,7 @@
     <ClCompile Include="actors\DataBuffer.cpp" />
     <ClCompile Include="actors\HeartbeatActor.cpp" />
     <ClCompile Include="actors\HostActor.cpp" />
+    <ClCompile Include="actors\InputActor.cpp" />
     <ClCompile Include="actors\ProtocolActor.cpp" />
     <ClCompile Include="actors\SocketActor.cpp" />
     <ClCompile Include="actors\TimerActor.cpp" />
@@ -59,6 +60,7 @@
     <ClInclude Include="actors\DataBuffer.h" />
     <ClInclude Include="actors\HeartbeatActor.h" />
     <ClInclude Include="actors\HostActor.h" />
+    <ClInclude Include="actors\InputActor.h" />
     <ClInclude Include="actors\ProtocolActor.h" />
     <ClInclude Include="actors\SocketActor.h" />
     <ClInclude Include="actors\TimerActor.h" />

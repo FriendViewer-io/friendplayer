@@ -256,8 +256,11 @@ void ClientActor::OnDataMessage(const fp_network::Data& msg) {
         case fp_network::ClientDataFrame::kKeyboard:
             OnKeyboardFrame(c_msg.keyboard());
             break;
-        case fp_network::ClientDataFrame::kMouse:
-            OnMouseFrame(c_msg.mouse());
+        case fp_network::ClientDataFrame::kMouseButton:
+            OnMouseButtonFrame(c_msg.mouse_button());
+            break;
+        case fp_network::ClientDataFrame::kMouseMotion:
+            OnMouseMotionFrame(c_msg.mouse_motion());
             break;
         case fp_network::ClientDataFrame::kController:
             OnControllerFrame(c_msg.controller());
@@ -293,15 +296,17 @@ void ClientActor::OnKeyboardFrame(const fp_network::KeyboardFrame& msg) {
 
 }
 
-void ClientActor::OnMouseFrame(const fp_network::MouseFrame& msg) {
+void ClientActor::OnMouseButtonFrame(const fp_network::MouseButtonFrame& msg) {
+
+}
+
+void ClientActor::OnMouseMotionFrame(const fp_network::MouseMotionFrame& msg) {
 
 }
 
 void ClientActor::OnControllerFrame(const fp_network::ControllerFrame& msg) {
-    /*const auto& frame = msg.controller();
-    if(!input_streamer.is_virtual_controller_registered()) {
-        //TODO: add protocol logic to do this? maybe this won't work with vigem client handles
-        input_streamer.RegisterVirtualController();
-    }
-    input_streamer.UpdateVirtualController(frame);*/
+    fp_actor::InputData input_msg;
+    input_msg.set_actor_name(GetName());
+    input_msg.mutable_controller()->CopyFrom(msg);
+    SendTo(INPUT_ACTOR_NAME, input_msg);
 }
