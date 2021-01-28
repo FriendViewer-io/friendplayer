@@ -23,12 +23,10 @@ message KeyboardFrame {
     bool pressed = 2;
 }
 
-message MouseMotionFrame {
+message MouseFrame {
     uint32 mouse_x = 1;
     uint32 mouse_y = 2;
-}
-
-message MouseButtonFrame {
+    uint32 stream_num = 3;
     enum MouseButtons {
         MOUSE_L = 0;
         MOUSE_MIDDLE = 1;
@@ -36,8 +34,8 @@ message MouseButtonFrame {
         MOUSE_X1 = 3;
         MOUSE_X2 = 4;
     }
-    MouseButtons button = 1;
-    bool pressed = 2;
+    optional MouseButtons button = 4;
+    optional bool pressed = 5;
 }
 
 message ControllerFrame {
@@ -64,9 +62,8 @@ message ClientDataFrame {
     uint32 frame_id = 1;
     oneof DataFrame {
         KeyboardFrame keyboard = 2;
-        MouseButtonFrame mouse_button = 3;
-        MouseMotionFrame mouse_motion = 4;
-        ControllerFrame controller = 5;
-        RequestToHost host_request = 6;
+        MouseFrame mouse = 3;
+        ControllerFrame controller = 4;
+        RequestToHost host_request = 5;
     }
 }

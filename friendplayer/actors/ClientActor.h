@@ -52,8 +52,7 @@ private:
 
     void OnHostRequest(const fp_network::RequestToHost& msg);
     void OnKeyboardFrame(const fp_network::KeyboardFrame& msg);
-    void OnMouseButtonFrame(const fp_network::MouseButtonFrame& msg);
-    void OnMouseMotionFrame(const fp_network::MouseMotionFrame& msg);
+    void OnMouseFrame(const fp_network::MouseFrame& msg);
     void OnControllerFrame(const fp_network::ControllerFrame& msg);
 };
 

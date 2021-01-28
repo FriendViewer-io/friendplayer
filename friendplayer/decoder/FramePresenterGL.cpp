@@ -14,6 +14,36 @@
 
 static FramePresenterGL* pInstance;
 
+GLFWmonitor* GetBestMonitor(GLFWwindow* window) {
+    int overlap, best_overlap;
+    best_overlap = 0;
+    GLFWmonitor* best_monitor = glfwGetPrimaryMonitor();
+
+    int wx, wy, ww, wh;
+    glfwGetWindowPos(window, &wx, &wy);
+    glfwGetWindowSize(window, &ww, &wh);
+    int num;
+    GLFWmonitor** monitors = glfwGetMonitors(&num);
+
+    for (int i = 0; i < num; ++i) {
+        GLFWmonitor* monitor = monitors[i];
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        int mx, my;
+        glfwGetMonitorPos(monitor, &mx, &my);
+
+        overlap =
+            std::max(0, std::min(wx + ww, mx + mode->width) - std::max(wx, mx)) *
+            std::max(0, std::min(wy + wh, my + mode->height) - std::max(wy, my));
+
+        if (best_overlap < overlap) {
+            best_overlap = overlap;
+            best_monitor = monitor;
+        }
+    }
+
+    return best_monitor;
+}
+
 CUdeviceptr FramePresenterGL::RegisterContext(CUcontext context, int width, int height, int stream_num) {
     CUdeviceptr device_frame = NULL;
     cuMemAlloc(&device_frame, width * height * 4);
@@ -142,9 +172,11 @@ void FramePresenterGL::KeyProc(GLFWwindow* window, int key, int scancode, int ac
     if (!pInstance) {
         return;
     }
-    /*if (glutGetModifiers() & GLUT_ACTIVE_ALT && key == '\r') {
-        glutFullScreenToggle();
-    }*/
+    if ((glfwGetKey(window, GLFW_KEY_LEFT_ALT) || glfwGetKey(window, GLFW_KEY_RIGHT)) && key == GLFW_KEY_ENTER && action == GLFW_RELEASE) {
+        GLFWmonitor* monitor = GetBestMonitor(window);
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+    }
     int virtual_key = ConvertToVK(key);
     if (action != GLFW_REPEAT) {
         pInstance->key_press_map[virtual_key].flip();
@@ -157,7 +189,6 @@ void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int actio
     if (!pInstance) {
         return;
     }
-    LOG_INFO("Mouse button {} {}", button, action);
     
     if (action != GLFW_REPEAT) {
         PresenterInfo& info = pInstance->presenters[window];
@@ -165,8 +196,19 @@ void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int actio
         glfwGetCursorPos(window, &x, &y);
         if (pInstance->TranslateCoords(info, x, y)) {
             pInstance->mouse_press_map[button].flip();
-
-            pInstance->callback_inst->OnMousePress(info.stream_num, x, y, button, action == GLFW_PRESS);
+            int button_proto = 0;
+            if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                button_proto = fp_network::MouseFrame::MOUSE_L;
+            } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+                button_proto = fp_network::MouseFrame::MOUSE_R;
+            } else if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+                button_proto = fp_network::MouseFrame::MOUSE_MIDDLE;
+            } else if (button == GLFW_MOUSE_BUTTON_4) {
+                button_proto = fp_network::MouseFrame::MOUSE_X1;
+            } else if (button == GLFW_MOUSE_BUTTON_5) {
+                button_proto = fp_network::MouseFrame::MOUSE_X2;
+            }
+            pInstance->callback_inst->OnMousePress(info.stream_num, x, y, button_proto, action == GLFW_PRESS);
             LOG_INFO("Mouse click: {} {} {}", x, y, button);
         }
     }
@@ -205,6 +247,7 @@ void FramePresenterGL::Run(int num_presenters) {
         float aspect_ratio = static_cast<float>(new_info.width) / new_info.height;
         int width = static_cast<int>(GetSystemMetrics(SM_CXSCREEN) * 0.75f);
         int height = static_cast<int>(new_info.width / aspect_ratio);
+        glfwWindowHint(GLFW_AUTO_ICONIFY, GL_FALSE);
         new_info.window = glfwCreateWindow(width, height, "Simple example", NULL, NULL);
 
         glfwMakeContextCurrent(new_info.window);

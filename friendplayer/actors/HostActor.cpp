@@ -216,11 +216,23 @@ void HostActor::OnKeyPress(int key, bool pressed) {
 }
 
 void HostActor::OnMousePress(int stream, int x, int y, int button, bool pressed) {
-
+    fp_network::Network mouse_press_msg;
+    mouse_press_msg.mutable_data_msg()->set_needs_ack(false);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_x(x);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_y(y);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_stream_num(stream);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_button(static_cast<fp_network::MouseFrame_MouseButtons>(button));
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_pressed(pressed);
+    SendToSocket(mouse_press_msg);
 }
 
 void HostActor::OnMouseMove(int stream, int x, int y) {
-
+    fp_network::Network mouse_press_msg;
+    mouse_press_msg.mutable_data_msg()->set_needs_ack(false);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_x(x);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_y(y);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_stream_num(stream);
+    SendToSocket(mouse_press_msg);
 }
 
 void HostActor::ControllerCaptureThread(int poll_rate) {
@@ -229,9 +241,8 @@ void HostActor::ControllerCaptureThread(int poll_rate) {
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_rate));
         auto controller_capture = input_streamer->CapturePhysicalController();
         if (controller_capture) {
-            LOG_INFO("Sending controller frame!");
             fp_network::Network controller_msg;
-            controller_msg.mutable_data_msg()->set_needs_ack(true);
+            controller_msg.mutable_data_msg()->set_needs_ack(false);
             controller_msg.mutable_data_msg()->mutable_client_frame()->mutable_controller()->CopyFrom(*controller_capture);
             SendToSocket(controller_msg);
         }

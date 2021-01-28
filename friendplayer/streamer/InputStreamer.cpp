@@ -29,12 +29,14 @@ bool InputStreamer::UnregisterVirtualController(std::string actor_name) {
             vigem_target_remove(vigem_client, client_map[actor_name].controller);
             vigem_target_free(client_map[actor_name].controller);
             client_map.erase(actor_name);
+            return true;
         } else {
             LOG_WARNING("Trying to remove unregistered controller with actor name : {}", actor_name);
         }
     } else {
         LOG_WARNING("Trying to unregister controller with null vigem_client, actor name: {}", actor_name);
     }
+    return false;
 }
 
 

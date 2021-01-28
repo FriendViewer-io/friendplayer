@@ -160,7 +160,7 @@ HRESULT DDAImpl::GetCapturedFrame(ID3D11Texture2D **ppTex2D, int wait)
     return hr;
 }
 
-HMONITOR DDAImpl::GetMonitorEnumHandle() {
+int DDAImpl::GetMonitorEnumIndex() {
     return monitor_enum_index;
 }
 

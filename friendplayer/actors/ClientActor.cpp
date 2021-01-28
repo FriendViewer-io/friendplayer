@@ -73,7 +73,7 @@ void ClientActor::OnMessage(const any_msg& msg) {
     }
 }
 
-void OnFinish() {
+void ClientActor::OnFinish() {
     fp_actor::UnregisterInputUser unregister_msg;
     unregister_msg.set_actor_name(GetName());
     SendTo(INPUT_ACTOR_NAME, unregister_msg);
@@ -262,11 +262,8 @@ void ClientActor::OnDataMessage(const fp_network::Data& msg) {
         case fp_network::ClientDataFrame::kKeyboard:
             OnKeyboardFrame(c_msg.keyboard());
             break;
-        case fp_network::ClientDataFrame::kMouseButton:
-            OnMouseButtonFrame(c_msg.mouse_button());
-            break;
-        case fp_network::ClientDataFrame::kMouseMotion:
-            OnMouseMotionFrame(c_msg.mouse_motion());
+        case fp_network::ClientDataFrame::kMouse:
+            OnMouseFrame(c_msg.mouse());
             break;
         case fp_network::ClientDataFrame::kController:
             OnControllerFrame(c_msg.controller());
@@ -302,12 +299,11 @@ void ClientActor::OnKeyboardFrame(const fp_network::KeyboardFrame& msg) {
 
 }
 
-void ClientActor::OnMouseButtonFrame(const fp_network::MouseButtonFrame& msg) {
-
-}
-
-void ClientActor::OnMouseMotionFrame(const fp_network::MouseMotionFrame& msg) {
-
+void ClientActor::OnMouseFrame(const fp_network::MouseFrame& msg) {
+    fp_actor::InputData input_msg;
+    input_msg.set_actor_name(GetName());
+    input_msg.mutable_mouse()->CopyFrom(msg);
+    SendTo(INPUT_ACTOR_NAME, input_msg);
 }
 
 void ClientActor::OnControllerFrame(const fp_network::ControllerFrame& msg) {

@@ -29,8 +29,14 @@ void VideoEncodeActor::OnInit(const std::optional<any_msg>& init_msg) {
             SendTo(INPUT_ACTOR_NAME, enum_index_msg);
         }
     } else {
-        host_streamer->InitEncode(0);
+        int monitor_enum_index = -1;
+        host_streamer->InitEncode(0, monitor_enum_index);
         stream_num = 0;
+
+        fp_actor::MonitorEnumIndex enum_index_msg;
+        enum_index_msg.set_stream_num(stream_num);
+        enum_index_msg.set_monitor_enum_index(monitor_enum_index);
+        SendTo(INPUT_ACTOR_NAME, enum_index_msg);
     }
     SetTimerInternal(16, true);
 }
