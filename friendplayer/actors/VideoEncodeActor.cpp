@@ -18,9 +18,15 @@ void VideoEncodeActor::OnInit(const std::optional<any_msg>& init_msg) {
         if (init_msg->Is<fp_actor::VideoEncodeInit>()) {
             fp_actor::VideoEncodeInit encode_init_msg;
             init_msg->UnpackTo(&encode_init_msg);
-            host_streamer->InitEncode(static_cast<int>(encode_init_msg.monitor_idx()));
+            int monitor_enum_index = -1;
+            host_streamer->InitEncode(static_cast<int>(encode_init_msg.monitor_idx()), monitor_enum_index);
             stream_num = encode_init_msg.stream_num();
             LOG_INFO("Created encoder {} for monitor {}", stream_num, encode_init_msg.monitor_idx());
+
+            fp_actor::MonitorEnumIndex enum_index_msg;
+            enum_index_msg.set_stream_num(stream_num);
+            enum_index_msg.set_monitor_enum_index(monitor_enum_index);
+            SendTo(INPUT_ACTOR_NAME, enum_index_msg);
         }
     } else {
         host_streamer->InitEncode(0);

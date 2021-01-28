@@ -19,6 +19,8 @@ public:
 private:
     InputStreamer* input_streamer;
 
+    std::map<int, int> stream_num_to_monitor;
+
     void OnInputData(fp_actor::InputData& frame);
 
     void OnKeyboardFrame(std::string& actor_name, const fp_network::KeyboardFrame& msg);

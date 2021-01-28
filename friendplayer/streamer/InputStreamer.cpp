@@ -23,6 +23,21 @@ bool InputStreamer::IsUserRegistered(std::string actor_name) {
     return client_map.find(actor_name) != client_map.end();
 }
 
+bool InputStreamer::UnregisterVirtualController(std::string actor_name) {
+    if(vigem_client != nullptr) {
+        if(IsUserRegistered(actor_name)) {
+            vigem_target_remove(vigem_client, client_map[actor_name].controller);
+            vigem_target_free(client_map[actor_name].controller);
+            client_map.erase(actor_name);
+        } else {
+            LOG_WARNING("Trying to remove unregistered controller with actor name : {}", actor_name);
+        }
+    } else {
+        LOG_WARNING("Trying to unregister controller with null vigem_client, actor name: {}", actor_name);
+    }
+}
+
+
 //allocate a new controller, apperently multi-controller happens automatically without
 //providing an index or whatever, so main thing is to keep track of x360 and map that 
 //to users
@@ -53,7 +68,7 @@ bool InputStreamer::RegisterVirtualController(std::string actor_name)
     
     ClientData new_client = {actor_name, vigem_target_x360_alloc(), 0};
 
-    const auto err = vigem_target_add(vigem_client, client_map[actor_name].controller);
+    const auto err = vigem_target_add(vigem_client, new_client.controller);
     if(!VIGEM_SUCCESS(err)) {
         vigem_target_free(new_client.controller);
         LOG_CRITICAL("Target plugin failed with error code: {}, actor name: {}", err, actor_name);

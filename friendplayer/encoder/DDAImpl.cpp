@@ -6,6 +6,27 @@
 
 #define SAFE_RELEASE(X) if(X){X->Release(); X=nullptr;}
 
+struct sEnumInfo {
+  int iIndex = 0;
+  HMONITOR hMonitor = NULL;
+};
+
+BOOL CALLBACK GetMonitorByHandle(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+  auto info = (sEnumInfo*)dwData;
+  if (info->hMonitor == hMonitor) return FALSE;
+  ++info->iIndex;
+  return TRUE;
+}
+
+int GetMonitorIndex(HMONITOR hMonitor)
+{
+  sEnumInfo info;
+  info.hMonitor = hMonitor;
+
+  if (EnumDisplayMonitors(NULL, NULL, GetMonitorByHandle, (LPARAM)&info)) return -1;
+  return info.iIndex;
+}
+
 /// Initialize DDA
 HRESULT DDAImpl::Init()
 {
@@ -44,6 +65,10 @@ HRESULT DDAImpl::Init()
         LOG_CRITICAL("bad3");
         CLEAN_RETURN(hr);
     }
+    DXGI_OUTPUT_DESC output_desc;
+    ZeroMemory(&output_desc, sizeof(output_desc));
+    pOutput->GetDesc(&output_desc);
+    monitor_enum_index = GetMonitorIndex(output_desc.Monitor);
 
     if (FAILED(hr = pOutput->QueryInterface(__uuidof(IDXGIOutput1), (void**)&pOut1)))
     {
@@ -133,6 +158,10 @@ HRESULT DDAImpl::GetCapturedFrame(ID3D11Texture2D **ppTex2D, int wait)
     lastPTS = pts; // store microsec value
     frameno += frameInfo.AccumulatedFrames;
     return hr;
+}
+
+HMONITOR DDAImpl::GetMonitorEnumHandle() {
+    return monitor_enum_index;
 }
 
 /// Release all resources

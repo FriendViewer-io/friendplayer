@@ -17,6 +17,8 @@ public:
 
     bool RegisterVirtualController(std::string actor_name);
 
+    bool UnregisterVirtualController(std::string actor_name);
+
     void RegisterPhysicalController(const DWORD user_index);
 
     bool UpdateVirtualController(std::string actor_name, const fp_network::ControllerFrame& input);

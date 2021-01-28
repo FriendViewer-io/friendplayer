@@ -73,6 +73,12 @@ void ClientActor::OnMessage(const any_msg& msg) {
     }
 }
 
+void OnFinish() {
+    fp_actor::UnregisterInputUser unregister_msg;
+    unregister_msg.set_actor_name(GetName());
+    SendTo(INPUT_ACTOR_NAME, unregister_msg);
+}
+
 void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
     // INSERT ENCRYPTION HERE!!
     // INSERT ENCRYPTION HERE!!

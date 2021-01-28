@@ -178,6 +178,11 @@ message AudioEncodeInit {
 
 // InputActor
 
+message MonitorEnumIndex {
+    int monitor_enum_index = 1;
+    int stream_num = 2;
+}
+
 message InputData {
     string actor_name = 1;
     oneof DataFrame {
@@ -186,4 +191,8 @@ message InputData {
         fp_network.MouseMotionFrame mouse_motion = 4;
         fp_network.ControllerFrame controller = 5;
     }
+}
+
+message UnregisterInputUser {
+    string actor_name = 1;
 }

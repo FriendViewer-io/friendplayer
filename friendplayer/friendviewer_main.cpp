@@ -35,6 +35,8 @@ int main(int argc, char** argv) {
         client_mgr_init.set_host_port(Config::Port);
         any_msg.PackFrom(client_mgr_init);
     } else {
+        env.AddActor("InputActor", INPUT_ACTOR_NAME);
+
         fp_actor::HostClientManagerInit client_mgr_init;
         for (int monitor_index : Config::MonitorIndecies) {
             client_mgr_init.add_monitor_indices(monitor_index);

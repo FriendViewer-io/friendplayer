@@ -78,7 +78,7 @@ bool VideoStreamer::InitEncoderParams(int frames_per_sec, int avg_bitrate, DWORD
     return true;
 }
 
-bool VideoStreamer::InitEncode(int monitor_idx) {
+bool VideoStreamer::InitEncode(int monitor_idx, int& out_monitor_enum_index) {
     LOG_INFO("Called VideoStreamer::InitEncode");
     // InitDXGI
     HRESULT hr = S_OK;
@@ -135,6 +135,8 @@ bool VideoStreamer::InitEncode(int monitor_idx) {
 
     DWORD width = dxgi_provider->getWidth(), height = dxgi_provider->getHeight();
     LOG_INFO("Successfully created & initialized DXGI output duplicator for monitor {} ({}x{})", monitor_idx, width, height);
+
+    out_monitor_enum_index = dxgi_provider->GetMonitorEnumIndex();
 
     // InitEnc
     NV_ENC_BUFFER_FORMAT fmt = NV_ENC_BUFFER_FORMAT_ARGB;

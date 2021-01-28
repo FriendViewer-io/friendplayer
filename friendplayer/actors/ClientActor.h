@@ -15,6 +15,7 @@ public:
 
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnMessage(const any_msg& msg) override;
+    void OnFinish() override;
 
 private:
     bool audio_enabled;

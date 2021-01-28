@@ -72,6 +72,7 @@ private:
     std::thread* dxgi_capture_thread;
     ID3D11Texture2D* cur_capture = nullptr;
     bool ready_for_capture = false;
+    int monitor_enum_index;
 
 public:
     /// Initialize DDA
@@ -79,6 +80,8 @@ public:
     /// Acquire a new frame from DDA, and return it as a Texture2D object.
     /// 'wait' specifies the time in milliseconds that DDA shoulo wait for a new screen update.
     HRESULT GetCapturedFrame(ID3D11Texture2D **pTex2D, int wait);
+    // Get monitor handle for this DDAImpl
+    int GetMonitorEnumIndex();
     /// Release all resources
     int Cleanup();
     /// Return output height to caller

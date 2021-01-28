@@ -229,6 +229,7 @@ void HostActor::ControllerCaptureThread(int poll_rate) {
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_rate));
         auto controller_capture = input_streamer->CapturePhysicalController();
         if (controller_capture) {
+            LOG_INFO("Sending controller frame!");
             fp_network::Network controller_msg;
             controller_msg.mutable_data_msg()->set_needs_ack(true);
             controller_msg.mutable_data_msg()->mutable_client_frame()->mutable_controller()->CopyFrom(*controller_capture);

@@ -22,7 +22,7 @@ public:
     VideoStreamer();
     ~VideoStreamer();
 
-    bool InitEncode(int monitor_idx);
+    bool InitEncode(int monitor_idx, int& out_monitor_enum_index);
     void Encode(bool send_idr, bool send_pps_sps, std::string& data_out);
 
     bool InitDecode();

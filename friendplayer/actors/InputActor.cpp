@@ -12,6 +12,16 @@ void InputActor::OnMessage(const any_msg& msg) {
         fp_actor::InputData input_msg;
         msg.UnpackTo(&input_msg);
         OnInputData(input_msg);
+    } else if (msg.Is<fp_actor::UnregisterInputUser>()) {
+        fp_actor::UnregisterInputUser unregister_msg;
+        msg.UnpackTo(&unregister_msg);
+        input_streamer->UnregisterVirtualController(unregister_msg.actor_name());
+    } else if (msg.Is<fp_actor::MonitorEnumIndex>()) {
+        fp_actor::MonitorEnumIndex enum_index_msg;
+        msg.UnpackTo(&enum_index_msg);
+        
+    } else {
+        Actor::OnMessage(msg);
     }
 }
 
