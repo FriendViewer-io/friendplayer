@@ -45,7 +45,6 @@ std::string* DataBufferMap::GetBuffer(uint64_t handle) {
 uint64_t DataBufferMap::Create(void* data, size_t size) {
     std::unique_ptr<std::string> new_elem = std::make_unique<std::string>();
     new_elem->assign(static_cast<char*>(data), static_cast<char*>(data) + size);
-    std::memcpy(new_elem.get(), data, size);
     return Wrap(std::move(new_elem));
 }
 

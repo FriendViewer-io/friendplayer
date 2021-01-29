@@ -8,7 +8,7 @@
 
 ProtocolActor::ProtocolActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
     : TimerActor(actor_map, buffer_map, std::move(name)),
-      frame_window_start(0),
+      highest_acked_seqnum(0),
       send_sequence_number(0) {}
 
 ProtocolActor::~ProtocolActor() {
@@ -23,32 +23,6 @@ void ProtocolActor::OnInit(const std::optional<any_msg>& init_msg) {
             init_msg->UnpackTo(&msg);
             address = msg.address();
         }
-    }
-}
-
-void ProtocolActor::OnTimerFire() {
-    auto now = clock::now();
-    std::optional<clock::time_point> earliest_ts;
-    for (auto&& [seqnum, saved_msg] : unacked_messages) {
-        if (saved_msg.NeedsSlowRetransmit(RTT_milliseconds)) {
-            // if doing a slow RT without fast RT, just say we did a fast to reduce bandwidth
-            saved_msg.did_fast_retransmit = true;
-            saved_msg.last_send_ts = now;
-            fp_network::Network retransmitted_msg;
-            *retransmitted_msg.mutable_data_msg() = saved_msg.msg;
-            TryIncrementHandle(retransmitted_msg.data_msg());
-            SendToSocket(retransmitted_msg, true);
-            auto blocking_acks_it = std::find(blocking_acks.begin(), blocking_acks.end(), seqnum);
-            // ensure we don't have to re-add the blocking ack
-            if (blocking_acks_it == blocking_acks.end()) {
-                blocking_acks.emplace_back(seqnum);
-            }
-        }
-        earliest_ts = (earliest_ts ? std::min(saved_msg.last_send_ts, *earliest_ts) : saved_msg.last_send_ts);
-    }
-    if (earliest_ts) {
-        auto earliest_send_dt = std::chrono::duration_cast<std::chrono::milliseconds>(now - *earliest_ts);
-        SetTimerInternal(RTT_milliseconds - static_cast<uint32_t>(earliest_send_dt.count()), false);
     }
 }
 
@@ -78,18 +52,10 @@ void ProtocolActor::SendToSocket(fp_network::Network& msg, bool is_retransmit) {
     // Data messages can be acked so we must handle that here
     if (!is_retransmit && msg.Payload_case() == fp_network::Network::kDataMsg) {
         msg.mutable_data_msg()->set_sequence_number(send_sequence_number);
-        if (msg.data_msg().needs_ack()) {
-            // Saved acked messages which use shared buffers must addref
-            TryIncrementHandle(msg.data_msg());
-            unacked_messages.emplace(send_sequence_number, SavedDataMessage(msg.data_msg(), clock::now()));
-            send_sequence_number++;
-            fp_actor::StartTimer start_timer;
-            start_timer.set_periodic(false);
-            start_timer.set_period_ms(std::min(RTT_milliseconds * 2, static_cast<uint32_t>(300)));
-            google::protobuf::Any any_msg;
-            any_msg.PackFrom(start_timer);
-            EnqueueMessage(std::move(any_msg));
-        }
+        // Saved acked messages which use shared buffers must addref
+        TryIncrementHandle(msg.data_msg());
+        unacked_messages.emplace_back(msg.data_msg());
+        send_sequence_number++;
     }
     send_msg.mutable_msg()->CopyFrom(msg);
     SendTo(SOCKET_ACTOR_NAME, send_msg);
@@ -133,6 +99,9 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
     }
     case fp_network::Network::kDataMsg: {
         if (protocol_state == HandshakeState::HS_READY) {
+            fp_network::Network ack_msg;
+            ack_msg.mutable_ack_msg()->set_sequence_ack(msg.data_msg().sequence_number());
+            SendToSocket(ack_msg);
             OnDataMessage(msg.data_msg());
         }
         break;
@@ -151,20 +120,27 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
 }
 
 void ProtocolActor::OnAcknowledge(const fp_network::Ack& msg) {
-    // if acking a needs_ack packet, let time timer fire
-    // have OnTimerFire determine what the timer needs to be rearmed to
-    for (auto& unacked_msg : unacked_messages) {
-        auto remove_seqnum_it = unacked_messages.find(msg.sequence_ack());
-        auto remove_blocking_ack_it = std::find(blocking_acks.begin(), blocking_acks.end(), msg.sequence_ack());
-        if (remove_seqnum_it != unacked_messages.end()) {
-            TryDecrementHandle(remove_seqnum_it->second.msg);
-            unacked_messages.erase(remove_seqnum_it);
-        }
-        if (remove_blocking_ack_it != blocking_acks.end()) {
-            blocking_acks.erase(remove_blocking_ack_it);
+    // Erase the acked message
+    const uint64_t acked_num = msg.sequence_ack();
+    for (auto it = unacked_messages.begin(); it != unacked_messages.end(); it++) {
+        if (it->sequence_number() == acked_num) {
+            TryDecrementHandle(*it);
+            unacked_messages.erase(it);
+            break;
         }
     }
-    highest_acked_seqnum = std::max(highest_acked_seqnum, msg.sequence_ack());
+
+    highest_acked_seqnum = std::max(highest_acked_seqnum, acked_num);
+    
+    while (!unacked_messages.empty() &&
+            unacked_messages.front().sequence_number() + FAST_RETRANSMIT_WINDOW < highest_acked_seqnum) {
+        fp_network::Network net_msg;
+        *net_msg.mutable_data_msg() = std::move(unacked_messages.front());
+        unacked_messages.pop_front();
+        LOG_INFO("Retransmitting sequence num {}", net_msg.data_msg().sequence_number());
+        // socket decrements for us
+        SendToSocket(net_msg, true);
+    }
 }
 
 void ProtocolActor::TryIncrementHandle(const fp_network::Data& msg) {

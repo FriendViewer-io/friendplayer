@@ -13,7 +13,7 @@ class InputStreamer;
 
 class HostActor : public ProtocolActor {
 private:
-    static constexpr size_t VIDEO_FRAME_BUFFER = 5;
+    static constexpr size_t VIDEO_FRAME_BUFFER = 10;
     static constexpr size_t AUDIO_FRAME_BUFFER = 5;
     // Guess values, tune or scale these?
     static constexpr size_t VIDEO_FRAME_SIZE = 20000;
@@ -32,6 +32,7 @@ public:
     void OnMousePress(int stream, int x, int y, int button, bool pressed);
     void OnMouseScroll(int stream, int x, int y, double x_offset, double y_offset);
     void OnWindowClosed();
+    void MuteState(bool state);
 
 private:
     void SendVideoFrameToDecoder(uint32_t stream_num);

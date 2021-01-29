@@ -83,9 +83,6 @@ void ClientActor::OnFinish() {
 }
 
 void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
-    // INSERT ENCRYPTION HERE!!
-    // INSERT ENCRYPTION HERE!!
-
     uint32_t stream_num = data_msg.stream_num();
 
     if (stream_num > video_streams.size()) {
@@ -98,32 +95,31 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
     if ((stream_info.stream_state == StreamState::WAITING_FOR_VIDEO && data_msg.type() == fp_actor::VideoData::PPS_SPS)
         || stream_info.stream_state == StreamState::READY) {
         std::string* handle_data = buffer_map.GetBuffer(data_msg.handle());
-        fp_network::Network out_msg;
-        *out_msg.mutable_data_msg() = fp_network::Data();
-        out_msg.mutable_data_msg()->set_sequence_number(sequence_number);
-        *out_msg.mutable_data_msg()->mutable_host_frame() = fp_network::HostDataFrame();
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
-        *out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video() = fp_network::VideoFrame();
-        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_data_handle(data_msg.handle());
-        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_chunk_offset(0);
+
+        // INSERT ENCRYPTION HERE
+        fp_network::Network network_msg;
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
         
         if (data_msg.type() == fp_actor::VideoData::PPS_SPS) {
-            out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::PPS_SPS);
-            out_msg.mutable_data_msg()->set_needs_ack(true);
+            network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::PPS_SPS);
         } else if (data_msg.type() == fp_actor::VideoData::IDR) {
-            out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::IDR);
+            network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::IDR);
         } else {
-            out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::NORMAL);
+            network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::NORMAL);
         }
-        sequence_number += ((static_cast<uint32_t>(handle_data->size()) + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
+
+        for (size_t chunk_offset = 0; chunk_offset < handle_data->size(); chunk_offset += MAX_DATA_CHUNK) {
+            const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, handle_data->size());
+            uint64_t handle = buffer_map.Create(handle_data->data() + chunk_offset, chunk_end - chunk_offset);
+            network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_chunk_offset(static_cast<uint32_t>(chunk_offset));
+            network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_data_handle(handle);
+            SendToSocket(network_msg);
+        }
         stream_info.stream_point += static_cast<uint32_t>(handle_data->size());
         stream_info.frame_num++;
-
-        buffer_map.Increment(data_msg.handle());
-        SendToSocket(out_msg);
     }
     buffer_map.Decrement(data_msg.handle());
 }
@@ -141,25 +137,25 @@ void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
 
     StreamInfo& stream_info = audio_streams[stream_num];
 
-    if (stream_info.stream_state == StreamState::READY) {
+    if (stream_info.stream_state == StreamState::READY && audio_enabled) {
         std::string* handle_data = buffer_map.GetBuffer(data_msg.handle());
-        fp_network::Network out_msg;
-        *out_msg.mutable_data_msg() = fp_network::Data();
-        out_msg.mutable_data_msg()->set_sequence_number(sequence_number);
-        *out_msg.mutable_data_msg()->mutable_host_frame() = fp_network::HostDataFrame();
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
-        *out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio() = fp_network::AudioFrame();
-        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_data_handle(data_msg.handle());
-        out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_chunk_offset(0);
-    
-        sequence_number += ((static_cast<uint32_t>(handle_data->size()) + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
+
+        // INSERT ENCRYPTION HERE
+        fp_network::Network network_msg;
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
+        
+        for (size_t chunk_offset = 0; chunk_offset < handle_data->size(); chunk_offset += MAX_DATA_CHUNK) {
+            const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, handle_data->size());
+            uint64_t handle = buffer_map.Create(handle_data->data() + chunk_offset, chunk_end - chunk_offset);
+            network_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_chunk_offset(static_cast<uint32_t>(chunk_offset));
+            network_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_data_handle(handle);
+            SendToSocket(network_msg);
+        }
         stream_info.stream_point += static_cast<uint32_t>(handle_data->size());
         stream_info.frame_num++;
-        buffer_map.Increment(data_msg.handle());
-        SendToSocket(out_msg);
     }
     buffer_map.Decrement(data_msg.handle());
 }
@@ -288,13 +284,12 @@ void ClientActor::OnHostRequest(const fp_network::RequestToHost& msg) {
             }
         }
         break;
-        case fp_network::RequestToHost::MUTE_AUDIO: {
-            //SetAudio(false);
-        }
-        break;
-        case fp_network::RequestToHost::PLAY_AUDIO: {
-            //SetAudio(true);
-        }
+        case fp_network::RequestToHost::MUTE_AUDIO:
+            audio_enabled = false;
+            break;
+        case fp_network::RequestToHost::PLAY_AUDIO:
+            audio_enabled = true;
+            break;
     }
 }
 

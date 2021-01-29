@@ -211,6 +211,19 @@ void HostActor::OnWindowClosed() {
     SendTo(CLIENT_MANAGER_ACTOR_NAME, kill_msg);
 }
 
+void HostActor::MuteState(bool state) {
+    fp_network::Network mute_msg;
+    mute_msg.mutable_data_msg()->set_needs_ack(false);
+    if (state == true) {
+        mute_msg.mutable_data_msg()->mutable_client_frame()->
+            mutable_host_request()->set_type(fp_network::RequestToHost::MUTE_AUDIO);
+    } else {
+        mute_msg.mutable_data_msg()->mutable_client_frame()->
+            mutable_host_request()->set_type(fp_network::RequestToHost::PLAY_AUDIO);
+    }
+    SendToSocket(mute_msg);
+}
+
 void HostActor::OnKeyPress(int key, bool pressed) {
     fp_network::Network keyboard_press_msg;
     keyboard_press_msg.mutable_data_msg()->set_needs_ack(false);

@@ -450,7 +450,13 @@ void FramePresenterGL::Render(PresenterInfo& info) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGui::Begin("Window");
-        ImGui::Button("Button");
+        if (ImGui::Button("Disconnect")) {
+            callback_inst->OnWindowClosed();
+        }
+        static bool checkbox_state = false;
+        if (ImGui::Checkbox("Mute", &checkbox_state)) {
+            callback_inst->MuteState(checkbox_state);
+        }
         ImGui::End();
         ImGui::Render();
 

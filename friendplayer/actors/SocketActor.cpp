@@ -23,36 +23,21 @@ void SocketActor::OnMessage(const any_msg& msg) {
             && network_msg.data_msg().Payload_case() == fp_network::Data::kHostFrame) {
             auto& host_frame = *network_msg.mutable_data_msg()->mutable_host_frame();
             uint64_t handle = 0;
-            uint64_t seq_num = network_msg.data_msg().sequence_number();
             if (host_frame.has_video()) {
                 handle = host_frame.video().data_handle();
                 host_frame.mutable_video()->clear_DataBacking();
                 std::string* buf = buffer_map.GetBuffer(handle);
-                for (size_t chunk_offset = 0; chunk_offset < buf->size(); chunk_offset += MAX_DATA_CHUNK) {
-                    const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, buf->size());
-                    network_msg.mutable_data_msg()->set_sequence_number(seq_num);
-                    seq_num++;
-                    host_frame.mutable_video()->set_chunk_offset(static_cast<uint32_t>(chunk_offset));
-                    host_frame.mutable_video()->set_data(buf->data() + chunk_offset, chunk_end - chunk_offset);
-                    socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint);
-                }
+                host_frame.mutable_video()->set_data(buf->data(), buf->size());
+                    
             } else if (host_frame.has_audio()) {
                 handle = host_frame.audio().data_handle();
                 host_frame.mutable_audio()->clear_DataBacking();
                 std::string* buf = buffer_map.GetBuffer(handle);
-                for (size_t chunk_offset = 0; chunk_offset < buf->size(); chunk_offset += MAX_DATA_CHUNK) {
-                    const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, buf->size());
-                    network_msg.mutable_data_msg()->set_sequence_number(seq_num);
-                    seq_num++;
-                    host_frame.mutable_audio()->set_chunk_offset(static_cast<uint32_t>(chunk_offset));
-                    host_frame.mutable_audio()->set_data(buf->data() + chunk_offset, chunk_end - chunk_offset);
-                    socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint);
-                }
+                host_frame.mutable_audio()->set_data(buf->data(), buf->size());
             }
             buffer_map.Decrement(handle);
-        } else {
-            socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint);
         }
+        socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint);
     } else {
         Actor::OnMessage(msg);
     }
