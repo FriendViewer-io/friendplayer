@@ -87,7 +87,9 @@ private:
 
     static void MousePosProc(GLFWwindow* window, double x, double y);
 
-    static void OnWindowClose(GLFWwindow* window);
+    static void MouseWheelProc(GLFWwindow* window, double x_offset, double y_offset);
+
+    static void WindowCloseProc(GLFWwindow* window);
 
     /**
     *   @brief  This function is responsible for OpenGL/glew/glut initialization and also for initiating display loop
@@ -117,4 +119,5 @@ private:
     std::bitset<12> mouse_press_map;
     std::bitset<256> key_press_map;
     HostActor* callback_inst;
+    GLFWwindow* main_window = NULL;
 };

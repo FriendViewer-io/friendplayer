@@ -29,7 +29,7 @@ bool FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
         return false;
     } else if (frame.frame_num() >= frame_number + frame_count) {
         // Frame is beyond current buffer (probably decoder isn't taking them out fast enough)
-        for (int i = frame.frame_num(); i < frame.frame_num() + frame_count; ++i) {
+        for (uint32_t i = frame.frame_num(); i < frame.frame_num() + frame_count; ++i) {
             buffer[i % frame_count].num = i;
             buffer[i % frame_count].size = 0;
             buffer[i % frame_count].current_read_size = 0;
@@ -48,7 +48,7 @@ bool FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
     buffer_frame.size = frame.frame_size();
     buffer_frame.num = frame.frame_num();
     buffer_frame.stream_point = frame.stream_point();
-    buffer_frame.current_read_size += data.size();
+    buffer_frame.current_read_size += static_cast<uint32_t>(data.size());
     std::copy(data.begin(), data.end(), buffer_frame.data.begin() + chunk_offset);
 
     return buffer[frame_index()].current_read_size == buffer[frame_index()].size;

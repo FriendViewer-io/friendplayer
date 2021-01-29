@@ -239,6 +239,17 @@ void HostActor::OnMouseMove(int stream, int x, int y) {
     SendToSocket(mouse_press_msg);
 }
 
+void HostActor::OnMouseScroll(int stream, int x, int y, double x_offset, double y_offset) {
+    fp_network::Network mouse_press_msg;
+    mouse_press_msg.mutable_data_msg()->set_needs_ack(false);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_x(x);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_y(y);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_stream_num(stream);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_wheel_x(x_offset);
+    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_wheel_y(y_offset);
+    SendToSocket(mouse_press_msg);
+}
+
 void HostActor::ControllerCaptureThread(int poll_rate) {
     input_streamer->RegisterPhysicalController(0);
     while (is_running) {

@@ -146,6 +146,20 @@ void InputActor::OnMouseFrame(std::string& actor_name, const fp_network::MouseFr
         mouse_press.mi.dwFlags = mouse_press.mi.dwFlags << (msg.pressed() ? 0 : 1);
         SendInput(1, &mouse_press, sizeof(INPUT));
     }
+    if (msg.has_mouse_wheel_y()) {
+        INPUT mouse_scroll = { 0 };
+        mouse_scroll.type = INPUT_MOUSE;
+        mouse_scroll.mi.dwFlags = MOUSEEVENTF_WHEEL;
+        mouse_scroll.mi.mouseData = WHEEL_DELTA * msg.mouse_wheel_y();
+        SendInput(1, &mouse_scroll, sizeof(INPUT));
+    }
+    if (msg.has_mouse_wheel_x()) {
+        INPUT mouse_scroll = { 0 };
+        mouse_scroll.type = INPUT_MOUSE;
+        mouse_scroll.mi.dwFlags = MOUSEEVENTF_HWHEEL;
+        mouse_scroll.mi.mouseData = WHEEL_DELTA * msg.mouse_wheel_x();
+        SendInput(1, &mouse_scroll, sizeof(INPUT));
+    }
 }
 
 void InputActor::OnControllerFrame(std::string& actor_name, const fp_network::ControllerFrame& msg) {

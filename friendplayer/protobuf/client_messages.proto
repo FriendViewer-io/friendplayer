@@ -36,6 +36,8 @@ message MouseFrame {
     }
     optional MouseButtons button = 4;
     optional bool pressed = 5;
+    optional double mouse_wheel_x = 6;
+    optional double mouse_wheel_y = 7;
 }
 
 message ControllerFrame {

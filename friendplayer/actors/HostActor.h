@@ -30,6 +30,7 @@ public:
     void OnKeyPress(int key, bool pressed);
     void OnMouseMove(int stream, int x, int y);
     void OnMousePress(int stream, int x, int y, int button, bool pressed);
+    void OnMouseScroll(int stream, int x, int y, double x_offset, double y_offset);
     void OnWindowClosed();
 
 private:

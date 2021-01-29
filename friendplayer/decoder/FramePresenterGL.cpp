@@ -169,7 +169,7 @@ int ConvertToVK(int glfw_key) {
 }
 
 void FramePresenterGL::KeyProc(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (!pInstance) {
+    if (!pInstance || ImGui::GetIO().WantCaptureKeyboard) {
         return;
     }
     if ((glfwGetKey(window, GLFW_KEY_LEFT_ALT) || glfwGetKey(window, GLFW_KEY_RIGHT_ALT)) && key == GLFW_KEY_ENTER && action == GLFW_RELEASE) {
@@ -195,7 +195,7 @@ void FramePresenterGL::KeyProc(GLFWwindow* window, int key, int scancode, int ac
 }
 
 void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int action, int mods) {
-    if (!pInstance) {
+    if (!pInstance || ImGui::GetIO().WantCaptureMouse) {
         return;
     }
     
@@ -223,7 +223,7 @@ void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int actio
 }
 
 void FramePresenterGL::MousePosProc(GLFWwindow* window, double x, double y) {
-    if (!pInstance) {
+    if (!pInstance || ImGui::GetIO().WantCaptureMouse) {
         return;
     }
     
@@ -233,14 +233,26 @@ void FramePresenterGL::MousePosProc(GLFWwindow* window, double x, double y) {
     }
 }
 
-void FramePresenterGL::OnWindowClose(GLFWwindow* window) {
+void FramePresenterGL::WindowCloseProc(GLFWwindow* window) {
     if (!pInstance) {
         return;
     }
     pInstance->callback_inst->OnWindowClosed();
 }
 
-GLFWwindow* main_window = NULL;
+void FramePresenterGL::MouseWheelProc(GLFWwindow* window, double x_offset, double y_offset) {
+    if (!pInstance || ImGui::GetIO().WantCaptureMouse) {
+        return;
+    }
+    if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+        double x, y;
+        glfwGetCursorPos(window, &x, &y);
+        PresenterInfo& info = pInstance->presenters[window];
+        if (pInstance->TranslateCoords(info, x, y)) {
+            pInstance->callback_inst->OnMouseScroll(info.stream_num, x, y, x_offset, y_offset);
+        }
+    }
+}
 
 void FramePresenterGL::Run(int num_presenters) {
     glfwInit();
@@ -262,7 +274,8 @@ void FramePresenterGL::Run(int num_presenters) {
         glfwSetMouseButtonCallback(new_info.window, MouseButtonProc);
         glfwSetCursorPosCallback(new_info.window, MousePosProc);
         glfwSetKeyCallback(new_info.window, KeyProc);
-        glfwSetWindowCloseCallback(new_info.window, OnWindowClose);
+        glfwSetWindowCloseCallback(new_info.window, WindowCloseProc);
+        glfwSetScrollCallback(new_info.window, MouseWheelProc);
 
         if (ctx == nullptr) {
             ctx = ImGui::CreateContext();
@@ -391,11 +404,11 @@ void FramePresenterGL::Render(PresenterInfo& info) {
 
     if (new_ratio > source_ratio) {
         inner_window_height = window_height;
-        inner_window_width = window_height * source_ratio;
+        inner_window_width = static_cast<int>(window_height * source_ratio);
     }
     else {
         inner_window_width = window_width;
-        inner_window_height = window_width / source_ratio;
+        inner_window_height = static_cast<int>(window_width / source_ratio);
     }
     
     glViewport(0, 0, window_width, window_height);
