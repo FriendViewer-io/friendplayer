@@ -14,6 +14,8 @@ public:
     ClientManagerActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
         : Actor(actor_map, buffer_map, std::move(name)), request_id_counter(0) { }
 
+    virtual ~ClientManagerActor();
+
     void OnMessage(const any_msg& msg) override;
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnFinish() override;

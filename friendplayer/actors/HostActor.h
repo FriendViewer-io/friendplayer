@@ -22,8 +22,9 @@ private:
 public:
     HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
+    virtual ~HostActor();
+
     void OnInit(const std::optional<any_msg>& init_msg) override;
-    void OnFinish() override;
     void OnMessage(const any_msg& msg) override;
 
     void OnKeyPress(int key, bool pressed);
@@ -54,7 +55,7 @@ private:
 
     std::unique_ptr<FramePresenterGL> presenter;
 
-    InputStreamer* input_streamer;
+    std::unique_ptr<InputStreamer> input_streamer;
 
     std::unique_ptr<std::thread> controller_capture_thread;
 };

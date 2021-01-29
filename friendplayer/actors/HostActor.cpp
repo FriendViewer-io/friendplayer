@@ -8,7 +8,11 @@
 
 HostActor::HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
     : ProtocolActor(actor_map, buffer_map, std::move(name)), presenter(nullptr) {
-    input_streamer = new InputStreamer();
+    input_streamer = std::make_unique<InputStreamer>();
+}
+
+HostActor::~HostActor() {
+    controller_capture_thread->join();
 }
 
 void HostActor::OnInit(const std::optional<any_msg>& init_msg) {
@@ -50,10 +54,6 @@ void HostActor::OnMessage(const any_msg& msg) {
     } else {
         ProtocolActor::OnMessage(msg);
     }
-}
-
-void HostActor::OnFinish() {
-    delete input_streamer;
 }
 
 bool HostActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
@@ -141,7 +141,7 @@ void HostActor::OnAudioFrame(const fp_network::HostDataFrame& msg) {
 }
 
 void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
-    for (int i = 0; i < msg.num_audio_streams(); ++i) {
+    for (uint32_t i = 0; i < msg.num_audio_streams(); ++i) {
         std::string actor_name = fmt::format(AUDIO_DECODER_ACTOR_NAME_FORMAT, i);
         audio_stream_num_to_name[i] = actor_name;
         name_to_stream_num[actor_name] = i;
@@ -157,7 +157,7 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
         audio_streams.push_back(std::move(std::make_unique<FrameRingBuffer>(fmt::format("AudioBuffer{}", i), AUDIO_FRAME_BUFFER, AUDIO_FRAME_SIZE)));
     }
     presenter = std::make_unique<FramePresenterGL>(this, msg.num_video_streams());
-    for (int i = 0; i < msg.num_video_streams(); ++i) {
+    for (uint32_t i = 0; i < msg.num_video_streams(); ++i) {
         std::string actor_name = fmt::format(VIDEO_DECODER_ACTOR_NAME_FORMAT, i);
         video_stream_num_to_name[i] = actor_name;
         name_to_stream_num[actor_name] = i;
@@ -212,7 +212,11 @@ void HostActor::OnWindowClosed() {
 }
 
 void HostActor::OnKeyPress(int key, bool pressed) {
-
+    fp_network::Network keyboard_press_msg;
+    keyboard_press_msg.mutable_data_msg()->set_needs_ack(false);
+    keyboard_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_keyboard()->set_key(key);
+    keyboard_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_keyboard()->set_pressed(pressed);
+    SendToSocket(keyboard_press_msg);
 }
 
 void HostActor::OnMousePress(int stream, int x, int y, int button, bool pressed) {

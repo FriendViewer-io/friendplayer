@@ -20,6 +20,8 @@ public:
         network_is_running(false),
         socket(io_service) {}
 
+    virtual ~SocketActor() {}
+
     void OnMessage(const any_msg& msg) override;
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnFinish() override;

@@ -6,7 +6,7 @@ import "client_messages.proto";
 import "host_messages.proto";
 
 message Ack {
-    uint32 sequence_ack = 1;
+    uint64 sequence_ack = 1;
 }
 
 message State {
@@ -18,7 +18,7 @@ message State {
 }
 
 message Data {
-    uint32 sequence_number = 1;
+    uint64 sequence_number = 1;
     bool needs_ack = 2;
     oneof Payload {
         HostDataFrame host_frame = 3;

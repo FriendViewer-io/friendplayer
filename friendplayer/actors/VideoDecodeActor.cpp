@@ -10,6 +10,10 @@ VideoDecodeActor::VideoDecodeActor(const ActorMap& actor_map, DataBufferMap& buf
     video_streamer = std::make_unique<VideoStreamer>();
 }
 
+VideoDecodeActor::~VideoDecodeActor() {
+
+}
+
 void VideoDecodeActor::OnInit(const std::optional<any_msg>& init_msg) {
     video_streamer->InitDecode();
     if (init_msg) {
@@ -33,7 +37,7 @@ void VideoDecodeActor::OnVideoFrame(const fp_actor::VideoData& video_data) {
     if (video_data.stream_num() != stream_num) {
         LOG_ERROR("Data frame sent to wrong stream, received on {} but expected {}", stream_num, video_data.stream_num());
         return;
-    } 
+    }
     std::string* data = buffer_map.GetBuffer(video_data.handle());
     video_streamer->Decode(data);
     buffer_map.Decrement(video_data.handle());

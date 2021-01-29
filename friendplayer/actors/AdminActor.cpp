@@ -11,6 +11,8 @@ AdminActor::AdminActor(ActorMap& actor_map, DataBufferMap& buffer_map)
     writable_actor_map(const_cast<ActorMap&>(actor_map)),
     shutting_down(false) {}
 
+AdminActor::~AdminActor() {}
+
 void AdminActor::OnMessage(const any_msg& msg) {
     if (msg.Is<fp_actor::Create>()) {
         fp_actor::Create create_message;

@@ -7,24 +7,24 @@
 #define SAFE_RELEASE(X) if(X){X->Release(); X=nullptr;}
 
 struct sEnumInfo {
-  int iIndex = 0;
+  int iIndex;
   HMONITOR hMonitor = NULL;
 };
 
 BOOL CALLBACK GetMonitorByHandle(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-  auto info = (sEnumInfo*)dwData;
-  if (info->hMonitor == hMonitor) return FALSE;
-  ++info->iIndex;
-  return TRUE;
+    auto info = (sEnumInfo*)dwData;
+    if (info->hMonitor == hMonitor) return FALSE;
+    ++info->iIndex;
+    return TRUE;
 }
 
-int GetMonitorIndex(HMONITOR hMonitor)
-{
-  sEnumInfo info;
-  info.hMonitor = hMonitor;
+int GetMonitorIndex(HMONITOR hMonitor) {
+    sEnumInfo info;
+    info.hMonitor = hMonitor;
+    info.iIndex = 0;
 
-  if (EnumDisplayMonitors(NULL, NULL, GetMonitorByHandle, (LPARAM)&info)) return -1;
-  return info.iIndex;
+    if (EnumDisplayMonitors(NULL, NULL, GetMonitorByHandle, (LPARAM)&info)) return -1;
+    return info.iIndex;
 }
 
 /// Initialize DDA
@@ -49,20 +49,17 @@ HRESULT DDAImpl::Init()
     /// To create a DDA object given a D3D11 device, we must first get to the DXGI Adapter associated with that device
     if (FAILED(hr = pD3DDev->QueryInterface(__uuidof(IDXGIDevice2), (void**)&pDevice)))
     {
-        LOG_CRITICAL("bad1");
         CLEAN_RETURN(hr);
     }
 
     if (FAILED(hr = pDevice->GetParent(__uuidof(IDXGIAdapter), (void**)&pAdapter)))
     {
-        LOG_CRITICAL("bad2");
         CLEAN_RETURN(hr);
     }
     /// Once we have the DXGI Adapter, we enumerate the attached display outputs, and select which one we want to capture
     /// This sample application always captures the primary display output, enumerated at index 0.
     if (FAILED(hr = pAdapter->EnumOutputs(monitor_idx, &pOutput)))
     {
-        LOG_CRITICAL("bad3");
         CLEAN_RETURN(hr);
     }
     DXGI_OUTPUT_DESC output_desc;
@@ -72,13 +69,11 @@ HRESULT DDAImpl::Init()
 
     if (FAILED(hr = pOutput->QueryInterface(__uuidof(IDXGIOutput1), (void**)&pOut1)))
     {
-        LOG_CRITICAL("bad4");
         CLEAN_RETURN(hr);
     }
     /// Ask DXGI to create an instance of IDXGIOutputDuplication for the selected output. We can now capture this display output
     if (FAILED(hr = pOut1->DuplicateOutput(pDevice, &pDup)))
     {
-        LOG_CRITICAL("bad5");
         CLEAN_RETURN(hr);
     }
 

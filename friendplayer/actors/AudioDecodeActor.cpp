@@ -10,6 +10,8 @@ AudioDecodeActor::AudioDecodeActor(const ActorMap& actor_map, DataBufferMap& buf
     audio_streamer = std::make_unique<AudioStreamer>();
 }
 
+AudioDecodeActor::~AudioDecodeActor() {}
+
 void AudioDecodeActor::OnInit(const std::optional<any_msg>& init_msg) {
     audio_streamer = std::make_unique<AudioStreamer>();
     audio_streamer->InitDecoder();

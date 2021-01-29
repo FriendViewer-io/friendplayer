@@ -13,6 +13,8 @@ private:
 public:
     ClientActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
+    virtual ~ClientActor();
+
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnMessage(const any_msg& msg) override;
     void OnFinish() override;

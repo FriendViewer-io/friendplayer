@@ -242,6 +242,7 @@ bool VideoStreamer::IsDisplayInit() {
 bool VideoStreamer::InitDisplay(int stream_num) {
     LOG_TRACE("Registering cuda context");
     cuda_frame = FramePresenterGL::RegisterContext(cuda_context, decoder->GetWidth(), decoder->GetHeight(), stream_num);
+    LOG_INFO("Init display stream num {} with {} x {}", stream_num, decoder->GetWidth(), decoder->GetHeight());
     LOG_TRACE("Finished initializing display");
     display_init = true;
     return true;
@@ -262,7 +263,7 @@ void VideoStreamer::PresentVideo() {
     int iMatrix = 0;
     int64_t timestamp = 0;
     int nRGBWidth = decoder->GetDecodeWidth();
-
+    
     for (int i = 0; i < num_frames; i++) {
         pFrame = decoder->GetFrame(&timestamp);
         iMatrix = decoder->GetVideoFormatInfo().video_signal_description.matrix_coefficients;

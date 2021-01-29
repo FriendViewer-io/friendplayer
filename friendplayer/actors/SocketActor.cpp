@@ -82,7 +82,7 @@ void SocketActor::NetworkWorker() {
         msg.set_address(address);
 
         fp_network::Network recv_msg;
-        recv_msg.ParseFromArray(recv_buffer.data(), recv_size);
+        recv_msg.ParseFromArray(recv_buffer.data(), static_cast<int>(recv_size));
         // Put data message in buffer
         if (recv_msg.Payload_case() == fp_network::Network::kDataMsg
             && recv_msg.data_msg().Payload_case() == fp_network::Data::kHostFrame) {

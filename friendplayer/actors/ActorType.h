@@ -35,7 +35,7 @@ struct actor_type_counter {};
 #define DEFINE_ACTOR_GENERATOR(actor_name) \
     namespace actorgen { \
         COUNTER_INC(actor_type_counter); \
-        static constexpr int actor_name##_TYPEUID = COUNTER_READ(actor_type_counter) - 1; \
+        static constexpr size_t actor_name##_TYPEUID = COUNTER_READ(actor_type_counter) - 1; \
         template<std::size_t type_uid, std::enable_if_t<(type_uid == actor_name##_TYPEUID) && (!std::is_abstract_v<actor_name>), bool> = true> \
         actor_name* generate(std::string_view val, const ActorMap& actor_map, DataBufferMap& data_map, std::string_view name) { \
             if (val == #actor_name) { \

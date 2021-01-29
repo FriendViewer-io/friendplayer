@@ -8,6 +8,8 @@ class VideoDecodeActor : public TimerActor {
 public:
     VideoDecodeActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
+    virtual ~VideoDecodeActor();
+
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnMessage(const any_msg& msg) override;
     void OnTimerFire() override;

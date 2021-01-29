@@ -6,6 +6,8 @@
 #include <asio/ip/udp.hpp>
 #include <fmt/format.h>
 
+ClientManagerActor::~ClientManagerActor() {}
+
 void ClientManagerActor::OnInit(const std::optional<any_msg>& init_msg) {
     Actor::OnInit(init_msg);
     if (init_msg) {
@@ -169,7 +171,7 @@ void ClientManagerActor::HostInit(const fp_actor::HostClientManagerInit& msg) {
     encoder_create_msg.set_response_actor(GetName());
     encoder_create_msg.set_actor_type_name("VideoEncodeActor");
     fp_actor::VideoEncodeInit video_encode_init;
-    for (int i = 0; i < video_stream_count; i++) {
+    for (uint32_t i = 0; i < video_stream_count; i++) {
         encoder_create_msg.set_actor_name(fmt::format(VIDEO_ENCODER_ACTOR_NAME_FORMAT, i));
         video_encode_init.set_monitor_idx(msg.monitor_indices(i));
         video_encode_init.set_stream_num(i);
@@ -179,7 +181,7 @@ void ClientManagerActor::HostInit(const fp_actor::HostClientManagerInit& msg) {
 
     encoder_create_msg.set_actor_type_name("AudioEncodeActor");
     fp_actor::AudioEncodeInit audio_encode_init;
-    for (int i = 0; i < audio_stream_count; i++) {
+    for (uint32_t i = 0; i < audio_stream_count; i++) {
         encoder_create_msg.set_actor_name(fmt::format(AUDIO_ENCODER_ACTOR_NAME_FORMAT, i));
         audio_encode_init.set_stream_num(i);
         encoder_create_msg.mutable_init_msg()->PackFrom(audio_encode_init);

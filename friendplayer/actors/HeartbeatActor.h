@@ -13,7 +13,7 @@ public:
     void OnMessage(const any_msg& msg) override;
     void OnTimerFire() override;
 
-    virtual ~HeartbeatActor() {}
+    virtual ~HeartbeatActor();
 
 private:
     using clock = std::chrono::system_clock;

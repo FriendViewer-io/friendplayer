@@ -18,6 +18,8 @@ ClientActor::ClientActor(const ActorMap& actor_map, DataBufferMap& buffer_map, s
       //input_streamer()
       { }
 
+ClientActor::~ClientActor() {}
+
 void ClientActor::OnInit(const std::optional<any_msg>& init_msg) {
     if (init_msg) {
         if (init_msg->Is<fp_actor::ClientProtocolInit>()) {
@@ -25,11 +27,11 @@ void ClientActor::OnInit(const std::optional<any_msg>& init_msg) {
             init_msg->UnpackTo(&client_init_msg);
 
             video_streams.resize(client_init_msg.video_stream_count());
-            for (int i = 0; i < client_init_msg.video_stream_count(); i++) {
+            for (uint32_t i = 0; i < client_init_msg.video_stream_count(); i++) {
                 video_streams[i].actor_name = fmt::format(VIDEO_ENCODER_ACTOR_NAME_FORMAT, i);
             }
             audio_streams.resize(client_init_msg.audio_stream_count());
-            for (int i = 0; i < client_init_msg.audio_stream_count(); i++) {
+            for (uint32_t i = 0; i < client_init_msg.audio_stream_count(); i++) {
                 audio_streams[i].actor_name = fmt::format(AUDIO_ENCODER_ACTOR_NAME_FORMAT, i);
             }
             // base class init
@@ -77,6 +79,7 @@ void ClientActor::OnFinish() {
     fp_actor::UnregisterInputUser unregister_msg;
     unregister_msg.set_actor_name(GetName());
     SendTo(INPUT_ACTOR_NAME, unregister_msg);
+    ProtocolActor::OnFinish();
 }
 
 void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
@@ -100,7 +103,7 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
         out_msg.mutable_data_msg()->set_sequence_number(sequence_number);
         *out_msg.mutable_data_msg()->mutable_host_frame() = fp_network::HostDataFrame();
         out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(handle_data->size());
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
         out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
         out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
         *out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video() = fp_network::VideoFrame();
@@ -115,8 +118,8 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
         } else {
             out_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::NORMAL);
         }
-        sequence_number += ((handle_data->size() + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
-        stream_info.stream_point += handle_data->size();
+        sequence_number += ((static_cast<uint32_t>(handle_data->size()) + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
+        stream_info.stream_point += static_cast<uint32_t>(handle_data->size());
         stream_info.frame_num++;
 
         buffer_map.Increment(data_msg.handle());
@@ -145,15 +148,15 @@ void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
         out_msg.mutable_data_msg()->set_sequence_number(sequence_number);
         *out_msg.mutable_data_msg()->mutable_host_frame() = fp_network::HostDataFrame();
         out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
-        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(handle_data->size());
+        out_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
         out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
         out_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
         *out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio() = fp_network::AudioFrame();
         out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_data_handle(data_msg.handle());
         out_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_chunk_offset(0);
     
-        sequence_number += ((handle_data->size() + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
-        stream_info.stream_point += handle_data->size();
+        sequence_number += ((static_cast<uint32_t>(handle_data->size()) + MAX_DATA_CHUNK - 1) / MAX_DATA_CHUNK);
+        stream_info.stream_point += static_cast<uint32_t>(handle_data->size());
         stream_info.frame_num++;
         buffer_map.Increment(data_msg.handle());
         SendToSocket(out_msg);
@@ -179,8 +182,8 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
         if (msg.magic() == 0x46524E44504C5954ull) {
             LOG_INFO("Client actor {} received last handshake", GetName());
             fp_network::Network stream_info_msg;
-            stream_info_msg.mutable_info_msg()->set_num_video_streams(video_streams.size());
-            stream_info_msg.mutable_info_msg()->set_num_audio_streams(audio_streams.size());
+            stream_info_msg.mutable_info_msg()->set_num_video_streams(static_cast<uint32_t>(video_streams.size()));
+            stream_info_msg.mutable_info_msg()->set_num_audio_streams(static_cast<uint32_t>(audio_streams.size()));
             SendToSocket(stream_info_msg);            
             protocol_state = HandshakeState::HS_READY;
             handshake_success = true;
@@ -296,7 +299,10 @@ void ClientActor::OnHostRequest(const fp_network::RequestToHost& msg) {
 }
 
 void ClientActor::OnKeyboardFrame(const fp_network::KeyboardFrame& msg) {
-
+    fp_actor::InputData input_msg;
+    input_msg.set_actor_name(GetName());
+    input_msg.mutable_keyboard()->CopyFrom(msg);
+    SendTo(INPUT_ACTOR_NAME, input_msg);
 }
 
 void ClientActor::OnMouseFrame(const fp_network::MouseFrame& msg) {

@@ -10,6 +10,8 @@ class AdminActor : public BaseActor {
 public:
     AdminActor(ActorMap& actor_map, DataBufferMap& buffer_map);
 
+    virtual ~AdminActor();
+
     void OnInit(const std::optional<any_msg>&) override {}
     void OnMessage(const any_msg& msg) override;
     void StartActor() override;

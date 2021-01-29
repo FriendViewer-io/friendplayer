@@ -4,6 +4,8 @@
 #include "protobuf/actor_messages.pb.h"
 #include "common/Log.h"
 
+HeartbeatActor::~HeartbeatActor() {}
+
 void HeartbeatActor::OnInit(const std::optional<any_msg>& init_msg) {
     TimerActor::OnInit(init_msg);
     if (init_msg) {
@@ -40,8 +42,8 @@ void HeartbeatActor::OnTimerFire() {
             fp_actor::ClientDisconnect timeout_msg;
             timeout_msg.set_client_name(it->first);
             SendTo(CLIENT_MANAGER_ACTOR_NAME, timeout_msg);
-            heartbeat_map.erase(it);
             LOG_INFO("Client {} timed out", it->first);
+            heartbeat_map.erase(it);
         } else {
             fp_actor::HeartbeatRequest heartbeat_send_rq;
             SendTo(it->first, heartbeat_send_rq);

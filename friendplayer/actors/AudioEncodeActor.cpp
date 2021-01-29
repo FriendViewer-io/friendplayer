@@ -9,6 +9,8 @@ AudioEncodeActor::AudioEncodeActor(const ActorMap& actor_map, DataBufferMap& buf
     audio_streamer = std::make_unique<AudioStreamer>();
 }
 
+AudioEncodeActor::~AudioEncodeActor() {}
+
 void AudioEncodeActor::OnInit(const std::optional<any_msg>& init_msg) {
     audio_streamer->InitEncoder(64000);
     SetTimerInternal(20, true);

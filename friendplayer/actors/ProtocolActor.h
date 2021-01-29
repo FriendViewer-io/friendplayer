@@ -14,6 +14,8 @@ public:
 
     ProtocolActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
+    virtual ~ProtocolActor();
+
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnMessage(const any_msg& msg) override;
     void OnTimerFire() override;
@@ -35,7 +37,7 @@ protected:
         HS_UNINITIALIZED, HS_WAITING_SHAKE_ACK, HS_READY, HS_FAILED
     };
     uint32_t RTT_milliseconds;
-    uint32_t highest_acked_seqnum;
+    uint64_t highest_acked_seqnum;
 
     HandshakeState protocol_state;
 
@@ -47,7 +49,7 @@ protected:
         clock::time_point last_send_ts;
         bool did_fast_retransmit;
 
-        bool NeedsFastRetransmit(uint32_t current_ack_seqnum) {
+        bool NeedsFastRetransmit(uint64_t current_ack_seqnum) {
             return msg.sequence_number() + FAST_RETRANSMIT_WINDOW < current_ack_seqnum &&
                    !did_fast_retransmit;
         }
@@ -58,13 +60,13 @@ protected:
         }
     };
 
-    uint32_t send_sequence_number;
-    uint32_t frame_window_start;
+    uint64_t send_sequence_number;
+    uint64_t frame_window_start;
     // Ack window for stream
-    std::map<uint32_t, SavedDataMessage> unacked_messages;
+    std::map<uint64_t, SavedDataMessage> unacked_messages;
     // Acks which are blocking further data sending (slow retransmission)
-    std::vector<uint32_t> blocking_acks;
-    uint32_t timer_seqnum;
+    std::vector<uint64_t> blocking_acks;
+    uint64_t timer_seqnum;
 
     void TryIncrementHandle(const fp_network::Data& msg);
     void TryDecrementHandle(const fp_network::Data& msg);

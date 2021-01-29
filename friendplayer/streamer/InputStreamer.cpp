@@ -129,7 +129,9 @@ std::optional<fp_network::ControllerFrame> InputStreamer::CapturePhysicalControl
         return std::nullopt;
     }
     XINPUT_STATE state;
-    XInputGetState(dw_user_index, &state);
+    if (XInputGetState(dw_user_index, &state) == ERROR_DEVICE_NOT_CONNECTED) {
+        return std::nullopt;
+    }
 
     fp_network::ControllerFrame return_frame;
 

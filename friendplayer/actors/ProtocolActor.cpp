@@ -11,6 +11,10 @@ ProtocolActor::ProtocolActor(const ActorMap& actor_map, DataBufferMap& buffer_ma
       frame_window_start(0),
       send_sequence_number(0) {}
 
+ProtocolActor::~ProtocolActor() {
+
+}
+
 void ProtocolActor::OnInit(const std::optional<any_msg>& init_msg) {
     TimerActor::OnInit(init_msg);
     if (init_msg) {
@@ -44,7 +48,7 @@ void ProtocolActor::OnTimerFire() {
     }
     if (earliest_ts) {
         auto earliest_send_dt = std::chrono::duration_cast<std::chrono::milliseconds>(now - *earliest_ts);
-        SetTimerInternal(RTT_milliseconds - earliest_send_dt.count(), false);
+        SetTimerInternal(RTT_milliseconds - static_cast<uint32_t>(earliest_send_dt.count()), false);
     }
 }
 
@@ -100,7 +104,7 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
     case fp_network::Network::kHbMsg: {
         if (msg.hb_msg().is_response()) {
             auto arrival_time = clock::now();
-            RTT_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(arrival_time.time_since_epoch() - clock::duration(msg.hb_msg().timestamp())).count();
+            RTT_milliseconds = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(arrival_time.time_since_epoch() - clock::duration(msg.hb_msg().timestamp())).count());
             fp_actor::ClientActorHeartbeatState heartbeat_state;
             heartbeat_state.set_client_actor_name(GetName());
             heartbeat_state.set_disconnected(false);

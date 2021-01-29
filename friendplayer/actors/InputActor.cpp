@@ -35,8 +35,15 @@ void GetOffsetForMonitor(HMONITOR monitor_handle, int& x, int& y) {
     }
 }
 
+InputActor::InputActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
+    : Actor(actor_map, buffer_map, std::move(name)), input_streamer(nullptr) {}
+
+InputActor::~InputActor() {
+    
+}
+
 void InputActor::OnInit(const std::optional<any_msg>& init_msg) {
-    input_streamer = new InputStreamer();
+    input_streamer = std::make_unique<InputStreamer>();
 }
 
 void InputActor::OnMessage(const any_msg& msg) {
@@ -60,10 +67,6 @@ void InputActor::OnMessage(const any_msg& msg) {
     }
 }
 
-void InputActor::OnFinish() {
-    delete input_streamer;
-}
-
 void InputActor::OnInputData(fp_actor::InputData& frame) {
     std::string actor = frame.actor_name();
     switch (frame.DataFrame_case()) {
@@ -78,11 +81,42 @@ void InputActor::OnInputData(fp_actor::InputData& frame) {
             break;
         default:
             LOG_WARNING("Invalid dataframe recvd in Input actor");
+            break;
     }
 }
 
 void InputActor::OnKeyboardFrame(std::string& actor_name, const fp_network::KeyboardFrame& msg) {
-
+    INPUT keyboard_press = { 0 };
+    keyboard_press.type = INPUT_KEYBOARD;
+    keyboard_press.ki.wVk = msg.key();
+    keyboard_press.ki.wScan = MapVirtualKey(msg.key(), MAPVK_VK_TO_VSC);
+    if (!msg.pressed()) {
+        keyboard_press.ki.dwFlags = KEYEVENTF_KEYUP;
+    }
+    switch (msg.key()) {
+        case VK_SHIFT:
+        case VK_LSHIFT:
+        case VK_RSHIFT:
+        case VK_MENU:
+        case VK_CONTROL:
+        case VK_LCONTROL:
+        case VK_RCONTROL:
+        case VK_INSERT:
+        case VK_DELETE:
+        case VK_HOME:
+        case VK_END:
+        case VK_PRIOR:
+        case VK_NEXT:
+        case VK_NUMLOCK:
+        case VK_UP:
+        case VK_DOWN:
+        case VK_LEFT:
+        case VK_RIGHT:
+        case VK_SNAPSHOT:
+            keyboard_press.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+            break;
+    }
+    SendInput(1, &keyboard_press, sizeof(INPUT));
 }
 
 void InputActor::OnMouseFrame(std::string& actor_name, const fp_network::MouseFrame& msg) {
@@ -94,8 +128,7 @@ void InputActor::OnMouseFrame(std::string& actor_name, const fp_network::MouseFr
     GetOffsetForMonitor(reinterpret_cast<HMONITOR>(stream_num_to_monitor[msg.stream_num()]), x_pos, y_pos);
     SetCursorPos(x_pos, y_pos);
     if (msg.has_button()) {
-        INPUT mouse_press;
-        memset(&mouse_press, 0, sizeof(INPUT));
+        INPUT mouse_press = { 0 };
         mouse_press.type = INPUT_MOUSE;
         if (msg.button() == fp_network::MouseFrame::MOUSE_L) {
             mouse_press.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
@@ -110,8 +143,7 @@ void InputActor::OnMouseFrame(std::string& actor_name, const fp_network::MouseFr
             mouse_press.mi.dwFlags = MOUSEEVENTF_XDOWN;
             mouse_press.mi.mouseData = XBUTTON2;
         }
-        int flags = mouse_press.mi.dwFlags;
-        mouse_press.mi.dwFlags |= msg.pressed() ? 0 : (flags << 1);
+        mouse_press.mi.dwFlags = mouse_press.mi.dwFlags << (msg.pressed() ? 0 : 1);
         SendInput(1, &mouse_press, sizeof(INPUT));
     }
 }

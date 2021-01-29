@@ -120,9 +120,9 @@ int ConvertToVK(int glfw_key) {
     } else if (glfw_key == GLFW_KEY_UP) {
         return VK_UP;
     } else if (glfw_key == GLFW_KEY_PAGE_UP) {
-        return VK_NEXT;
-    } else if (glfw_key == GLFW_KEY_PAGE_DOWN) {
         return VK_PRIOR;
+    } else if (glfw_key == GLFW_KEY_PAGE_DOWN) {
+        return VK_NEXT;
     } else if (glfw_key == GLFW_KEY_HOME) {
         return VK_HOME;
     } else if (glfw_key == GLFW_KEY_END) {
@@ -172,17 +172,26 @@ void FramePresenterGL::KeyProc(GLFWwindow* window, int key, int scancode, int ac
     if (!pInstance) {
         return;
     }
-    if ((glfwGetKey(window, GLFW_KEY_LEFT_ALT) || glfwGetKey(window, GLFW_KEY_RIGHT)) && key == GLFW_KEY_ENTER && action == GLFW_RELEASE) {
+    if ((glfwGetKey(window, GLFW_KEY_LEFT_ALT) || glfwGetKey(window, GLFW_KEY_RIGHT_ALT)) && key == GLFW_KEY_ENTER && action == GLFW_RELEASE) {
+        GLFWmonitor* current_monitor = glfwGetWindowMonitor(window);
         GLFWmonitor* monitor = GetBestMonitor(window);
         const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        PresenterInfo& info = pInstance->presenters[window];
+        if (current_monitor == nullptr) {
+            glfwGetWindowPos(window, &info.window_x, &info.window_y);
+            glfwGetWindowSize(window, &info.window_width, &info.window_height);
+            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        } else {
+            glfwSetWindowMonitor(window, NULL, info.window_x, info.window_y, info.window_width , info.window_height, mode->refreshRate);
+        }
     }
     int virtual_key = ConvertToVK(key);
-    if (action != GLFW_REPEAT) {
-        pInstance->key_press_map[virtual_key].flip();
-        pInstance->callback_inst->OnKeyPress(virtual_key, action == GLFW_PRESS);
-        LOG_INFO("Key: {:04X}", virtual_key);
+    if (action == GLFW_RELEASE) {
+        pInstance->key_press_map[virtual_key] = 0;
+    } else {
+        pInstance->key_press_map[virtual_key] = 1;
     }
+    pInstance->callback_inst->OnKeyPress(virtual_key, action != GLFW_RELEASE);
 }
 
 void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int action, int mods) {
@@ -209,7 +218,6 @@ void FramePresenterGL::MouseButtonProc(GLFWwindow* window, int button, int actio
                 button_proto = fp_network::MouseFrame::MOUSE_X2;
             }
             pInstance->callback_inst->OnMousePress(info.stream_num, x, y, button_proto, action == GLFW_PRESS);
-            LOG_INFO("Mouse click: {} {} {}", x, y, button);
         }
     }
 }
@@ -222,7 +230,6 @@ void FramePresenterGL::MousePosProc(GLFWwindow* window, double x, double y) {
     PresenterInfo& info = pInstance->presenters[window];
     if (pInstance->TranslateCoords(info, x, y) && glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
         pInstance->callback_inst->OnMouseMove(info.stream_num, x, y);
-        LOG_INFO("Mouse motion: {} {}", x, y);
     }
 }
 
@@ -233,7 +240,7 @@ void FramePresenterGL::OnWindowClose(GLFWwindow* window) {
     pInstance->callback_inst->OnWindowClosed();
 }
 
-GLFWwindow* main_window;
+GLFWwindow* main_window = NULL;
 
 void FramePresenterGL::Run(int num_presenters) {
     glfwInit();
@@ -243,12 +250,12 @@ void FramePresenterGL::Run(int num_presenters) {
     while (presenters.size() < num_presenters) {
         PresenterInfo new_info;
         new_presenter_queue.wait_dequeue(new_info);
-        LOG_INFO("Got new presenter {}x{}", new_info.width, new_info.height);
+        LOG_INFO("Got new presenter {}x{} = {}", new_info.width, new_info.height, new_info.stream_num);
         float aspect_ratio = static_cast<float>(new_info.width) / new_info.height;
         int width = static_cast<int>(GetSystemMetrics(SM_CXSCREEN) * 0.75f);
         int height = static_cast<int>(new_info.width / aspect_ratio);
         glfwWindowHint(GLFW_AUTO_ICONIFY, GL_FALSE);
-        new_info.window = glfwCreateWindow(width, height, "Simple example", NULL, NULL);
+        new_info.window = glfwCreateWindow(width, height, fmt::format("Monitor Stream {}", new_info.stream_num).c_str(), NULL, main_window);
 
         glfwMakeContextCurrent(new_info.window);
 
@@ -270,6 +277,7 @@ void FramePresenterGL::Run(int num_presenters) {
         }
 
         glewInit();
+
         // Prepare OpenGL buffer object for uploading texture data
         glGenBuffersARB(1, &new_info.pbo);
         glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, new_info.pbo);
@@ -360,7 +368,6 @@ void FramePresenterGL::Render(PresenterInfo& info) {
 
     cuGraphicsUnmapResources(1, &cuResource, 0);
     cuGraphicsUnregisterResource(cuResource);
-    cuCtxPopCurrent(NULL);
 
     glfwMakeContextCurrent(info.window);
 
@@ -438,6 +445,7 @@ void FramePresenterGL::Render(PresenterInfo& info) {
     }
 
     glfwSwapBuffers(info.window);
+    cuCtxPopCurrent(NULL);
 }
 
 void FramePresenterGL::PrintText(int iFont, std::string strText, int x, int y, bool bFillBackground) {

@@ -30,6 +30,7 @@ class FramePresenterGL
 private:
     struct PresenterInfo {
         int width = 0, height = 0;
+        int window_width, window_height, window_x, window_y;
         GLFWwindow* window = nullptr;
         CUcontext context = NULL;
         CUdeviceptr frame;
