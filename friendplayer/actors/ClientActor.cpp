@@ -263,18 +263,24 @@ void ClientActor::OnDataMessage(const fp_network::Data& msg) {
         return;
     }
     auto& c_msg = msg.client_frame();
-    switch(c_msg.DataFrame_case()) {
-        case fp_network::ClientDataFrame::kKeyboard:
-            OnKeyboardFrame(c_msg.keyboard());
+
+    std::string df_decrypted_serial;
+    crypto_impl->Decrypt(c_msg.encrypted_data_frame(), df_decrypted_serial);
+    fp_network::ClientDataFrameInner df_decrypted;
+    df_decrypted.ParseFromArray(df_decrypted_serial.data(), df_decrypted_serial.size());
+
+    switch(df_decrypted.Frame_case()) {
+        case fp_network::ClientDataFrameInner::kKeyboard:
+            OnKeyboardFrame(df_decrypted.keyboard());
             break;
-        case fp_network::ClientDataFrame::kMouse:
-            OnMouseFrame(c_msg.mouse());
+        case fp_network::ClientDataFrameInner::kMouse:
+            OnMouseFrame(df_decrypted.mouse());
             break;
-        case fp_network::ClientDataFrame::kController:
-            OnControllerFrame(c_msg.controller());
+        case fp_network::ClientDataFrameInner::kController:
+            OnControllerFrame(df_decrypted.controller());
             break;
-        case fp_network::ClientDataFrame::kHostRequest:
-            OnHostRequest(c_msg.host_request());
+        case fp_network::ClientDataFrameInner::kHostRequest:
+            OnHostRequest(df_decrypted.host_request());
             break;
     }
 }

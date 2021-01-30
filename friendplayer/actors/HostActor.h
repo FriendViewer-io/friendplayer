@@ -38,12 +38,15 @@ private:
     void SendVideoFrameToDecoder(uint32_t stream_num);
     void SendAudioFrameToDecoder(uint32_t stream_num);
 
+    void EncryptAndSendDataFrame(const fp_network::ClientDataFrameInner& cdf);
+
     std::vector<std::unique_ptr<FrameRingBuffer>> video_streams;
     std::vector<std::unique_ptr<FrameRingBuffer>> audio_streams;
 
     std::map<uint32_t, std::string> audio_stream_num_to_name;
     std::map<uint32_t, std::string> video_stream_num_to_name;
     std::map<std::string, uint32_t> name_to_stream_num;
+    uint32_t frame_id_counter;
 
     bool OnHandshakeMessage(const fp_network::Handshake& msg) override;
     void OnDataMessage(const fp_network::Data& msg) override;
@@ -56,9 +59,7 @@ private:
     void OnAudioFrame(const fp_network::HostDataFrame& msg);
 
     std::unique_ptr<FramePresenterGL> presenter;
-
     std::unique_ptr<InputStreamer> input_streamer;
-
     std::unique_ptr<std::thread> controller_capture_thread;
 };
 

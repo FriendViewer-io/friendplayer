@@ -60,12 +60,16 @@ message RequestToHost {
     RequestType type = 1;
 }
 
-message ClientDataFrame {
-    uint32 frame_id = 1;
-    oneof DataFrame {
+message ClientDataFrameInner {
+    oneof Frame {
         KeyboardFrame keyboard = 2;
         MouseFrame mouse = 3;
         ControllerFrame controller = 4;
         RequestToHost host_request = 5;
     }
+}
+
+message ClientDataFrame {
+    uint32 frame_id = 1;
+    bytes encrypted_data_frame = 2;
 }

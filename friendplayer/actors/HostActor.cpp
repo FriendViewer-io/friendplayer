@@ -187,9 +187,9 @@ void HostActor::SendVideoFrameToDecoder(uint32_t stream_num) {
     }
     
     if (needs_idr) {
-        fp_network::Network idr_req_msg;
-        idr_req_msg.mutable_data_msg()->mutable_client_frame()->mutable_host_request()->set_type(fp_network::RequestToHost::SEND_IDR);
-        SendToSocket(idr_req_msg);
+        fp_network::ClientDataFrameInner idr_req_msg;
+        idr_req_msg.mutable_host_request()->set_type(fp_network::RequestToHost::SEND_IDR);
+        EncryptAndSendDataFrame(idr_req_msg);
         LOG_INFO("Requesting IDR from host");
     }
     fp_actor::VideoData video_data;
@@ -221,55 +221,60 @@ void HostActor::OnWindowClosed() {
 }
 
 void HostActor::MuteState(bool state) {
-    fp_network::Network mute_msg;
-    mute_msg.mutable_data_msg()->set_needs_ack(false);
-    if (state == true) {
-        mute_msg.mutable_data_msg()->mutable_client_frame()->
-            mutable_host_request()->set_type(fp_network::RequestToHost::MUTE_AUDIO);
+    fp_network::ClientDataFrameInner mute_msg;
+    if (state) {
+        mute_msg.mutable_host_request()->set_type(fp_network::RequestToHost::MUTE_AUDIO);
     } else {
-        mute_msg.mutable_data_msg()->mutable_client_frame()->
-            mutable_host_request()->set_type(fp_network::RequestToHost::PLAY_AUDIO);
+        mute_msg.mutable_host_request()->set_type(fp_network::RequestToHost::PLAY_AUDIO);
     }
-    SendToSocket(mute_msg);
+    EncryptAndSendDataFrame(mute_msg);
+}
+
+void HostActor::EncryptAndSendDataFrame(const fp_network::ClientDataFrameInner& cdf) {
+    std::string* encrypted_pkt = new std::string();
+    crypto_impl->Encrypt(cdf.SerializeAsString(), *encrypted_pkt);
+
+    fp_network::Network net_msg;
+    net_msg.mutable_data_msg()->set_needs_ack(false);
+    net_msg.mutable_data_msg()->mutable_client_frame()->set_frame_id(frame_id_counter++);
+    net_msg.mutable_data_msg()->mutable_client_frame()->set_allocated_encrypted_data_frame(encrypted_pkt);
+    SendToSocket(net_msg);
 }
 
 void HostActor::OnKeyPress(int key, bool pressed) {
-    fp_network::Network keyboard_press_msg;
-    keyboard_press_msg.mutable_data_msg()->set_needs_ack(false);
-    keyboard_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_keyboard()->set_key(key);
-    keyboard_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_keyboard()->set_pressed(pressed);
-    SendToSocket(keyboard_press_msg);
+    fp_network::ClientDataFrameInner keyboard_press_msg;
+    keyboard_press_msg.mutable_keyboard()->set_key(key);
+    keyboard_press_msg.mutable_keyboard()->set_pressed(pressed);
+    EncryptAndSendDataFrame(keyboard_press_msg);
 }
 
 void HostActor::OnMousePress(int stream, int x, int y, int button, bool pressed) {
-    fp_network::Network mouse_press_msg;
-    mouse_press_msg.mutable_data_msg()->set_needs_ack(false);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_x(x);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_y(y);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_stream_num(stream);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_button(static_cast<fp_network::MouseFrame_MouseButtons>(button));
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_pressed(pressed);
-    SendToSocket(mouse_press_msg);
+    fp_network::ClientDataFrameInner mouse_press_msg;
+    mouse_press_msg.mutable_mouse()->set_mouse_x(x);
+    mouse_press_msg.mutable_mouse()->set_mouse_y(y);
+    mouse_press_msg.mutable_mouse()->set_stream_num(stream);
+    mouse_press_msg.mutable_mouse()->set_button(static_cast<fp_network::MouseFrame_MouseButtons>(button));
+    mouse_press_msg.mutable_mouse()->set_pressed(pressed);
+    EncryptAndSendDataFrame(mouse_press_msg);
 }
 
 void HostActor::OnMouseMove(int stream, int x, int y) {
-    fp_network::Network mouse_press_msg;
-    mouse_press_msg.mutable_data_msg()->set_needs_ack(false);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_x(x);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_y(y);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_stream_num(stream);
-    SendToSocket(mouse_press_msg);
+    fp_network::ClientDataFrameInner mouse_move_msg;
+    mouse_move_msg.mutable_mouse()->set_mouse_x(x);
+    mouse_move_msg.mutable_mouse()->set_mouse_y(y);
+    mouse_move_msg.mutable_mouse()->set_stream_num(stream);
+    EncryptAndSendDataFrame(mouse_move_msg);
 }
 
 void HostActor::OnMouseScroll(int stream, int x, int y, double x_offset, double y_offset) {
-    fp_network::Network mouse_press_msg;
-    mouse_press_msg.mutable_data_msg()->set_needs_ack(false);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_x(x);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_y(y);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_stream_num(stream);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_wheel_x(x_offset);
-    mouse_press_msg.mutable_data_msg()->mutable_client_frame()->mutable_mouse()->set_mouse_wheel_y(y_offset);
-    SendToSocket(mouse_press_msg);
+    fp_network::ClientDataFrameInner mouse_scroll_msg;
+    
+    mouse_scroll_msg.mutable_mouse()->set_mouse_x(x);
+    mouse_scroll_msg.mutable_mouse()->set_mouse_y(y);
+    mouse_scroll_msg.mutable_mouse()->set_stream_num(stream);
+    mouse_scroll_msg.mutable_mouse()->set_mouse_wheel_x(x_offset);
+    mouse_scroll_msg.mutable_mouse()->set_mouse_wheel_y(y_offset);
+    EncryptAndSendDataFrame(mouse_scroll_msg);
 }
 
 void HostActor::ControllerCaptureThread(int poll_rate) {
@@ -278,10 +283,9 @@ void HostActor::ControllerCaptureThread(int poll_rate) {
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_rate));
         auto controller_capture = input_streamer->CapturePhysicalController();
         if (controller_capture) {
-            fp_network::Network controller_msg;
-            controller_msg.mutable_data_msg()->set_needs_ack(false);
-            controller_msg.mutable_data_msg()->mutable_client_frame()->mutable_controller()->CopyFrom(*controller_capture);
-            SendToSocket(controller_msg);
+            fp_network::ClientDataFrameInner controller_msg;
+            controller_msg.mutable_controller()->CopyFrom(*controller_capture);
+            EncryptAndSendDataFrame(controller_msg);
         }
     }
 }
