@@ -10,9 +10,6 @@ struct Frame {
     uint32_t num = 0;
     uint32_t size = 0;
     uint32_t current_read_size = 0;
-
-    // Where this frame starts in the decryption stream
-    uint32_t stream_point = 0;
     std::vector<uint8_t> data;
 };
 
@@ -32,19 +29,13 @@ public:
     FrameRingBuffer(std::string name, size_t num_frames, size_t frame_capacity);
 
     bool AddFrameChunk(const fp_network::HostDataFrame& frame);
-    // Returns # of bytes needed to fix decryption
-    uint32_t GetFront(std::string& buffer_out, bool& frame_was_corrupt);
-    uint32_t GetFront(std::string& buffer_out) {
-        bool unused;
-        return GetFront(buffer_out, unused);
-    }
+    bool GetFront(std::string& buffer_out);
     
 private:
     std::vector<Frame> buffer;
 
     uint32_t frame_count;
     uint32_t frame_number;
-    uint32_t stream_point;
     constexpr uint32_t frame_index() const { return frame_number % frame_count; }
 
     std::string buffer_name;

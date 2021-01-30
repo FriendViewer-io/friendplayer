@@ -181,8 +181,7 @@ void HostActor::OnStreamInfoMessage(const fp_network::StreamInfo& msg) {
 
 void HostActor::SendVideoFrameToDecoder(uint32_t stream_num) {
     std::string* video_frame = new std::string();
-    bool needs_idr = false;
-    uint32_t size_to_decrypt = video_streams[stream_num]->GetFront(*video_frame, needs_idr);
+    bool needs_idr = video_streams[stream_num]->GetFront(*video_frame);
     if (video_frame->size() > 0) {
         crypto_impl->DecryptInPlace(*video_frame);
     }
@@ -201,13 +200,11 @@ void HostActor::SendVideoFrameToDecoder(uint32_t stream_num) {
 
 void HostActor::SendAudioFrameToDecoder(uint32_t stream_num) {
     std::string* audio_frame = new std::string();
-    uint32_t size_to_decrypt = audio_streams[stream_num]->GetFront(*audio_frame);
+    bool corrupt_frame = audio_streams[stream_num]->GetFront(*audio_frame);
 
-    if (audio_frame->size() > 0) {
+    if (audio_frame->size() > 0 && !corrupt_frame) {
         crypto_impl->DecryptInPlace(*audio_frame);
-    }
-
-    if (audio_frame->size() == 0) {
+    } else {
         delete audio_frame;
         return;
     }

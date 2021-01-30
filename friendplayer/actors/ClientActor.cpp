@@ -100,11 +100,9 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
         std::string encrypted_buf;
         crypto_impl->Encrypt(*handle_data, encrypted_buf);
 
-        // INSERT ENCRYPTION HERE
         fp_network::Network network_msg;
         network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
         network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(encrypted_buf.size()));
-        network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
         network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
         
         if (data_msg.type() == fp_actor::VideoData::PPS_SPS) {
@@ -122,7 +120,6 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
             network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_data_handle(handle);
             SendToSocket(network_msg);
         }
-        stream_info.stream_point += static_cast<uint32_t>(encrypted_buf.size());
         stream_info.frame_num++;
     }
     buffer_map.Decrement(data_msg.handle());
@@ -147,7 +144,6 @@ void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
         fp_network::Network network_msg;
         network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
         network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(encrypted_buf.size()));
-        network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
         network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
         
         for (size_t chunk_offset = 0; chunk_offset < encrypted_buf.size(); chunk_offset += MAX_DATA_CHUNK) {
@@ -157,7 +153,6 @@ void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
             network_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_data_handle(handle);
             SendToSocket(network_msg);
         }
-        stream_info.stream_point += static_cast<uint32_t>(encrypted_buf.size());
         stream_info.frame_num++;
     }
     buffer_map.Decrement(data_msg.handle());

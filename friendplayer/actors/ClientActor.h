@@ -34,7 +34,6 @@ private:
 
     struct StreamInfo {
         StreamState stream_state = StreamState::UNINITIALIZED;
-        uint32_t stream_point = 0;
         uint32_t frame_num = 0;
         std::string actor_name;
     };
