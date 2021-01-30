@@ -34,4 +34,3 @@ private:
     std::vector<DataBuffer> buffers;
     std::vector<uint64_t> free_list;
 };
-

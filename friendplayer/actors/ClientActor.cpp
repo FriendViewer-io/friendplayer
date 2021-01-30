@@ -3,6 +3,7 @@
 #include "actors/CommonActorNames.h"
 
 #include "common/Log.h"
+#include "common/Crypto.h"
 #include "protobuf/actor_messages.pb.h"
 #include "protobuf/network_messages.pb.h"
 
@@ -96,10 +97,13 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
         || stream_info.stream_state == StreamState::READY) {
         std::string* handle_data = buffer_map.GetBuffer(data_msg.handle());
 
+        std::string encrypted_buf;
+        crypto_impl->Encrypt(*handle_data, encrypted_buf);
+
         // INSERT ENCRYPTION HERE
         fp_network::Network network_msg;
         network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
-        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(encrypted_buf.size()));
         network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
         network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
         
@@ -111,23 +115,20 @@ void ClientActor::OnVideoData(const fp_actor::VideoData& data_msg) {
             network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_frame_type(fp_network::VideoFrame::NORMAL);
         }
 
-        for (size_t chunk_offset = 0; chunk_offset < handle_data->size(); chunk_offset += MAX_DATA_CHUNK) {
-            const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, handle_data->size());
-            uint64_t handle = buffer_map.Create(handle_data->data() + chunk_offset, chunk_end - chunk_offset);
+        for (size_t chunk_offset = 0; chunk_offset < encrypted_buf.size(); chunk_offset += MAX_DATA_CHUNK) {
+            const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, encrypted_buf.size());
+            uint64_t handle = buffer_map.Create(encrypted_buf.data() + chunk_offset, chunk_end - chunk_offset);
             network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_chunk_offset(static_cast<uint32_t>(chunk_offset));
             network_msg.mutable_data_msg()->mutable_host_frame()->mutable_video()->set_data_handle(handle);
             SendToSocket(network_msg);
         }
-        stream_info.stream_point += static_cast<uint32_t>(handle_data->size());
+        stream_info.stream_point += static_cast<uint32_t>(encrypted_buf.size());
         stream_info.frame_num++;
     }
     buffer_map.Decrement(data_msg.handle());
 }
 
 void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
-    // INSERT ENCRYPTION HERE!!
-    // INSERT ENCRYPTION HERE!!
-
     uint32_t stream_num = data_msg.stream_num();
 
     if (stream_num > audio_streams.size()) {
@@ -140,21 +141,23 @@ void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
     if (stream_info.stream_state == StreamState::READY && audio_enabled) {
         std::string* handle_data = buffer_map.GetBuffer(data_msg.handle());
 
-        // INSERT ENCRYPTION HERE
+        std::string encrypted_buf;
+        crypto_impl->Encrypt(*handle_data, encrypted_buf);
+
         fp_network::Network network_msg;
         network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_num(stream_info.frame_num);
-        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(handle_data->size()));
+        network_msg.mutable_data_msg()->mutable_host_frame()->set_frame_size(static_cast<uint32_t>(encrypted_buf.size()));
         network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_point(stream_info.stream_point);
         network_msg.mutable_data_msg()->mutable_host_frame()->set_stream_num(stream_num);
         
-        for (size_t chunk_offset = 0; chunk_offset < handle_data->size(); chunk_offset += MAX_DATA_CHUNK) {
-            const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, handle_data->size());
-            uint64_t handle = buffer_map.Create(handle_data->data() + chunk_offset, chunk_end - chunk_offset);
+        for (size_t chunk_offset = 0; chunk_offset < encrypted_buf.size(); chunk_offset += MAX_DATA_CHUNK) {
+            const size_t chunk_end = std::min(chunk_offset + MAX_DATA_CHUNK, encrypted_buf.size());
+            uint64_t handle = buffer_map.Create(encrypted_buf.data() + chunk_offset, chunk_end - chunk_offset);
             network_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_chunk_offset(static_cast<uint32_t>(chunk_offset));
             network_msg.mutable_data_msg()->mutable_host_frame()->mutable_audio()->set_data_handle(handle);
             SendToSocket(network_msg);
         }
-        stream_info.stream_point += static_cast<uint32_t>(handle_data->size());
+        stream_info.stream_point += static_cast<uint32_t>(encrypted_buf.size());
         stream_info.frame_num++;
     }
     buffer_map.Decrement(data_msg.handle());
@@ -164,19 +167,27 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
     bool handshake_success = false;
     LOG_INFO("Client actor {} received handshake, current state={}", GetName(), protocol_state);
     if (protocol_state == HandshakeState::HS_UNINITIALIZED) {
-        if (msg.magic() == 0x46524E44504C5952ull) {
+        if (msg.has_phase1() && msg.phase1().magic() == 0x46524E44504C5952ull) {
             LOG_INFO("Client actor {} received first handshake", GetName());
+            crypto_impl = std::make_unique<Crypto>(1024);
+            
             fp_network::Network send_handshake_msg;
-            send_handshake_msg.mutable_hs_msg()->set_magic(0x46524E44504C5953ull);
+            send_handshake_msg.mutable_hs_msg()->mutable_phase2()->set_p(crypto_impl->P());
+            send_handshake_msg.mutable_hs_msg()->mutable_phase2()->set_q(crypto_impl->Q());
+            send_handshake_msg.mutable_hs_msg()->mutable_phase2()->set_g(crypto_impl->G());
+            send_handshake_msg.mutable_hs_msg()->mutable_phase2()->set_pubkey(crypto_impl->GetPublicKey());
+            
             SendToSocket(send_handshake_msg);
             protocol_state = HandshakeState::HS_WAITING_SHAKE_ACK;
             handshake_success = true;
         } else {
-            LOG_ERROR("Invalid handshake magic in state HS_UNINITIALIZED: {}", msg.magic());
+            LOG_ERROR("Invalid handshake magic in state HS_UNINITIALIZED");
         }
     } else if (protocol_state == HandshakeState::HS_WAITING_SHAKE_ACK) {
-        if (msg.magic() == 0x46524E44504C5954ull) {
+        if (msg.has_phase3()) {
             LOG_INFO("Client actor {} received last handshake", GetName());
+            crypto_impl->SharedKeyAgreement(msg.phase3().pubkey());
+
             fp_network::Network stream_info_msg;
             stream_info_msg.mutable_info_msg()->set_num_video_streams(static_cast<uint32_t>(video_streams.size()));
             stream_info_msg.mutable_info_msg()->set_num_audio_streams(static_cast<uint32_t>(audio_streams.size()));
@@ -184,7 +195,7 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
             protocol_state = HandshakeState::HS_READY;
             handshake_success = true;
         } else {
-            LOG_ERROR("Invalid handshake magic in state HS_WAITING_SHAKE_ACK: {}", msg.magic());
+            LOG_ERROR("Invalid handshake magic in state HS_WAITING_SHAKE_ACK");
         }
     } else {
         LOG_WARNING("Got handshake message after finishing handshake");

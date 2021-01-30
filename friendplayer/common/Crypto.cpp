@@ -4,7 +4,6 @@
 #include <cryptopp\nbtheory.h>
 #include <cryptopp\dh.h>
 
-
 /**
  *  @int gen_bit_value: creates a l-bit value to generate a prime p.
  *  Generates public info: p, q, and g 
@@ -43,12 +42,12 @@ Crypto::Crypto(const std::string& p_byte, const std::string& q_byte, const std::
 /** 
 * @return int id of the shared secret
 * */
-void Crypto::SharedKeyAgreement(CryptoPP::SecByteBlock other_pub_key) {
+void Crypto::SharedKeyAgreement(const std::string& other_pub_key) {
     CryptoPP::DH dh;
     dh.AccessGroupParameters().Initialize(p, q, g);
 
     shared_key = CryptoPP::SecByteBlock(dh.AgreedValueLength());
-    dh.Agree(shared_key, private_key, other_pub_key);
+    dh.Agree(shared_key, private_key, reinterpret_cast<const CryptoPP::byte*>(other_pub_key.data()));
 
     // Faster way of getting keys
     CryptoPP::byte digest[CryptoPP::SHA256::DIGESTSIZE];
@@ -63,10 +62,9 @@ void Crypto::SharedKeyAgreement(CryptoPP::SecByteBlock other_pub_key) {
 * Give out 32 more bytes to use for iv
 * */
 void Crypto::Encrypt(const std::string& in, std::string& out) {
-    // RESIZE THIS SHIT
-    
     int L_128 = CryptoPP::SHA256::DIGESTSIZE / 2;
-
+    
+    out.resize(in.size() + L_128);
     CryptoPP::SecByteBlock iv(L_128);
     rng.GenerateBlock(iv, L_128);
     
@@ -81,17 +79,31 @@ void Crypto::Encrypt(const std::string& in, std::string& out) {
 }
 
 void Crypto::Decrypt(const std::string& in, std::string& out) {
-    // RESIZE THIS SHIT
     int L_128 = CryptoPP::SHA256::DIGESTSIZE / 2;
 
     // Take out vector from data
     CryptoPP::SecByteBlock iv(reinterpret_cast<const CryptoPP::byte*>(in.data()), L_128);
     CryptoPP::SecByteBlock key(password, L_128);
     CryptoPP::GCM<CryptoPP::AES>::Decryption gcm_decryption;
-
+    
+    out.resize(in.size() - L_128);
     gcm_decryption.SetKeyWithIV(key, key.size(), iv);
     gcm_decryption.ProcessData(reinterpret_cast<CryptoPP::byte*>(out.data()), 
         reinterpret_cast<const CryptoPP::byte*>(in.data()) + L_128, in.size() - L_128);
+}
+
+void Crypto::DecryptInPlace(std::string& inout) {
+    int L_128 = CryptoPP::SHA256::DIGESTSIZE / 2;
+
+    // Take out vector from data
+    CryptoPP::SecByteBlock iv(reinterpret_cast<const CryptoPP::byte*>(inout.data()), L_128);
+    CryptoPP::SecByteBlock key(password, L_128);
+    CryptoPP::GCM<CryptoPP::AES>::Decryption gcm_decryption;
+
+    gcm_decryption.SetKeyWithIV(key, key.size(), iv);
+    gcm_decryption.ProcessData(reinterpret_cast<CryptoPP::byte*>(inout.data()), 
+        reinterpret_cast<const CryptoPP::byte*>(inout.data()) + L_128, inout.size() - L_128);
+    inout.resize(inout.size() - L_128);
 }
 
 std::string Crypto::GetPublicKey() const {
@@ -120,4 +132,4 @@ std::string Crypto::G() const {
     ret.resize(g.MinEncodedSize());
     g.Encode(reinterpret_cast<CryptoPP::byte*>(ret.data()), ret.size(), CryptoPP::Integer::UNSIGNED);
     return std::move(ret);
-}   
+}

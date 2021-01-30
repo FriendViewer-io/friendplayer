@@ -10,6 +10,8 @@
 #include <queue>
 #include <vector>
 
+class Crypto;
+
 class ProtocolActor : public TimerActor {
 public:
     static constexpr int FAST_RETRANSMIT_WINDOW = 4;
@@ -43,6 +45,8 @@ protected:
     uint64_t highest_acked_seqnum;
 
     HandshakeState protocol_state;
+
+    std::unique_ptr<Crypto> crypto_impl;
 
     uint64_t send_sequence_number;
     // Ack window for stream

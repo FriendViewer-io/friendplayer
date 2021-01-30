@@ -31,9 +31,27 @@ message Heartbeat {
     bool is_response = 2;
 }
 
-message Handshake {
+message HSPhase1 {
     uint64 magic = 1; // EXPECT 46524E44504C5952
-    // add diffie hellman? adam :)
+}
+
+message HSPhase2 {
+    bytes p = 1;
+    bytes q = 2;
+    bytes g = 3;
+    bytes pubkey = 4;
+}
+
+message HSPhase3 {
+    bytes pubkey = 1;
+}
+
+message Handshake {
+    oneof HandshakePhase {
+        HSPhase1 phase1 = 1;
+        HSPhase2 phase2 = 2;
+        HSPhase3 phase3 = 3;
+    }
 }
 
 message StreamInfo {

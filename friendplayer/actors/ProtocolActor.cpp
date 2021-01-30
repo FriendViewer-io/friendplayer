@@ -1,5 +1,6 @@
 #include "actors/ProtocolActor.h"
 
+#include "common/Crypto.h"
 #include "common/Log.h"
 
 #include "actors/CommonActorNames.h"

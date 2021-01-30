@@ -4,6 +4,7 @@
 
 #include "streamer/InputStreamer.h"
 #include "actors/CommonActorNames.h"
+#include "common/Crypto.h"
 #include "common/Log.h"
 
 HostActor::HostActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
@@ -18,7 +19,7 @@ HostActor::~HostActor() {
 void HostActor::OnInit(const std::optional<any_msg>& init_msg) {
     ProtocolActor::OnInit(init_msg);
     fp_network::Network send_handshake_msg;
-    send_handshake_msg.mutable_hs_msg()->set_magic(0x46524E44504C5952ull);
+    send_handshake_msg.mutable_hs_msg()->mutable_phase1()->set_magic(0x46524E44504C5952ull);
     SendToSocket(send_handshake_msg);
     protocol_state = HandshakeState::HS_WAITING_SHAKE_ACK;
 }
@@ -62,15 +63,18 @@ bool HostActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
         LOG_WARNING("Received handshake before ready");
     } else if (protocol_state == HandshakeState::HS_WAITING_SHAKE_ACK) {
         LOG_INFO("Received hs while waiting for ack");
-        if (msg.magic() == 0x46524E44504C5953ull) {
+        if (msg.has_phase2()) {
+            crypto_impl = std::make_unique<Crypto>(msg.phase2().p(), msg.phase2().q(), msg.phase2().g());
+            crypto_impl->SharedKeyAgreement(msg.phase2().pubkey());
+
             protocol_state = HandshakeState::HS_READY;
             LOG_INFO("Magic good, HS ready sending back");
             fp_network::Network send_handshake_msg;
-            send_handshake_msg.mutable_hs_msg()->set_magic(0x46524E44504C5954ull);
+            send_handshake_msg.mutable_hs_msg()->mutable_phase3()->set_pubkey(crypto_impl->GetPublicKey());
             SendToSocket(send_handshake_msg);
             handshake_success = true;
         } else {
-            LOG_ERROR("Invalid handshake magic in state HS_WAITING_SHAKE_ACK: {}", msg.magic());
+            LOG_ERROR("Invalid handshake phase2 in state HS_WAITING_SHAKE_ACK");
         }
     } else {
         LOG_WARNING("Got handshake message after finishing handshake");
@@ -179,10 +183,10 @@ void HostActor::SendVideoFrameToDecoder(uint32_t stream_num) {
     std::string* video_frame = new std::string();
     bool needs_idr = false;
     uint32_t size_to_decrypt = video_streams[stream_num]->GetFront(*video_frame, needs_idr);
-    if (video_frame->size() == 0) {
-        LOG_INFO("Zero frame size");
+    if (video_frame->size() > 0) {
+        crypto_impl->DecryptInPlace(*video_frame);
     }
-    // Run decryption
+    
     if (needs_idr) {
         fp_network::Network idr_req_msg;
         idr_req_msg.mutable_data_msg()->mutable_client_frame()->mutable_host_request()->set_type(fp_network::RequestToHost::SEND_IDR);
@@ -199,7 +203,15 @@ void HostActor::SendAudioFrameToDecoder(uint32_t stream_num) {
     std::string* audio_frame = new std::string();
     uint32_t size_to_decrypt = audio_streams[stream_num]->GetFront(*audio_frame);
 
-    // Run decryption
+    if (audio_frame->size() > 0) {
+        crypto_impl->DecryptInPlace(*audio_frame);
+    }
+
+    if (audio_frame->size() == 0) {
+        delete audio_frame;
+        return;
+    }
+
     fp_actor::AudioData audio_data;
     audio_data.set_handle(buffer_map.Wrap(audio_frame));
     audio_data.set_stream_num(stream_num);
