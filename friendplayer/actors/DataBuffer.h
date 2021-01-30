@@ -30,7 +30,7 @@ public:
     uint64_t Wrap(std::unique_ptr<std::string> data);
 
 private:
-    std::shared_mutex buffer_list_m;
+    std::mutex buffer_list_m;
     std::vector<DataBuffer> buffers;
     std::vector<uint64_t> free_list;
 };

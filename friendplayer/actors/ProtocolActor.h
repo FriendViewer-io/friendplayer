@@ -12,8 +12,8 @@
 
 class ProtocolActor : public TimerActor {
 public:
-    static constexpr int FAST_RETRANSMIT_WINDOW = 10;
-    static constexpr int RECEIVE_FFWD_WINDOW = 10;
+    static constexpr int FAST_RETRANSMIT_WINDOW = 4;
+    static constexpr int RECEIVE_FFWD_WINDOW = 80;
 
     ProtocolActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
@@ -51,7 +51,7 @@ protected:
 
     struct SeqnumLess {
         bool operator()(const fp_network::Data& lhs, const fp_network::Data& rhs) const {
-            return lhs.sequence_number() < rhs.sequence_number();
+            return lhs.sequence_number() > rhs.sequence_number();
         }
     };
     // Recv window for stream

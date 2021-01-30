@@ -1,7 +1,7 @@
 #include "actors/DataBuffer.h"
 
 bool DataBufferMap::Increment(uint64_t handle) {
-    std::shared_lock<std::shared_mutex> r_lock(buffer_list_m);
+    std::lock_guard<std::mutex> lock(buffer_list_m);
     if (handle >= buffers.size()) {
         return false;
     }
@@ -13,7 +13,7 @@ bool DataBufferMap::Increment(uint64_t handle) {
 }
 
 void DataBufferMap::Decrement(uint64_t handle) {
-    std::shared_lock<std::shared_mutex> r_lock(buffer_list_m);
+    std::lock_guard<std::mutex> lock(buffer_list_m);
     if (handle >= buffers.size()) {
         return;
     }
@@ -34,7 +34,7 @@ void DataBufferMap::Decrement(uint64_t handle) {
 }
 
 std::string* DataBufferMap::GetBuffer(uint64_t handle) {
-    std::shared_lock<std::shared_mutex> r_lock(buffer_list_m);
+    std::lock_guard<std::mutex> lock(buffer_list_m);
     if (handle >= buffers.size()) {
         return nullptr;
     }
@@ -55,7 +55,7 @@ uint64_t DataBufferMap::Wrap(std::string* data) {
 
 uint64_t DataBufferMap::Wrap(std::unique_ptr<std::string> data) {
     uint64_t new_handle;
-    std::unique_lock<std::shared_mutex> w_lock(buffer_list_m);
+    std::lock_guard<std::mutex> lock(buffer_list_m);
     if (!free_list.empty()) {
         // Use existing slot
         new_handle = free_list.back();
