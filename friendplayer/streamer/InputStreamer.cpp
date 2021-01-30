@@ -3,10 +3,11 @@
 #include "common/Log.h"
 
 
-InputStreamer::InputStreamer()
+InputStreamer::InputStreamer(bool reuse_controllers)
     : dw_user_index(0),
     physical_controller_registered(false),
-    vigem_client(nullptr) { }
+    vigem_client(nullptr),
+    reuse_controllers(reuse_controllers) { }
 
 InputStreamer::~InputStreamer(){
     for (auto&& [actor_name, client] : client_map) {
@@ -26,8 +27,12 @@ bool InputStreamer::IsUserRegistered(std::string actor_name) {
 bool InputStreamer::UnregisterVirtualController(std::string actor_name) {
     if(vigem_client != nullptr) {
         if(IsUserRegistered(actor_name)) {
-            vigem_target_remove(vigem_client, client_map[actor_name].controller);
-            vigem_target_free(client_map[actor_name].controller);
+            if (reuse_controllers) {
+                free_allocated_controllers.push_back(client_map[actor_name].controller);
+            } else {
+                vigem_target_remove(vigem_client, client_map[actor_name].controller);
+                vigem_target_free(client_map[actor_name].controller);
+            }
             client_map.erase(actor_name);
             return true;
         } else {
@@ -68,14 +73,21 @@ bool InputStreamer::RegisterVirtualController(std::string actor_name)
         }
     }
     
-    ClientData new_client = {actor_name, vigem_target_x360_alloc(), 0};
-
-    const auto err = vigem_target_add(vigem_client, new_client.controller);
-    if(!VIGEM_SUCCESS(err)) {
-        vigem_target_free(new_client.controller);
-        LOG_CRITICAL("Target plugin failed with error code: {}, actor name: {}", err, actor_name);
-        return false;
+    PVIGEM_TARGET controller;
+    if (free_allocated_controllers.size() > 0) {
+        controller = free_allocated_controllers.back();
+        free_allocated_controllers.pop_back();
+    } else {
+        controller = vigem_target_x360_alloc();
+        const auto err = vigem_target_add(vigem_client, controller);
+        if(!VIGEM_SUCCESS(err)) {
+            vigem_target_free(controller);
+            LOG_CRITICAL("Target plugin failed with error code: {}, actor name: {}", err, actor_name);
+            return false;
+        }
     }
+
+    ClientData new_client = {actor_name, controller, 0};
 
     client_map[actor_name] = new_client;
     //TODO: Register notification handler for vibration, forward back with network  

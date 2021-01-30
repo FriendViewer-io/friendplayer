@@ -12,7 +12,8 @@
 
 class InputStreamer {
 public:
-    InputStreamer();
+    InputStreamer() : InputStreamer(false) {}
+    InputStreamer(bool reuse_controllers);
     ~InputStreamer();
 
     bool RegisterVirtualController(std::string actor_name);
@@ -38,10 +39,13 @@ private:
 
     bool physical_controller_registered;
     
+    bool reuse_controllers;
+
     DWORD dw_user_index;
     
     PVIGEM_CLIENT vigem_client;
     std::map<std::string, ClientData> client_map;
+    std::vector<PVIGEM_TARGET> free_allocated_controllers;
     //PVIGEM_TARGET x360;
 
 };

@@ -178,6 +178,10 @@ message AudioEncodeInit {
 
 // InputActor
 
+message InputInit {
+    bool reuse_controllers = 1;
+}
+
 message MonitorEnumIndex {
     uint32 monitor_enum_index = 1;
     uint32 stream_num = 2;

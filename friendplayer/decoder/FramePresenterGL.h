@@ -34,6 +34,7 @@ private:
         GLFWwindow* window = nullptr;
         CUcontext context = NULL;
         CUdeviceptr frame;
+        CUgraphicsResource cuResource;
         int stream_num;
         std::string text;
         GLuint pbo;
@@ -45,6 +46,7 @@ private:
             int top;
             int bottom;
         } display_rect;
+        bool fullscreen_state;
     };
 public:
 

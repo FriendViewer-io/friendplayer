@@ -38,6 +38,7 @@ void VideoDecodeActor::OnVideoFrame(const fp_actor::VideoData& video_data) {
         LOG_ERROR("Data frame sent to wrong stream, received on {} but expected {}", stream_num, video_data.stream_num());
         return;
     }
+    
     std::string* data = buffer_map.GetBuffer(video_data.handle());
     video_streamer->Decode(data);
     buffer_map.Decrement(video_data.handle());
@@ -49,6 +50,7 @@ void VideoDecodeActor::OnVideoFrame(const fp_actor::VideoData& video_data) {
         ready_msg.set_stream_num(stream_num);
         SendTo(HOST_ACTOR_NAME, ready_msg);
     }
+    
     video_streamer->PresentVideo();
     // Stop the existing timer and reset to the next 50ms interval
     SetTimerInternal(150, false);

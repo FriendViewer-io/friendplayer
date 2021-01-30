@@ -43,7 +43,14 @@ InputActor::~InputActor() {
 }
 
 void InputActor::OnInit(const std::optional<any_msg>& init_msg) {
-    input_streamer = std::make_unique<InputStreamer>();
+    Actor::OnInit(init_msg);
+    if (init_msg) {
+        if (init_msg->Is<fp_actor::InputInit>()) {
+            fp_actor::InputInit msg;
+            init_msg->UnpackTo(&msg);
+            input_streamer = std::make_unique<InputStreamer>(msg.reuse_controllers());
+        }
+    }
 }
 
 void InputActor::OnMessage(const any_msg& msg) {

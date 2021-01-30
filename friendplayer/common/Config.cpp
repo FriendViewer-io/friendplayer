@@ -10,11 +10,13 @@ namespace Config {
 	unsigned short Port;
 	std::vector<int> MonitorIndecies;
 	bool EnableTracing;
+	bool SaveControllers;
 
 	int LoadConfig(int argc, char** argv) {
 		Port = 40040;
 		AverageBitrate = 2000000;
 		EnableTracing = false;
+		SaveControllers = false;
 		
 		CLI::App parser{ "FriendPlayer" };
 		
@@ -27,6 +29,8 @@ namespace Config {
 			->default_str("2000000");
 		host->add_option("--monitor,-m", MonitorIndecies, "Monitor index to stream")
 			->default_str("1");
+		host->add_flag("--save-controllers,-s", SaveControllers, "Reuse controllers after disconnections")
+			->default_str("false");
 		
 		CLI::App* client = parser.add_subcommand("client", "Connect to a FriendPlayer session");
 		client->add_option("--port,-p", Port, "Port to connect to")

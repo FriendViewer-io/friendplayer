@@ -12,4 +12,5 @@ namespace Config {
 	extern unsigned short Port;
 	extern std::vector<int> MonitorIndecies;
 	extern bool EnableTracing;
+	extern bool SaveControllers;
 }

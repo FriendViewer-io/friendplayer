@@ -3,6 +3,7 @@
 #include <cudaGL.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 #include <sstream>
 
 #include <imgui.h>
@@ -13,6 +14,9 @@
 #include "actors/HostActor.h"
 
 static FramePresenterGL* pInstance;
+
+#undef min
+#undef max
 
 GLFWmonitor* GetBestMonitor(GLFWwindow* window) {
     int overlap, best_overlap;
@@ -55,6 +59,7 @@ CUdeviceptr FramePresenterGL::RegisterContext(CUcontext context, int width, int 
     new_info.height = height;
     new_info.text = "Windoww";
     new_info.stream_num = stream_num;
+    new_info.fullscreen_state = false;
     new_presenter_queue.enqueue(new_info);
     return device_frame;
 }
@@ -172,19 +177,6 @@ void FramePresenterGL::KeyProc(GLFWwindow* window, int key, int scancode, int ac
     if (!pInstance || ImGui::GetIO().WantCaptureKeyboard) {
         return;
     }
-    if ((glfwGetKey(window, GLFW_KEY_LEFT_ALT) || glfwGetKey(window, GLFW_KEY_RIGHT_ALT)) && key == GLFW_KEY_ENTER && action == GLFW_RELEASE) {
-        GLFWmonitor* current_monitor = glfwGetWindowMonitor(window);
-        GLFWmonitor* monitor = GetBestMonitor(window);
-        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        PresenterInfo& info = pInstance->presenters[window];
-        if (current_monitor == nullptr) {
-            glfwGetWindowPos(window, &info.window_x, &info.window_y);
-            glfwGetWindowSize(window, &info.window_width, &info.window_height);
-            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-        } else {
-            glfwSetWindowMonitor(window, NULL, info.window_x, info.window_y, info.window_width , info.window_height, mode->refreshRate);
-        }
-    }
     int virtual_key = ConvertToVK(key);
     if (action == GLFW_RELEASE) {
         pInstance->key_press_map[virtual_key] = 0;
@@ -280,8 +272,8 @@ void FramePresenterGL::Run(int num_presenters) {
         if (ctx == nullptr) {
             ctx = ImGui::CreateContext();
             IMGUI_CHECKVERSION();
-            ImGui_ImplGlfw_InitForOpenGL(new_info.window, true);
             ImGui_ImplOpenGL3_Init();
+            ImGui_ImplGlfw_InitForOpenGL(new_info.window, true);
             ImGui::StyleColorsDark();
             auto& io = ImGui::GetIO();
             io.IniFilename = NULL;
@@ -314,6 +306,11 @@ void FramePresenterGL::Run(int num_presenters) {
         glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, new_info.shader);
         glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB, (GLsizei)strlen(code), (GLubyte*)code);
 
+        cuCtxPushCurrent(new_info.context);
+        cuGraphicsGLRegisterBuffer(&new_info.cuResource, new_info.pbo, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD);
+        cuGraphicsMapResources(1, &new_info.cuResource, 0);
+        cuCtxPopCurrent(NULL);
+
         presenters.emplace(new_info.window, new_info);
     }
 
@@ -342,7 +339,9 @@ void FramePresenterGL::Stop() {
 }
 
 void FramePresenterGL::Cleanup() {
-    for (auto& [id, info] : presenters) {
+    for (auto& [id, info] : presenters) {    
+        cuGraphicsUnmapResources(1, &info.cuResource, 0);
+        cuGraphicsUnregisterResource(info.cuResource);
         glDeleteBuffersARB(1, &info.pbo);
         glDeleteTextures(1, &info.tex);
         glDeleteProgramsARB(1, &info.shader);
@@ -357,13 +356,10 @@ void FramePresenterGL::Cleanup() {
 void FramePresenterGL::Render(PresenterInfo& info) {
     // Register the OpenGL buffer object with CUDA and map a CUdeviceptr onto it
     // The decoder code will receive this CUdeviceptr and copy the decoded frame into the associated device memory allocation
-    CUgraphicsResource cuResource;
     cuCtxPushCurrent(info.context);
-    cuGraphicsGLRegisterBuffer(&cuResource, info.pbo, CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD);
-    cuGraphicsMapResources(1, &cuResource, 0);
     CUdeviceptr dpBackBuffer;
     size_t nSize = 0;
-    cuGraphicsResourceGetMappedPointer(&dpBackBuffer, &nSize, cuResource);
+    cuGraphicsResourceGetMappedPointer(&dpBackBuffer, &nSize, info.cuResource);
 
     CUDA_MEMCPY2D m = { 0 };
     m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
@@ -379,8 +375,7 @@ void FramePresenterGL::Render(PresenterInfo& info) {
     m.Height = info.height;
     cuMemcpy2DAsync(&m, 0);
 
-    cuGraphicsUnmapResources(1, &cuResource, 0);
-    cuGraphicsUnregisterResource(cuResource);
+    cuCtxPopCurrent(NULL);
 
     glfwMakeContextCurrent(info.window);
 
@@ -445,17 +440,36 @@ void FramePresenterGL::Render(PresenterInfo& info) {
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
     glDisable(GL_FRAGMENT_PROGRAM_ARB);
     
-    if (info.window == main_window) {
+    if (main_window == info.window) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::Begin("Window");
+        ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoResize);
+        
+        static bool mute_state = false;
+        if (ImGui::Checkbox("Mute Sound", &mute_state)) {
+            callback_inst->MuteState(mute_state);
+        }
+        for (auto& [id, draw_info] : presenters) {
+            if (ImGui::Checkbox(fmt::format("Fullscreen #{}", draw_info.stream_num).c_str(), &draw_info.fullscreen_state)) {
+                GLFWmonitor* current_monitor = glfwGetWindowMonitor(draw_info.window);
+                GLFWmonitor* monitor = GetBestMonitor(draw_info.window);
+                const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+                if (current_monitor == nullptr) {
+                    glfwGetWindowPos(draw_info.window, &draw_info.window_x, &draw_info.window_y);
+                    glfwGetWindowSize(draw_info.window, &draw_info.window_width, &draw_info.window_height);
+                    glfwSetWindowMonitor(draw_info.window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+                    HWND native_hwnd = glfwGetWin32Window(draw_info.window);
+                    RECT rc;
+                    GetWindowRect(native_hwnd, &rc);
+                    SetWindowPos(native_hwnd, HWND_TOPMOST, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top + 1, SWP_SHOWWINDOW | SWP_FRAMECHANGED | SWP_NOZORDER);
+                } else {
+                    glfwSetWindowMonitor(draw_info.window, NULL, draw_info.window_x, draw_info.window_y, draw_info.window_width , draw_info.window_height, mode->refreshRate);
+                }
+            }
+        }
         if (ImGui::Button("Disconnect")) {
             callback_inst->OnWindowClosed();
-        }
-        static bool checkbox_state = false;
-        if (ImGui::Checkbox("Mute", &checkbox_state)) {
-            callback_inst->MuteState(checkbox_state);
         }
         ImGui::End();
         ImGui::Render();
@@ -464,7 +478,6 @@ void FramePresenterGL::Render(PresenterInfo& info) {
     }
 
     glfwSwapBuffers(info.window);
-    cuCtxPopCurrent(NULL);
 }
 
 void FramePresenterGL::PrintText(int iFont, std::string strText, int x, int y, bool bFillBackground) {
