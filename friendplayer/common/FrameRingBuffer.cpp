@@ -51,7 +51,7 @@ bool FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
     buffer_frame.current_read_size += static_cast<uint32_t>(data.size());
     std::copy(data.begin(), data.end(), buffer_frame.data.begin() + chunk_offset);
 
-    return buffer[frame_index()].current_read_size == buffer[frame_index()].size;
+    return buffer[frame_index()].current_read_size == buffer[frame_index()].size && buffer[frame_index()].size > 0;
 }
 
 uint32_t FrameRingBuffer::GetFront(std::string& buffer_out, bool& frame_was_corrupt) {

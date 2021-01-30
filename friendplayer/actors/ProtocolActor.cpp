@@ -100,9 +100,29 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
     case fp_network::Network::kDataMsg: {
         if (protocol_state == HandshakeState::HS_READY) {
             fp_network::Network ack_msg;
-            ack_msg.mutable_ack_msg()->set_sequence_ack(msg.data_msg().sequence_number());
+            uint64_t msg_seqnum = msg.data_msg().sequence_number();
+            ack_msg.mutable_ack_msg()->set_sequence_ack(msg_seqnum);
             SendToSocket(ack_msg);
-            OnDataMessage(msg.data_msg());
+
+            if (msg.data_msg().sequence_number() >= receive_window_start) {
+                recv_window.push(msg.data_msg());
+            }
+            const auto process_queue = [this] () {
+                while (!recv_window.empty() && recv_window.top().sequence_number() == receive_window_start) {
+                    OnDataMessage(recv_window.top());
+                    recv_window.pop();
+                    receive_window_start++;
+                }
+            };
+            process_queue();
+            while (receive_window_start + RECEIVE_FFWD_WINDOW < msg_seqnum) {
+                if (recv_window.empty()) {
+                    receive_window_start = msg_seqnum - RECEIVE_FFWD_WINDOW;
+                } else {
+                    receive_window_start = std::min(msg_seqnum - RECEIVE_FFWD_WINDOW, recv_window.top().sequence_number());
+                }
+                process_queue();
+            }
         }
         break;
     }

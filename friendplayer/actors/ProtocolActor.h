@@ -7,11 +7,13 @@
 
 #include <chrono>
 #include <list>
+#include <queue>
 #include <vector>
 
 class ProtocolActor : public TimerActor {
 public:
     static constexpr int FAST_RETRANSMIT_WINDOW = 10;
+    static constexpr int RECEIVE_FFWD_WINDOW = 10;
 
     ProtocolActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name);
 
@@ -45,6 +47,15 @@ protected:
     uint64_t send_sequence_number;
     // Ack window for stream
     std::list<fp_network::Data> unacked_messages;
+    uint64_t receive_window_start;
+
+    struct SeqnumLess {
+        bool operator()(const fp_network::Data& lhs, const fp_network::Data& rhs) const {
+            return lhs.sequence_number() < rhs.sequence_number();
+        }
+    };
+    // Recv window for stream
+    std::priority_queue<fp_network::Data, std::vector<fp_network::Data>, SeqnumLess> recv_window;
 
     void TryIncrementHandle(const fp_network::Data& msg);
     void TryDecrementHandle(const fp_network::Data& msg);
