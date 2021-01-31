@@ -76,6 +76,13 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
             heartbeat_state.set_client_actor_name(GetName());
             heartbeat_state.set_disconnected(false);
             SendTo(HEARTBEAT_ACTOR_NAME, heartbeat_state);
+
+            // Only valid for host side
+            fp_actor::UpdateClientSetting setting_msg;
+            setting_msg.set_ping(RTT_milliseconds);
+            setting_msg.set_actor_name(GetName());
+            SendTo(SETTINGS_ACTOR_NAME, setting_msg);
+
             LOG_INFO("Got heartbeat response from client {}, RTT={}", GetName(), RTT_milliseconds);
         } else {
             fp_network::Network send_heartbeat_msg;
@@ -89,7 +96,7 @@ void ProtocolActor::OnNetworkMessage(const fp_network::Network& msg) {
         LOG_INFO("Received handshake message");
         if (!OnHandshakeMessage(msg.hs_msg())) {
             // If handshake fails kill this client
-            fp_actor::ClientDisconnect dc_msg;
+            fp_actor::ClientDisconnected dc_msg;
             dc_msg.set_client_name(GetName());
             SendTo(CLIENT_MANAGER_ACTOR_NAME, dc_msg);
 

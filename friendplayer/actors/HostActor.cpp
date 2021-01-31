@@ -90,7 +90,7 @@ void HostActor::OnStateMessage(const fp_network::State& msg) {
     auto& h_msg = msg.host_state();
     switch(h_msg.state()) {
         case fp_network::HostState::DISCONNECTING: {
-            fp_actor::ClientDisconnect dc_msg;
+            fp_actor::ClientDisconnected dc_msg;
             dc_msg.set_client_name(HOST_ACTOR_NAME);
             SendTo(CLIENT_MANAGER_ACTOR_NAME, dc_msg);
             break;

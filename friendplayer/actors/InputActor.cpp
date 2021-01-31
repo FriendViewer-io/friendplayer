@@ -1,5 +1,6 @@
 #include "actors/InputActor.h"
 
+#include "actors/CommonActorNames.h"
 #include "streamer/InputStreamer.h"
 #include "common/Log.h"
 
@@ -172,6 +173,10 @@ void InputActor::OnMouseFrame(std::string& actor_name, const fp_network::MouseFr
 void InputActor::OnControllerFrame(std::string& actor_name, const fp_network::ControllerFrame& msg) {
     if(!input_streamer->IsUserRegistered(actor_name)) {
         input_streamer->RegisterVirtualController(actor_name);
+        fp_actor::UpdateClientSetting setting_msg;
+        setting_msg.set_actor_name(actor_name);
+        setting_msg.set_has_controller(true);
+        SendTo(SETTINGS_ACTOR_NAME, setting_msg);
     }
     input_streamer->UpdateVirtualController(actor_name, msg);
 }

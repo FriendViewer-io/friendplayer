@@ -15,7 +15,7 @@ ClientActor::ClientActor(const ActorMap& actor_map, DataBufferMap& buffer_map, s
       audio_enabled(true),
       keyboard_enabled(false),
       mouse_enabled(false),
-      controller_enabled(true)
+      controller_enabled(false)
       //input_streamer()
       { }
 
@@ -39,6 +39,11 @@ void ClientActor::OnInit(const std::optional<any_msg>& init_msg) {
             any_msg base_msg;
             base_msg.PackFrom(client_init_msg.base_init());
             ProtocolActor::OnInit(base_msg);
+
+            fp_actor::AddClientSettings add_client_msg;
+            add_client_msg.set_actor_name(GetName());
+            add_client_msg.set_address(address);
+            SendTo(SETTINGS_ACTOR_NAME, add_client_msg);
         } else {
             LOG_CRITICAL("ClientActor being initialized with unhandled init_msg type {}!", init_msg->type_url());
         }
@@ -57,6 +62,10 @@ void ClientActor::OnMessage(const any_msg& msg) {
             fp_actor::AudioData data_msg;
             msg.UnpackTo(&data_msg);
             buffer_map.Decrement(data_msg.handle());
+        } else if (msg.Is<fp_actor::ChangeClientActorState>()) {
+            fp_actor::ChangeClientActorState change_msg;
+            msg.UnpackTo(&change_msg);
+            OnActorState(change_msg);
         } else {
             ProtocolActor::OnMessage(msg);
         }
@@ -70,8 +79,15 @@ void ClientActor::OnMessage(const any_msg& msg) {
         fp_actor::AudioData data_msg;
         msg.UnpackTo(&data_msg);
         OnAudioData(data_msg);
-    } else {
-        // pass it up to parent class
+    } else if (msg.Is<fp_actor::ChangeClientActorState>()) {
+        fp_actor::ChangeClientActorState change_msg;
+        msg.UnpackTo(&change_msg);
+        OnActorState(change_msg);
+    } else if (msg.Is<fp_actor::ClientKick>()) {
+        fp_network::Network dc_msg;
+        dc_msg.mutable_state_msg()->mutable_host_state()->set_state(fp_network::HostState::DISCONNECTING);
+        SendToSocket(dc_msg);
+    } else { 
         ProtocolActor::OnMessage(msg);
     }
 }
@@ -80,6 +96,11 @@ void ClientActor::OnFinish() {
     fp_actor::UnregisterInputUser unregister_msg;
     unregister_msg.set_actor_name(GetName());
     SendTo(INPUT_ACTOR_NAME, unregister_msg);
+
+    fp_actor::RemoveClientSettings remove_client_msg;
+    remove_client_msg.set_actor_name(GetName());
+    SendTo(SETTINGS_ACTOR_NAME, remove_client_msg);
+
     ProtocolActor::OnFinish();
 }
 
@@ -156,6 +177,12 @@ void ClientActor::OnAudioData(const fp_actor::AudioData& data_msg) {
         stream_info.frame_num++;
     }
     buffer_map.Decrement(data_msg.handle());
+}
+
+void ClientActor::OnActorState(const fp_actor::ChangeClientActorState& msg) {
+    keyboard_enabled = msg.keyboard_enabled();
+    mouse_enabled = msg.mouse_enabled();
+    controller_enabled = msg.controller_enabled();
 }
 
 bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
@@ -235,14 +262,9 @@ void ClientActor::OnStateMessage(const fp_network::State& msg) {
             auto& state = msg.client_state();
             switch (state.state()) {
                 case fp_network::ClientState::DISCONNECTING: {
-                    fp_actor::ClientDisconnect disconnect;
+                    fp_actor::ClientDisconnected disconnect;
                     disconnect.set_client_name(GetName());
                     SendTo(CLIENT_MANAGER_ACTOR_NAME, disconnect);
-
-                    fp_actor::Kill kill;
-                    any_msg any_kill;
-                    any_kill.PackFrom(kill);
-                    EnqueueMessage(std::move(any_kill));
 
                     for (auto& video_stream : video_streams) {
                         video_stream.stream_state = StreamState::DISCONNECTED;
@@ -306,6 +328,9 @@ void ClientActor::OnHostRequest(const fp_network::RequestToHost& msg) {
 }
 
 void ClientActor::OnKeyboardFrame(const fp_network::KeyboardFrame& msg) {
+    if (!keyboard_enabled) {
+        return;
+    }
     fp_actor::InputData input_msg;
     input_msg.set_actor_name(GetName());
     input_msg.mutable_keyboard()->CopyFrom(msg);
@@ -313,6 +338,9 @@ void ClientActor::OnKeyboardFrame(const fp_network::KeyboardFrame& msg) {
 }
 
 void ClientActor::OnMouseFrame(const fp_network::MouseFrame& msg) {
+    if (!mouse_enabled) {
+        return;
+    }
     fp_actor::InputData input_msg;
     input_msg.set_actor_name(GetName());
     input_msg.mutable_mouse()->CopyFrom(msg);
@@ -320,6 +348,9 @@ void ClientActor::OnMouseFrame(const fp_network::MouseFrame& msg) {
 }
 
 void ClientActor::OnControllerFrame(const fp_network::ControllerFrame& msg) {
+    if (!controller_enabled) {
+        return;
+    }
     fp_actor::InputData input_msg;
     input_msg.set_actor_name(GetName());
     input_msg.mutable_controller()->CopyFrom(msg);

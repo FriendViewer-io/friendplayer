@@ -39,7 +39,7 @@ void HeartbeatActor::OnTimerFire() {
     auto fire_time = clock::now();
     for (auto it = heartbeat_map.begin(); it != heartbeat_map.end(); it++) {
         if (it->second + timeout_ms < fire_time) {
-            fp_actor::ClientDisconnect timeout_msg;
+            fp_actor::ClientDisconnected timeout_msg;
             timeout_msg.set_client_name(it->first);
             SendTo(CLIENT_MANAGER_ACTOR_NAME, timeout_msg);
             LOG_INFO("Client {} timed out", it->first);

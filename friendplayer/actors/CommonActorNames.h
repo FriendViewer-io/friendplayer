@@ -11,3 +11,4 @@ constexpr const char VIDEO_DECODER_ACTOR_NAME_FORMAT[] = "video_decode{}";
 constexpr const char AUDIO_ENCODER_ACTOR_NAME_FORMAT[] = "audio_encode{}";
 constexpr const char AUDIO_DECODER_ACTOR_NAME_FORMAT[] = "audio_decode{}";
 constexpr const char INPUT_ACTOR_NAME[] = "input";
+constexpr const char SETTINGS_ACTOR_NAME[] = "settings";

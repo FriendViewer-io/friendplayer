@@ -40,6 +40,8 @@ int main(int argc, char** argv) {
         any_msg.PackFrom(input_init);
         env.AddActor("InputActor", INPUT_ACTOR_NAME, any_msg);
 
+        env.AddActor("HostSettingsActor", SETTINGS_ACTOR_NAME);
+
         fp_actor::HostClientManagerInit client_mgr_init;
         for (int monitor_index : Config::MonitorIndecies) {
             client_mgr_init.add_monitor_indices(monitor_index);

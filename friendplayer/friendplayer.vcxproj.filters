@@ -141,6 +141,9 @@
     <ClCompile Include="actors\InputActor.cpp">
       <Filter>Source Files\actor</Filter>
     </ClCompile>
+    <ClCompile Include="actors\HostSettingsActor.cpp">
+      <Filter>Source Files\actor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
@@ -258,6 +261,9 @@
       <Filter>Source Files\decoder</Filter>
     </ClInclude>
     <ClInclude Include="actors\InputActor.h">
+      <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="actors\HostSettingsActor.h">
       <Filter>Source Files\actor</Filter>
     </ClInclude>
   </ItemGroup>

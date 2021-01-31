@@ -263,6 +263,8 @@ void FramePresenterGL::Run(int num_presenters) {
 
         glfwMakeContextCurrent(new_info.window);
 
+        glfwSwapInterval(0);
+
         glfwSetMouseButtonCallback(new_info.window, MouseButtonProc);
         glfwSetCursorPosCallback(new_info.window, MousePosProc);
         glfwSetKeyCallback(new_info.window, KeyProc);
@@ -322,6 +324,7 @@ void FramePresenterGL::Run(int num_presenters) {
             Render(info);
         }
         glfwPollEvents();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     Cleanup();
@@ -475,6 +478,7 @@ void FramePresenterGL::Render(PresenterInfo& info) {
         ImGui::Render();
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glFlush();
     }
 
     glfwSwapBuffers(info.window);

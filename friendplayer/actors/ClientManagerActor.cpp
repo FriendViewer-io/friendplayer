@@ -80,8 +80,8 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
             SendTo(client_name, audio_data_msg);
         }
         buffer_map.Decrement(audio_data_msg.handle());
-    } else if (msg.Is<fp_actor::ClientDisconnect>()) {
-        fp_actor::ClientDisconnect dc_msg;
+    } else if (msg.Is<fp_actor::ClientDisconnected>()) {
+        fp_actor::ClientDisconnected dc_msg;
         msg.UnpackTo(&dc_msg);
 
         // Clean up the client in the HB actor

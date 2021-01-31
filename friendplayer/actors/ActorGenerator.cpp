@@ -8,6 +8,7 @@
 #include "actors/ClientManagerActor.h"
 #include "actors/HeartbeatActor.h"
 #include "actors/HostActor.h"
+#include "actors/HostSettingsActor.h"
 #include "actors/InputActor.h"
 #include "actors/ProtocolActor.h"
 #include "actors/SocketActor.h"

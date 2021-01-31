@@ -322,6 +322,7 @@ void AudioStreamer::PlayAudio(const std::string& raw_out) {
     BYTE* buf = nullptr;
     while (buf == nullptr) {
         auto result = render_->GetBuffer(write_sz, &buf);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     std::copy(raw_out.begin(), raw_out.begin() +

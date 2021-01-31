@@ -45,6 +45,7 @@ private:
     // Internal messages
     void OnVideoData(const fp_actor::VideoData& msg);
     void OnAudioData(const fp_actor::AudioData& msg);
+    void OnActorState(const fp_actor::ChangeClientActorState& msg);
 
     // Network messages
     bool OnHandshakeMessage(const fp_network::Handshake& msg) override;
