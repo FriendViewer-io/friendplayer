@@ -156,9 +156,9 @@ bool AudioStreamer::InitEncoder(uint32_t bitrate) {
         0, nullptr);
     swr_init(context);
 
-    resample_size = static_cast<int>(av_rescale_rnd(swr_get_delay(context, system_format->nSamplesPerSec) + OPUS_FRAME_SIZE,
-        ENCODED_SAMPLE_RATE, system_format->nSamplesPerSec, AV_ROUND_UP));
-    av_samples_alloc(&resample_buffer, nullptr, ENCODED_CHANNEL_COUNT, resample_size, AV_SAMPLE_FMT_S16, 0);
+    system_frame_size = static_cast<int>(av_rescale_rnd(swr_get_delay(context, system_format->nSamplesPerSec) + OPUS_FRAME_SIZE,
+        system_format->nSamplesPerSec, ENCODED_SAMPLE_RATE, AV_ROUND_UP));
+    av_samples_alloc(&resample_buffer, nullptr, ENCODED_CHANNEL_COUNT, OPUS_FRAME_SIZE, AV_SAMPLE_FMT_S16, 0);
 
     return true;
 }
@@ -178,7 +178,7 @@ bool AudioStreamer::CaptureAudio(std::string& raw_out) {
     raw_out = std::move(wrapover_buf);
     wrapover_buf.clear();
 
-    const int requested_bytes = OPUS_FRAME_SIZE * system_format->nBlockAlign;
+    const int requested_bytes = system_frame_size * system_format->nBlockAlign;
 
     while(raw_out.size() < requested_bytes) {
         WaitForCapture(signals);
@@ -257,7 +257,7 @@ bool AudioStreamer::InitDecoder() {
         0, nullptr);
     swr_init(context);
 
-    resample_size = static_cast<int>(av_rescale_rnd(swr_get_delay(context, ENCODED_SAMPLE_RATE) + OPUS_FRAME_SIZE,
+    system_frame_size = static_cast<int>(av_rescale_rnd(swr_get_delay(context, ENCODED_SAMPLE_RATE) + OPUS_FRAME_SIZE,
         system_format->nSamplesPerSec, ENCODED_SAMPLE_RATE, AV_ROUND_UP));
 
     return true;
@@ -266,7 +266,8 @@ bool AudioStreamer::InitDecoder() {
 bool AudioStreamer::EncodeAudio(const std::string& raw_in, std::string& enc_out) {
     opus_int32 encoded_size = 0;
     const uint8_t* cvt_in[] = { reinterpret_cast<const uint8_t*>(raw_in.data()) };
-    swr_convert(context, &resample_buffer, OPUS_FRAME_SIZE, cvt_in, OPUS_FRAME_SIZE);
+    
+    swr_convert(context, &resample_buffer, OPUS_FRAME_SIZE, cvt_in, system_frame_size);
     
     int max_output_per_frame = 1275 * 3;
     if (enc_out.size() != max_output_per_frame) {
@@ -291,19 +292,18 @@ bool AudioStreamer::DecodeAudio(const std::string& enc_in, std::string& raw_out)
 
     int num_samples = opus_decode(decoder, reinterpret_cast<const unsigned char*>(enc_in.data()), static_cast<opus_int32>(enc_in.size()),
         decode_output_buffer.data(), static_cast<int>(decode_output_buffer.size()), 0);
-    //LOG_INFO("Decoder: Num samples decoded = {}", num_samples);
+
     if (num_samples < 0) {
-        LOG_ERROR("Decode failed: {}", opus_strerror(num_samples));
+        LOG_ERROR("Audio decode failed: {}", opus_strerror(num_samples));
         return false;
     }
-    int system_frame_size = OPUS_FRAME_SIZE * system_format->nChannels * (system_format->wBitsPerSample / 8);
-    raw_out.resize(system_frame_size);
+
+    int sys_bytes = system_frame_size * system_format->nChannels * (system_format->wBitsPerSample / 8);
+    raw_out.resize(sys_bytes);
 
     uint8_t* raw_out_in[] = { reinterpret_cast<uint8_t*>(raw_out.data()) };
     const uint8_t* opus_out_in[] = {reinterpret_cast<uint8_t*>(decode_output_buffer.data())};
-    swr_convert(context, raw_out_in, OPUS_FRAME_SIZE, opus_out_in, OPUS_FRAME_SIZE);
-
-    LOG_TRACE("num samples: {}", num_samples);
+    swr_convert(context, raw_out_in, system_frame_size, opus_out_in, OPUS_FRAME_SIZE);
 
     return true;
 }
@@ -316,8 +316,6 @@ void AudioStreamer::PlayAudio(const std::string& raw_out) {
 
     avail_sz = buf_sz - pad_amt;
     UINT write_sz = static_cast<UINT>(raw_out.size() / system_format->nBlockAlign);
-
-    LOG_TRACE("Current buffer size and padding size: {} {}", buf_sz, pad_amt);
 
     BYTE* buf = nullptr;
     while (buf == nullptr) {

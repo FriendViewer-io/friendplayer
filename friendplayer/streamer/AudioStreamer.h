@@ -52,7 +52,7 @@ private:
 
 	SwrContext* context;
 	
-	int resample_size;
+	int system_frame_size;
 	
 	std::vector<opus_int16> decode_output_buffer;
 	uint8_t* resample_buffer;
