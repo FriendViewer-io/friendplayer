@@ -70,6 +70,7 @@ private:
     
     int monitor_idx;
     std::thread* dxgi_capture_thread;
+    bool dxgi_capture_running;
     ID3D11Texture2D* cur_capture = nullptr;
     bool ready_for_capture = false;
     int monitor_enum_index;
@@ -100,11 +101,12 @@ public:
         :   pD3DDev(pDev)
         ,   pCtx(pDevCtx)
         ,   monitor_idx(monitor_idx)
+        ,   dxgi_capture_running(true)
     {
         pD3DDev->AddRef();
         pCtx->AddRef();
         QueryPerformanceFrequency(&qpcFreq);
     }
     /// Destructor. Release all resources before destroying the object
-    ~DDAImpl() { Cleanup(); }
+    ~DDAImpl() { dxgi_capture_running = false; dxgi_capture_thread->join(); Cleanup(); }
 };

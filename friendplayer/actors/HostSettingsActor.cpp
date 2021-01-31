@@ -19,9 +19,7 @@ static HostSettingsActor* pInstance;
 HostSettingsActor::HostSettingsActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
     : Actor(actor_map, buffer_map, std::move(name))  {}
 
-HostSettingsActor::~HostSettingsActor() {
-
-}
+HostSettingsActor::~HostSettingsActor() {}
 
 void HostSettingsActor::OnMessage(const any_msg& msg) {
     if (msg.Is<fp_actor::AddClientSettings>()) {
@@ -36,6 +34,8 @@ void HostSettingsActor::OnMessage(const any_msg& msg) {
         fp_actor::UpdateClientSetting update_msg;
         msg.UnpackTo(&update_msg);
         OnClientUpdated(update_msg);
+    } else {
+        Actor::OnMessage(msg);
     }
 
 }

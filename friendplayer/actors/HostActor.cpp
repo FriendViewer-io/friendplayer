@@ -277,6 +277,12 @@ void HostActor::OnMouseScroll(int stream, int x, int y, double x_offset, double 
     EncryptAndSendDataFrame(mouse_scroll_msg);
 }
 
+void HostActor::VolumeState(float volume) {
+    fp_actor::AudioDecodeVolume volume_msg;
+    volume_msg.set_volume(volume);
+    SendTo(fmt::format(AUDIO_DECODER_ACTOR_NAME_FORMAT, 0), volume_msg);
+}
+
 void HostActor::ControllerCaptureThread(int poll_rate) {
     input_streamer->RegisterPhysicalController(0);
     while (is_running) {

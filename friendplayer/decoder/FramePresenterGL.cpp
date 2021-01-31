@@ -447,8 +447,14 @@ void FramePresenterGL::Render(PresenterInfo& info) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGui::SetNextWindowSize(ImVec2(0, 0));
+
         ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoResize);
-        
+
+        static int volume = 100;
+        if (ImGui::SliderInt("Volume", &volume, 0, 100, "%d")) {
+            callback_inst->VolumeState(volume / 100.0f);
+        }
         static bool mute_state = false;
         if (ImGui::Checkbox("Mute Sound", &mute_state)) {
             callback_inst->MuteState(mute_state);

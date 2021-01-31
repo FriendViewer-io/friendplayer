@@ -172,6 +172,10 @@ message AudioDecodeInit {
     uint32 stream_num = 1;
 }
 
+message AudioDecodeVolume {
+    float volume = 1;
+}
+
 // AudioEncodeActor
 
 message AudioEncodeInit { 

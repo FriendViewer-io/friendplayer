@@ -328,3 +328,11 @@ void AudioStreamer::PlayAudio(const std::string& raw_out) {
 
     render_->ReleaseBuffer(write_sz, 0);
 }
+
+void AudioStreamer::SetVolume(double volume) {
+    if (volume == 0) {
+        volume = -1;
+    }
+    av_opt_set_double(context, "rematrix_volume", volume, 0);
+    swr_init(context);
+}

@@ -27,6 +27,10 @@ void AudioDecodeActor::OnMessage(const any_msg& msg) {
         fp_actor::AudioData audio_data;
         msg.UnpackTo(&audio_data);
         OnAudioFrame(audio_data);
+    } else if (msg.Is<fp_actor::AudioDecodeVolume>()) {
+        fp_actor::AudioDecodeVolume volume_msg;
+        msg.UnpackTo(&volume_msg);
+        audio_streamer->SetVolume(volume_msg.volume());
     } else {
         Actor::OnMessage(msg);
     }

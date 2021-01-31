@@ -33,6 +33,7 @@ public:
     void OnMouseScroll(int stream, int x, int y, double x_offset, double y_offset);
     void OnWindowClosed();
     void MuteState(bool state);
+    void VolumeState(float volume);
 
 private:
     void SendVideoFrameToDecoder(uint32_t stream_num);

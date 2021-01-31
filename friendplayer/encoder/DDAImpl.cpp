@@ -182,7 +182,7 @@ void DDAImpl::CaptureFrameLoop(NvEncoder* encoder) {
    using namespace std::chrono_literals;
    Timer capture_timer;
    capture_timer.Start(2000);
-   for(;; capture_timer.Synchronize()) {
+   for(; dxgi_capture_running; capture_timer.Synchronize()) {
        HRESULT hr;
         if (!ready_for_capture) {
             hr = Init();
@@ -232,4 +232,5 @@ void DDAImpl::CaptureFrameLoop(NvEncoder* encoder) {
             encoder->Unlock();
         }
    }
+   capture_timer.Stop();
 }

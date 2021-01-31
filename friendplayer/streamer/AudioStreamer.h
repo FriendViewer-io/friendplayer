@@ -11,6 +11,7 @@ extern "C" {
 #include <libavutil/channel_layout.h>
 #include <libavformat/avformat.h>
 #include <libswresample/swresample.h>
+#include <libavutil/opt.h>
 }
 
 class AudioStreamer {
@@ -33,6 +34,7 @@ public:
 	bool CaptureAudio(std::string& raw_out);
 
 	void PlayAudio(const std::string& raw_in);
+	void SetVolume(double volume);
 
 	bool EncodeAudio(const std::string& raw_in, std::string& enc_out);
 	bool DecodeAudio(const std::string& enc_in, std::string& raw_out);
