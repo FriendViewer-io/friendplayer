@@ -3,8 +3,8 @@ import string
 import time
 import threading
 import random
-import sys.path.insert(0, '../holepuncher_proto/')
-from holepuncher_proto import puncher_messages_pb2 as proto
+import sys
+import puncher_messages_pb2 as proto
 
 host_sessions = {}
 
@@ -13,16 +13,7 @@ HOST = '127.0.0.1'
 BUFFER_SIZE = 1024
 SESSION_TIMEOUT_SECS = 10
 
-
 host_name_mutex = threading.Lock()
-
-{
-    "host_name": "",
-    "ip": "",
-    "port": 1,
-    "password": "",
-    "token": ""
-}
 
 def heartbeat_killer():
     while True: 
@@ -40,7 +31,7 @@ def id_generator(size=6, chars=string.ascii_letters + string.digits + string.pun
 
 if __name__ == 'main':
     if len(sys.arg) < 2:
-        print "Usage: ./puncher.py PORT"
+        print("Usage: ./puncher.py PORT")
         sys.exit(1)
 
     port = int(sys.argv[1])
@@ -83,7 +74,7 @@ if __name__ == 'main':
                 s.sendto(response.SerializeToString(), conn_addr)
                 
             # get host data for client
-            else if connect_msg.HasField("client"):
+            elif connect_msg.HasField("client"):
                 client_connect_msg = connect_msg.Client()
                 host_name = client_connect_msg.host_name()
                 host_name_mutex.Lock()
@@ -104,7 +95,7 @@ if __name__ == 'main':
                 host_name_mutex.Release()
                 s.sendto(response.SerializeToString(), conn_addr)
             
-            else if connect_msg.HasField("heartbeat"):
+            elif connect_msg.HasField("heartbeat"):
                 heartbeat_msg = connect_msg.Heartbeat()
                 host_name_mutex.Lock()
                 session = host_sessions[heartbeat_msg.host_name]
@@ -112,14 +103,5 @@ if __name__ == 'main':
                     print("Heartbeat received from host {}".format(heartbeat_msg.host_name))
                     session["last_heartbeat"] = time.time()
                 host_name_mutex.Release()
-
-
-
-
-
-            
-
-            
-
-        
-
+                host_name_mutex.Release()
+                s.sendto(response.SerializeToString(), conn_addr)
