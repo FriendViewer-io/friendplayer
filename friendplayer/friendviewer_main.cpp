@@ -5,36 +5,48 @@
 #include "common/Log.h"
 
 #include "protobuf/actor_messages.pb.h"
+#include <puncher_messages.pb.h>
 
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
 
-    if (Config::LoadConfig(argc, argv) >= 0)
+    if (Config::LoadConfig(argc, argv) >= 0) {
         return 1;
+    }
 
     Log::init_stdout_logging(LogOptions{Config::EnableTracing});
 
     ActorEnvironment env;
     google::protobuf::Any any_msg;
-
-    fp_actor::SocketInit socket_init;
-    socket_init.set_port(Config::Port);
     std::string socket_type;
-    if (!Config::IsHost) {
-        socket_init.set_ip(Config::ServerIP);
-        socket_type = "ClientSocketActor";
+
+    if (Config::HolepuncherIP.empty()) {
+        LOG_INFO("Initializing {} for direct connection to {}:{}", Config::IsHost ? "Hosting" : "Watching", Config::ServerIP, Config::Port);
+        fp_actor::SocketInitDirect socket_init;
+        socket_init.set_port(Config::Port);
+        if (!Config::IsHost) {
+            socket_init.set_ip(Config::ServerIP);
+            socket_type = "ClientSocketActor";
+        } else {
+            socket_type = "HostSocketActor";
+        }
+        any_msg.PackFrom(socket_init);
     } else {
-        socket_type = "HostSocketActor";
+        LOG_INFO("Initializing {} for hole-punch to {}:{} under name {}", Config::IsHost ? "Hosting" : "Watching", Config::HolepuncherIP, Config::Port, Config::HolepunchName);
+        fp_actor::SocketInitHolepunch socket_init;
+        socket_init.set_hp_ip(Config::HolepuncherIP);
+        socket_init.set_port(Config::Port);
+        socket_init.set_name(Config::HolepunchName);
+        if (!Config::IsHost) {
+            socket_init.set_name(Config::HostName);
+            socket_type = "ClientSocketActor";
+        } else {
+            socket_type = "HostSocketActor";
+        }
     }
-    any_msg.PackFrom(socket_init);
     env.AddActor(socket_type, SOCKET_ACTOR_NAME, std::make_optional(std::move(any_msg)));
 
-    if (!Config::IsHost) {
-        fp_actor::ClientClientManagerInit client_mgr_init;
-        client_mgr_init.set_host_ip(Config::ServerIP);
-        client_mgr_init.set_host_port(Config::Port);
-        any_msg.PackFrom(client_mgr_init);
-    } else {
+    if (Config::IsHost) {
         fp_actor::InputInit input_init;
         input_init.set_reuse_controllers(Config::SaveControllers);
         any_msg.PackFrom(input_init);

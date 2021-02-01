@@ -56,11 +56,6 @@ message StopTimer { }
 
 // ClientManagerActor
 
-message ClientClientManagerInit {
-    string host_ip = 1;
-    uint32 host_port = 2;
-}
-
 message HostClientManagerInit {
     repeated uint32 monitor_indices = 1;
     uint32 port = 2;
@@ -77,13 +72,22 @@ message ClientDisconnected { // ProtocolActor --> ClientManager
 
 message CreateHostActor {
     uint64 host_address = 1;
+    optional string token = 2;
+    optional string client_identity = 3;
 }
 
 // SocketActor
 
-message SocketInit {
+message SocketInitDirect {
     optional string ip = 1;
     uint32 port = 2;
+}
+
+message SocketInitHolepunch {
+    string hp_ip = 1;
+    uint32 port = 2;
+    string name = 3;
+    optional string target_name = 4;
 }
 
 // ProtocolActor
@@ -96,6 +100,13 @@ message ClientProtocolInit {
     ProtocolInit base_init = 1;
     uint32 video_stream_count = 2;
     uint32 audio_stream_count = 3;
+}
+
+message HostProtocolInit {
+    ProtocolInit base_init = 1;
+    optional string token = 2;
+    optional string client_identity = 3;
+
 }
 
 message ClientKick { }

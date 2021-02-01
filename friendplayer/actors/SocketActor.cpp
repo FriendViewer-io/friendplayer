@@ -28,7 +28,6 @@ void SocketActor::OnMessage(const any_msg& msg) {
                 host_frame.mutable_video()->clear_DataBacking();
                 std::string* buf = buffer_map.GetBuffer(handle);
                 host_frame.mutable_video()->set_data(buf->data(), buf->size());
-                    
             } else if (host_frame.has_audio()) {
                 handle = host_frame.audio().data_handle();
                 host_frame.mutable_audio()->clear_DataBacking();
@@ -56,33 +55,122 @@ void SocketActor::NetworkWorker() {
 
     while (network_is_running) {
         asio::error_code ec;
-        size_t recv_size = socket.receive_from(asio::buffer(recv_buffer), endpoint, 0, ec);
+        asio_endpoint recv_endpoint;
+        size_t recv_size = socket.receive_from(asio::buffer(recv_buffer), recv_endpoint, 0, ec);
 
         if (recv_size == 0 || ec.value() != 0) {
             continue;
         }
-        fp_actor::NetworkRecv msg;
-        uint64_t address = endpoint.address().to_v4().to_uint();
-        address |= static_cast<uint64_t>(endpoint.port()) << 32;
-        msg.set_address(address);
+        if (use_holepunching && recv_endpoint == holepunch_endpoint) {
+            fp_puncher::ServerMessage msg;
+            msg.ParseFromArray(recv_buffer.data(), static_cast<int>(recv_size));
+            OnPuncherMessage(msg);           
+        } else {
+            fp_actor::NetworkRecv msg;
+            uint64_t address = recv_endpoint.address().to_v4().to_uint();
+            address |= static_cast<uint64_t>(recv_endpoint.port()) << 32;
+            msg.set_address(address);
 
-        fp_network::Network recv_msg;
-        recv_msg.ParseFromArray(recv_buffer.data(), static_cast<int>(recv_size));
-        // Put data message in buffer
-        if (recv_msg.Payload_case() == fp_network::Network::kDataMsg
-            && recv_msg.data_msg().Payload_case() == fp_network::Data::kHostFrame) {
-            auto& host_frame = *recv_msg.mutable_data_msg()->mutable_host_frame();
-            if (host_frame.has_video()) {
-                std::string* data = host_frame.mutable_video()->release_data();
-                host_frame.mutable_video()->clear_DataBacking();
-                host_frame.mutable_video()->set_data_handle(buffer_map.Wrap(data));
-            } else if (host_frame.has_audio()) {
-                std::string* data = host_frame.mutable_audio()->release_data();
-                host_frame.mutable_audio()->clear_DataBacking();
-                host_frame.mutable_audio()->set_data_handle(buffer_map.Wrap(data));
+            fp_network::Network recv_msg;
+            recv_msg.ParseFromArray(recv_buffer.data(), static_cast<int>(recv_size));
+            // Put data message in buffer
+            if (recv_msg.Payload_case() == fp_network::Network::kDataMsg
+                && recv_msg.data_msg().Payload_case() == fp_network::Data::kHostFrame) {
+                auto& host_frame = *recv_msg.mutable_data_msg()->mutable_host_frame();
+                if (host_frame.has_video()) {
+                    std::string* data = host_frame.mutable_video()->release_data();
+                    host_frame.mutable_video()->clear_DataBacking();
+                    host_frame.mutable_video()->set_data_handle(buffer_map.Wrap(data));
+                } else if (host_frame.has_audio()) {
+                    std::string* data = host_frame.mutable_audio()->release_data();
+                    host_frame.mutable_audio()->clear_DataBacking();
+                    host_frame.mutable_audio()->set_data_handle(buffer_map.Wrap(data));
+                }
             }
+            *msg.mutable_msg() = recv_msg;
+            SendTo(CLIENT_MANAGER_ACTOR_NAME, msg);
         }
-        *msg.mutable_msg() = recv_msg;
-        SendTo(CLIENT_MANAGER_ACTOR_NAME, msg);
     }
+}
+
+void HostSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
+    if (init_msg) {
+        if (init_msg->Is<fp_actor::SocketInitDirect>()) {
+            fp_actor::SocketInitDirect msg;
+            init_msg->UnpackTo(&msg);
+            socket = asio_socket(io_service, asio_endpoint(asio::ip::udp::v4(), msg.port()));
+            use_holepunching = false;
+        } else if (init_msg->Is<fp_actor::SocketInitHolepunch>()) {
+            fp_actor::SocketInitHolepunch msg;
+            init_msg->UnpackTo(&msg);
+            holepunch_endpoint = asio_endpoint(asio::ip::address::from_string(msg.hp_ip()), msg.port());
+            socket.open(asio::ip::udp::v4());
+            holepunch_identity = msg.name();
+            use_holepunching = true;
+
+            fp_puncher::ConnectMessage puncher_conn;
+            puncher_conn.mutable_host()->set_host_name(msg.name());
+            socket.send_to(asio::buffer(puncher_conn.SerializeAsString()), holepunch_endpoint);
+        }
+        socket.set_option(asio::socket_base::send_buffer_size(CLIENT_SEND_SIZE));
+    }
+    SocketActor::OnInit(init_msg);
+}
+
+void HostSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
+    if (!msg.has_host()) {
+        LOG_CRITICAL("HostSocketActor did not receive HostResponse from holepuncher");
+        return;
+    }
+    session_token = msg.host().token();
+    LOG_INFO("Got punch message: {}", msg.host().token());
+}
+
+void ClientSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
+    if (init_msg) {
+        if (init_msg->Is<fp_actor::SocketInitDirect>()) {
+            fp_actor::SocketInitDirect msg;
+            init_msg->UnpackTo(&msg);
+            socket.open(asio::ip::udp::v4());
+            use_holepunching = false;
+
+            fp_actor::CreateHostActor create;
+            uint64_t host_address = static_cast<uint64_t>(msg.port()) << 16;
+            host_address |= asio::ip::address::from_string(msg.ip()).to_v4().to_uint();
+            create.set_host_address(host_address);
+            SendTo(CLIENT_MANAGER_ACTOR_NAME, create);
+        } else if (init_msg->Is<fp_actor::SocketInitHolepunch>()) {
+            fp_actor::SocketInitHolepunch msg;
+            init_msg->UnpackTo(&msg);
+            holepunch_endpoint = asio_endpoint(asio::ip::address::from_string(msg.hp_ip()), msg.port());
+            socket.open(asio::ip::udp::v4());
+            holepunch_identity = msg.name();
+            use_holepunching = true;
+
+            fp_puncher::ConnectMessage puncher_conn;
+            puncher_conn.mutable_client()->set_host_name(msg.target_name());
+            socket.send_to(asio::buffer(puncher_conn.SerializeAsString()), holepunch_endpoint);
+        }
+        socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
+    }
+    SocketActor::OnInit(init_msg);
+}
+
+void ClientSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
+    if (!msg.has_client()) {
+        LOG_CRITICAL("ClientSocketActor did not receive ClientResponse from holepuncher");
+        return;
+    }
+    session_token = msg.client().host_token();
+    
+    fp_actor::CreateHostActor create;
+    create.set_token(msg.client().host_token());
+
+    uint64_t host_address = static_cast<uint64_t>(msg.client().port()) << 16;
+    host_address |= asio::ip::address::from_string(msg.client().ip()).to_v4().to_uint();
+    create.set_host_address(host_address);
+    create.set_client_identity(holepunch_identity);
+    LOG_INFO("Got punch message: {} {} {}", msg.client().host_token(), msg.client().ip(), msg.client().port());
+
+    SendTo(CLIENT_MANAGER_ACTOR_NAME, create);
 }

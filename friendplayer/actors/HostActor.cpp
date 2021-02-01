@@ -17,10 +17,29 @@ HostActor::~HostActor() {
 }
 
 void HostActor::OnInit(const std::optional<any_msg>& init_msg) {
-    ProtocolActor::OnInit(init_msg);
-    fp_network::Network send_handshake_msg;
-    send_handshake_msg.mutable_hs_msg()->mutable_phase1()->set_magic(0x46524E44504C5952ull);
-    SendToSocket(send_handshake_msg);
+    if (init_msg) {
+        if (init_msg->Is<fp_actor::HostProtocolInit>()) {
+            fp_actor::HostProtocolInit host_init_msg;
+            init_msg->UnpackTo(&host_init_msg);
+            any_msg base_msg;
+            base_msg.PackFrom(host_init_msg.base_init());
+            ProtocolActor::OnInit(base_msg);
+
+            fp_network::Network send_handshake_msg;
+            send_handshake_msg.mutable_hs_msg()->mutable_phase1()->set_magic(0x46524E44504C5952ull);
+            if (host_init_msg.has_token()) {
+                send_handshake_msg.mutable_hs_msg()->mutable_phase1()->set_token(host_init_msg.token());
+            }
+            if (host_init_msg.has_client_identity()) {
+                send_handshake_msg.mutable_hs_msg()->mutable_phase1()->set_client_name(host_init_msg.client_identity());
+            }
+            SendToSocket(send_handshake_msg);
+        } else {
+            LOG_CRITICAL("HostActor being initialized with unhandled init_msg type {}!", init_msg->type_url());
+        }
+    } else {
+        LOG_CRITICAL("HostActor being initialized with empty init_msg!");
+    }
     protocol_state = HandshakeState::HS_WAITING_SHAKE_ACK;
 }
 

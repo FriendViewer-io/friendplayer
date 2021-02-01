@@ -4,6 +4,7 @@
 
 #include <asio/io_service.hpp>
 #include <asio/ip/udp.hpp>
+#include <puncher_messages.pb.h>
 
 #include "protobuf/actor_messages.pb.h"
 
@@ -27,6 +28,7 @@ public:
     void OnFinish() override;
 
     void NetworkWorker();
+    virtual void OnPuncherMessage(const fp_puncher::ServerMessage& msg) = 0;
 
 protected:
     using asio_service = asio::io_service;
@@ -39,7 +41,11 @@ protected:
 
     asio_service io_service;
     asio_socket socket;
-    asio_endpoint endpoint;
+
+    bool use_holepunching;
+    asio_endpoint holepunch_endpoint;
+    std::string holepunch_identity;
+    std::string session_token;
 };
 
 DEFINE_ACTOR_GENERATOR(SocketActor)
@@ -54,21 +60,8 @@ public:
 
     virtual ~HostSocketActor() { }
 
-    void OnInit(const std::optional<any_msg>& init_msg) override {
-        if (init_msg) {
-            if (init_msg->Is<fp_actor::SocketInit>()) {
-                fp_actor::SocketInit msg;
-                init_msg->UnpackTo(&msg);
-
-                endpoint = asio_endpoint(asio::ip::udp::v4(), msg.port());
-
-                socket = asio_socket(io_service, endpoint);
-                socket.set_option(asio::socket_base::send_buffer_size(CLIENT_SEND_SIZE));
-            }
-        }
-        SocketActor::OnInit(init_msg);
-    }
-
+    void OnInit(const std::optional<any_msg>& init_msg) override;
+    void OnPuncherMessage(const fp_puncher::ServerMessage& msg) override;
 };
 
 DEFINE_ACTOR_GENERATOR(HostSocketActor)
@@ -84,19 +77,8 @@ public:
 
     virtual ~ClientSocketActor() { }
 
-    void OnInit(const std::optional<any_msg>& init_msg) override {
-        if (init_msg) {
-            if (init_msg->Is<fp_actor::SocketInit>()) {
-                fp_actor::SocketInit msg;
-                init_msg->UnpackTo(&msg);
-
-                endpoint = asio_endpoint(asio_address::from_string(msg.ip()), msg.port());
-                socket.open(asio::ip::udp::v4());
-                socket.set_option(asio::socket_base::receive_buffer_size(CLIENT_RECV_SIZE));
-            }
-        }
-        SocketActor::OnInit(init_msg);
-    }
+    void OnInit(const std::optional<any_msg>& init_msg) override;
+    void OnPuncherMessage(const fp_puncher::ServerMessage& msg) override;
 };
 
 DEFINE_ACTOR_GENERATOR(ClientSocketActor)

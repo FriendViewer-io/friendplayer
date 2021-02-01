@@ -13,4 +13,8 @@ namespace Config {
 	extern std::vector<int> MonitorIndecies;
 	extern bool EnableTracing;
 	extern bool SaveControllers;
+	
+	extern std::string HolepuncherIP;
+	extern std::string HolepunchName;
+	extern std::string HostName;
 }

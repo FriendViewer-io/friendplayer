@@ -191,6 +191,8 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
     if (protocol_state == HandshakeState::HS_UNINITIALIZED) {
         if (msg.has_phase1() && msg.phase1().magic() == 0x46524E44504C5952ull) {
             LOG_INFO("Client actor {} received first handshake", GetName());
+            client_name = msg.phase1().client_name();
+
             crypto_impl = std::make_unique<Crypto>(1024);
             
             fp_network::Network send_handshake_msg;

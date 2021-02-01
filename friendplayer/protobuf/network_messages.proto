@@ -33,6 +33,8 @@ message Heartbeat {
 
 message HSPhase1 {
     uint64 magic = 1; // EXPECT 46524E44504C5952
+    string token = 2;
+    string client_name = 3;
 }
 
 message HSPhase2 {

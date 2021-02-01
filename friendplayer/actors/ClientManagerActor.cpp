@@ -11,12 +11,7 @@ ClientManagerActor::~ClientManagerActor() {}
 void ClientManagerActor::OnInit(const std::optional<any_msg>& init_msg) {
     Actor::OnInit(init_msg);
     if (init_msg) {
-        if (init_msg->Is<fp_actor::ClientClientManagerInit>()) {
-            is_host = false;
-            fp_actor::ClientClientManagerInit msg;
-            init_msg->UnpackTo(&msg);
-            ClientInit(msg);
-        } else if (init_msg->Is<fp_actor::HostClientManagerInit>()) {
+        if (init_msg->Is<fp_actor::HostClientManagerInit>()) {
             is_host = true;
             fp_actor::HostClientManagerInit msg;
             init_msg->UnpackTo(&msg);
@@ -25,7 +20,7 @@ void ClientManagerActor::OnInit(const std::optional<any_msg>& init_msg) {
             LOG_CRITICAL("ClientManagerActor initialized with unhandled init_msg of type {}!", init_msg->type_url());
         }
     } else {
-        LOG_CRITICAL("ClientManagerActor initialized with no init_msg!");
+        is_host = false;
     }
 }
 
@@ -63,7 +58,19 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
     } else if (msg.Is<fp_actor::CreateHostActor>()) {
         fp_actor::CreateHostActor create_host_msg;
         msg.UnpackTo(&create_host_msg);
-        CreateClient(create_host_msg.host_address());
+        
+        fp_actor::Create create_msg;
+        create_msg.set_response_actor(GetName());
+        create_msg.set_actor_type_name("HostActor");
+        create_msg.set_actor_name(HOST_ACTOR_NAME);
+
+        fp_actor::HostProtocolInit protocol_init_msg;
+        protocol_init_msg.set_token(create_host_msg.token());
+        protocol_init_msg.set_client_identity(create_host_msg.client_identity());
+        protocol_init_msg.mutable_base_init()->set_address(create_host_msg.host_address());
+        
+        create_msg.mutable_init_msg()->PackFrom(protocol_init_msg);
+        SendTo(ADMIN_ACTOR_NAME, protocol_init_msg);
     } else if (msg.Is<fp_actor::VideoData>()) {
         fp_actor::VideoData video_data_msg;
         msg.UnpackTo(&video_data_msg);
@@ -132,36 +139,16 @@ void ClientManagerActor::OnFinish() {
 void ClientManagerActor::CreateClient(uint64_t address) {
     fp_actor::Create create_msg;
     create_msg.set_response_actor(GetName());
-    if (is_host) {
-        create_msg.set_actor_type_name("ClientActor");
-        create_msg.set_actor_name(fmt::format(CLIENT_ACTOR_NAME_TEMPLATE, request_id_counter++));
-        fp_actor::ClientProtocolInit protocol_init_msg;
-        protocol_init_msg.set_video_stream_count(video_stream_count);
-        protocol_init_msg.set_audio_stream_count(audio_stream_count);
-        protocol_init_msg.mutable_base_init()->set_address(address);
-        *create_msg.mutable_init_msg() = google::protobuf::Any();
-        create_msg.mutable_init_msg()->PackFrom(protocol_init_msg);
-    } else {
-        create_msg.set_actor_type_name("HostActor");
-        create_msg.set_actor_name(HOST_ACTOR_NAME);
-        fp_actor::ProtocolInit protocol_init_msg;
-        protocol_init_msg.set_address(address);
-        *create_msg.mutable_init_msg() = google::protobuf::Any();
-        create_msg.mutable_init_msg()->PackFrom(protocol_init_msg);
-    }
+    create_msg.set_actor_type_name("ClientActor");
+    create_msg.set_actor_name(fmt::format(CLIENT_ACTOR_NAME_TEMPLATE, request_id_counter++));
+    fp_actor::ClientProtocolInit protocol_init_msg;
+    protocol_init_msg.set_video_stream_count(video_stream_count);
+    protocol_init_msg.set_audio_stream_count(audio_stream_count);
+    protocol_init_msg.mutable_base_init()->set_address(address);
+    *create_msg.mutable_init_msg() = google::protobuf::Any();
+    create_msg.mutable_init_msg()->PackFrom(protocol_init_msg);
     create_req_to_address[create_msg.actor_name()] = address;
     SendTo(ADMIN_ACTOR_NAME, create_msg);
-}
-
-void ClientManagerActor::ClientInit(const fp_actor::ClientClientManagerInit& msg) {
-    uint64_t addr = static_cast<uint64_t>(msg.host_port()) << 32;
-    addr |= asio::ip::address::from_string(msg.host_ip()).to_v4().to_uint();
-    
-    fp_actor::CreateHostActor host_actor;
-    host_actor.set_host_address(addr);
-    any_msg any;
-    any.PackFrom(host_actor);
-    EnqueueMessage(std::move(any));
 }
 
 void ClientManagerActor::HostInit(const fp_actor::HostClientManagerInit& msg) {

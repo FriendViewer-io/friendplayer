@@ -23,7 +23,6 @@ public:
 private:
     void CreateClient(uint64_t address);
     
-    void ClientInit(const fp_actor::ClientClientManagerInit& msg);
     void HostInit(const fp_actor::HostClientManagerInit& msg);
     void OnEncoderCreated(const std::string& name, bool succeeded);
     void OnClientCreated(const std::string& name, bool succeeded);

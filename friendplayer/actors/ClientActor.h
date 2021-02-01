@@ -24,6 +24,7 @@ private:
     bool keyboard_enabled;
     bool mouse_enabled;
     bool controller_enabled;
+    std::string client_name;
 
     enum StreamState : uint32_t {
         UNINITIALIZED = 0,

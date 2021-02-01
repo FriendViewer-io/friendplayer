@@ -144,6 +144,9 @@
     <ClCompile Include="actors\HostSettingsActor.cpp">
       <Filter>Source Files\actor</Filter>
     </ClCompile>
+    <ClCompile Include="..\holepuncher_proto\puncher_messages.pb.cc">
+      <Filter>Source Files\protobuf</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="encoder\DDAImpl.h">
@@ -265,6 +268,9 @@
     </ClInclude>
     <ClInclude Include="actors\HostSettingsActor.h">
       <Filter>Source Files\actor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\holepuncher_proto\puncher_messages.pb.h">
+      <Filter>Source Files\protobuf</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
