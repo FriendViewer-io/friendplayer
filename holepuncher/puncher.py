@@ -8,29 +8,25 @@ import puncher_messages_pb2 as proto
 
 host_sessions = {}
 
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 
 BUFFER_SIZE = 1024
-SESSION_TIMEOUT_SECS = 10
-
-host_name_mutex = threading.Lock()
+SESSION_TIMEOUT_SECS = 100
 
 def heartbeat_killer():
     while True: 
-        host_name_mutex.Lock()
-        for _, session in host_sessions.items():
+        for _, session in list(host_sessions.items()):
             if time.time() - session["last_heartbeat"] > SESSION_TIMEOUT_SECS:
                 del host_sessions[session["host_name"]]
                 print("Removing host session for {}".format(session["host_name"]))
-        host_name_mutex.Release()
         time.sleep(1)
 
 
 def id_generator(size=6, chars=string.ascii_letters + string.digits + string.punctuation):
     return ''.join(random.choice(chars) for _ in range(size))
 
-if __name__ == 'main':
-    if len(sys.arg) < 2:
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
         print("Usage: ./puncher.py PORT")
         sys.exit(1)
 
@@ -51,12 +47,10 @@ if __name__ == 'main':
 
             #register the host
             if connect_msg.HasField("host"):
-                host_connect_msg = connect_msg.Host()
-                host_name = host_connect_msg.host_name()
-                host_name_mutex.Lock()
+                host_connect_msg = connect_msg.host
+                host_name = host_connect_msg.host_name
                 if host_name in host_sessions:
                     print("Host {} already exists in host session".format(host_name))
-                    host_name_mutex.Release()
                     continue
                 host_sessions[host_name] = {}
                 host_sessions[host_name]["host_name"] = host_name
@@ -64,44 +58,45 @@ if __name__ == 'main':
                 host_sessions[host_name]["port"] = conn_addr[1]
                 host_sessions[host_name]["last_heartbeat"] = time.time()
                 if host_connect_msg.HasField("password"):
-                    host_sessions[host_name]["password"] = host_connect_msg.password()
+                    host_sessions[host_name]["password"] = host_connect_msg.password
+                else:
+                    host_sessions[host_name]["password"] = ""
                 
                 host_sessions[host_name]["token"] = id_generator(size=32)
                 print("Recieved host registration, hostname={}, token={}".format(host_name, host_sessions[host_name]["token"]))
                 response = proto.ServerMessage()
                 response.host.token = host_sessions[host_name]["token"]
-                host_name_mutex.Release()
                 s.sendto(response.SerializeToString(), conn_addr)
                 
             # get host data for client
             elif connect_msg.HasField("client"):
-                client_connect_msg = connect_msg.Client()
-                host_name = client_connect_msg.host_name()
-                host_name_mutex.Lock()
+                client_connect_msg = connect_msg.client
+                host_name = client_connect_msg.host_name
                 if host_name not in host_sessions:
                     print("Client asked for unknown host {}".format(host_name))
-                    host_name_mutex.Release()
                     continue
                 host_session = host_sessions[host_name]
-                if len(host_session["password"]) > 0 and (not client_connect_msg.HasField("password") or host_session["password"] != client_connect_msg.password()):
+                if len(host_session["password"]) > 0 and (not client_connect_msg.HasField("password") or host_session["password"] != client_connect_msg.password):
                     print("Wrong password provided for connection")
-                    host_name_mutex.Release()
                     continue
+                
+                response = proto.ServerMessage()
+                response.new_client.ip = conn_addr[0]
+                response.new_client.port = conn_addr[1]
+                print("Sending client info to host")
+                s.sendto(response.SerializeToString(), (host_session["ip"], host_session["port"]))
+
                 response = proto.ServerMessage()
                 response.client.host_token = host_session["token"]
                 response.client.ip = host_session["ip"]
                 response.client.port = host_session["port"]
-                print("Received client connection, sending back host info")
-                host_name_mutex.Release()
+                print("Sending back host info to client")
                 s.sendto(response.SerializeToString(), conn_addr)
             
             elif connect_msg.HasField("heartbeat"):
-                heartbeat_msg = connect_msg.Heartbeat()
-                host_name_mutex.Lock()
+                heartbeat_msg = connect_msg.heartbeat
                 session = host_sessions[heartbeat_msg.host_name]
                 if session["token"] == heartbeat_msg["token"]:
                     print("Heartbeat received from host {}".format(heartbeat_msg.host_name))
                     session["last_heartbeat"] = time.time()
-                host_name_mutex.Release()
-                host_name_mutex.Release()
                 s.sendto(response.SerializeToString(), conn_addr)

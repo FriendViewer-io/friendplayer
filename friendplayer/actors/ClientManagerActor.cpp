@@ -68,9 +68,10 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
         protocol_init_msg.set_token(create_host_msg.token());
         protocol_init_msg.set_client_identity(create_host_msg.client_identity());
         protocol_init_msg.mutable_base_init()->set_address(create_host_msg.host_address());
+        address_to_client[create_host_msg.host_address()] = HOST_ACTOR_NAME;
         
         create_msg.mutable_init_msg()->PackFrom(protocol_init_msg);
-        SendTo(ADMIN_ACTOR_NAME, protocol_init_msg);
+        SendTo(ADMIN_ACTOR_NAME, create_msg);
     } else if (msg.Is<fp_actor::VideoData>()) {
         fp_actor::VideoData video_data_msg;
         msg.UnpackTo(&video_data_msg);

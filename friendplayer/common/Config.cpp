@@ -20,7 +20,7 @@ namespace Config {
 		AverageBitrate = 2000000;
 		EnableTracing = false;
 		SaveControllers = false;
-		HolepuncherIP = "198.199.81.165";
+		//HolepuncherIP = "198.199.81.165";
 		
 		CLI::App parser{ "FriendPlayer" };
 		

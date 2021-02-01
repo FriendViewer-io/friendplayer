@@ -36,7 +36,8 @@ void SocketActor::OnMessage(const any_msg& msg) {
             }
             buffer_map.Decrement(handle);
         }
-        socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint);
+        asio::error_code ec;
+        socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint, 0, ec);
     } else {
         Actor::OnMessage(msg);
     }
@@ -57,7 +58,6 @@ void SocketActor::NetworkWorker() {
         asio::error_code ec;
         asio_endpoint recv_endpoint;
         size_t recv_size = socket.receive_from(asio::buffer(recv_buffer), recv_endpoint, 0, ec);
-
         if (recv_size == 0 || ec.value() != 0) {
             continue;
         }
@@ -118,12 +118,20 @@ void HostSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
 }
 
 void HostSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
-    if (!msg.has_host()) {
-        LOG_CRITICAL("HostSocketActor did not receive HostResponse from holepuncher");
-        return;
+    if (msg.has_host()) {
+        session_token = msg.host().token();
+        LOG_INFO("Got token message from holepuncher: {}", msg.host().token());
+    } else if (msg.has_new_client()) {
+        asio_endpoint client_ep(asio::ip::address::from_string(msg.new_client().ip()), msg.new_client().port());
+    
+        for (int i = 0; i < 2; i++) {
+            fp_puncher::PunchOpen nil;
+            socket.send_to(asio::buffer(nil.SerializeAsString()), client_ep);
+        }
+    // TODO: hole-punch synchronize here
+    } else {
+        LOG_CRITICAL("HostSocketActor did not receive correct response from holepuncher");
     }
-    session_token = msg.host().token();
-    LOG_INFO("Got punch message: {}", msg.host().token());
 }
 
 void ClientSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
@@ -135,7 +143,7 @@ void ClientSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
             use_holepunching = false;
 
             fp_actor::CreateHostActor create;
-            uint64_t host_address = static_cast<uint64_t>(msg.port()) << 16;
+            uint64_t host_address = static_cast<uint64_t>(msg.port()) << 32;
             host_address |= asio::ip::address::from_string(msg.ip()).to_v4().to_uint();
             create.set_host_address(host_address);
             SendTo(CLIENT_MANAGER_ACTOR_NAME, create);
@@ -161,16 +169,27 @@ void ClientSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
         LOG_CRITICAL("ClientSocketActor did not receive ClientResponse from holepuncher");
         return;
     }
+
+    asio_endpoint host_ep(asio::ip::address::from_string(msg.client().ip()), msg.client().port());
+    
+    for (int i = 0; i < 2; i++) {
+        fp_puncher::PunchOpen nil;
+        socket.send_to(asio::buffer(nil.SerializeAsString()), host_ep);
+    }
+    
+    LOG_INFO("Waiting for holepunch to pass");
+    // TODO: hole-punch synchronize here, replace sleep
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     session_token = msg.client().host_token();
     
     fp_actor::CreateHostActor create;
     create.set_token(msg.client().host_token());
 
-    uint64_t host_address = static_cast<uint64_t>(msg.client().port()) << 16;
-    host_address |= asio::ip::address::from_string(msg.client().ip()).to_v4().to_uint();
+    uint64_t host_address = static_cast<uint64_t>(msg.client().port()) << 32;
+    host_address |= host_ep.address().to_v4().to_uint();
     create.set_host_address(host_address);
     create.set_client_identity(holepunch_identity);
-    LOG_INFO("Got punch message: {} {} {}", msg.client().host_token(), msg.client().ip(), msg.client().port());
 
     SendTo(CLIENT_MANAGER_ACTOR_NAME, create);
 }

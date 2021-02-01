@@ -38,11 +38,12 @@ int main(int argc, char** argv) {
         socket_init.set_port(Config::Port);
         socket_init.set_name(Config::HolepunchName);
         if (!Config::IsHost) {
-            socket_init.set_name(Config::HostName);
+            socket_init.set_target_name(Config::HostName);
             socket_type = "ClientSocketActor";
         } else {
             socket_type = "HostSocketActor";
         }
+        any_msg.PackFrom(socket_init);
     }
     env.AddActor(socket_type, SOCKET_ACTOR_NAME, std::make_optional(std::move(any_msg)));
 
