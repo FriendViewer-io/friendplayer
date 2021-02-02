@@ -117,11 +117,16 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
         hb_dc.set_disconnected(true);
         hb_dc.set_client_actor_name(dc_msg.client_name());
         SendTo(HEARTBEAT_ACTOR_NAME, hb_dc);
-
+        fp_actor::NetworkSend dc_confirm_msg;
+        
         // Clean up the client for us
         if (is_host) {
+            dc_confirm_msg.mutable_msg()->mutable_state_msg()->mutable_host_state()->set_state(fp_network::HostState::DISCONNECTING);
             for (auto it = address_to_client.begin(); it != address_to_client.end(); it++) {
                 if (it->second == dc_msg.client_name()) {
+                    dc_confirm_msg.set_address(it->first);
+                    SendTo(SOCKET_ACTOR_NAME, dc_confirm_msg);
+                    
                     fp_actor::Kill kill_msg;
                     SendTo(it->second, kill_msg);
                     saved_messages.erase(it->first);
@@ -130,6 +135,10 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
                 }
             }
         } else {
+            dc_confirm_msg.mutable_msg()->mutable_state_msg()->mutable_client_state()->set_state(fp_network::ClientState::DISCONNECTING);
+            dc_confirm_msg.set_address(address_to_client.begin()->first);
+            SendTo(SOCKET_ACTOR_NAME, dc_confirm_msg);
+            
             fp_actor::Kill kill_msg;
             EnqueueMessage(kill_msg);
         }
