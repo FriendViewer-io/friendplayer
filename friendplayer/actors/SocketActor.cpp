@@ -5,7 +5,7 @@
 #include "common/Log.h"
 
 void SocketActor::OnInit(const std::optional<any_msg>& init_msg) {
-    Actor::OnInit(init_msg);
+    TimerActor::OnInit(init_msg);
     network_is_running = true;
     network_thread = std::make_unique<std::thread>(&SocketActor::NetworkWorker, this);
 }
@@ -39,7 +39,7 @@ void SocketActor::OnMessage(const any_msg& msg) {
         asio::error_code ec;
         socket.send_to(asio::buffer(network_msg.SerializeAsString()), send_endpoint, 0, ec);
     } else {
-        Actor::OnMessage(msg);
+        TimerActor::OnMessage(msg);
     }
 }
 
@@ -47,7 +47,7 @@ void SocketActor::OnFinish() {
     network_is_running = false;
     socket.close();
     network_thread->join();
-    Actor::OnFinish();
+    TimerActor::OnFinish();
 }
 
 void SocketActor::NetworkWorker() {
@@ -72,7 +72,17 @@ void SocketActor::NetworkWorker() {
             msg.set_address(address);
 
             fp_network::Network recv_msg;
-            recv_msg.ParseFromArray(recv_buffer.data(), static_cast<int>(recv_size));
+            if (!recv_msg.ParseFromArray(recv_buffer.data(), static_cast<int>(recv_size))) {
+                continue;
+            }
+            // Special casing done here, don't kill me
+            if (recv_msg.has_hs_msg() &&
+                recv_msg.hs_msg().has_phase1()) {
+                if (recv_msg.hs_msg().phase1().token() != session_token) {
+                    continue;
+                }
+            }
+
             // Put data message in buffer
             if (recv_msg.Payload_case() == fp_network::Network::kDataMsg
                 && recv_msg.data_msg().Payload_case() == fp_network::Data::kHostFrame) {
@@ -111,6 +121,8 @@ void HostSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
             fp_puncher::ConnectMessage puncher_conn;
             puncher_conn.mutable_host()->set_host_name(msg.name());
             socket.send_to(asio::buffer(puncher_conn.SerializeAsString()), holepunch_endpoint);
+            
+            SetTimerInternal(5000, true);
         }
         socket.set_option(asio::socket_base::send_buffer_size(CLIENT_SEND_SIZE));
     }
@@ -192,4 +204,13 @@ void ClientSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
     create.set_client_identity(holepunch_identity);
 
     SendTo(CLIENT_MANAGER_ACTOR_NAME, create);
+}
+
+void HostSocketActor::OnTimerFire() {
+    if (use_holepunching) {
+        fp_puncher::ConnectMessage hb;
+        hb.mutable_heartbeat()->set_host_name(holepunch_identity);
+        hb.mutable_heartbeat()->set_token(session_token);
+        socket.send_to(asio::buffer(hb.SerializeAsString()), holepunch_endpoint);
+    }
 }

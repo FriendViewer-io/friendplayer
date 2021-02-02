@@ -79,6 +79,12 @@ void HostSettingsActor::OnClientUpdated(const fp_actor::UpdateClientSetting& msg
     if (msg.has_ping()) {
         it->second.ping = msg.ping();
     }
+    if (msg.has_client_name()) {
+        it->second.client_name = msg.client_name();
+    }
+    if (msg.has_finished_handshake()) {
+        it->second.is_ready = msg.finished_handshake();
+    }
 }
 
 void HostSettingsActor::UpdateClientActorState(const Client& client) {
@@ -154,10 +160,14 @@ void HostSettingsActor::Present() {
                     ImGui::Separator();
                 }
                 first_client = false;
-                ImGui::Text(fmt::format("Client {}:{}", client.ip, client.port).c_str());
+                ImGui::Text(fmt::format("{} {}:{}", !client.is_ready ? "Client" : client.client_name, client.ip, client.port).c_str());
                 std::string ping_text = fmt::format("Ping: {}ms", client.ping);
                 ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(ping_text.c_str()).x - ImGui::GetWindowScrollbarRect(ImGui::GetCurrentWindow(), ImGuiAxis_Y).GetWidth() - 5);
                 ImGui::Text(ping_text.c_str());
+                if (!client.is_ready) {
+                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                }
                 if (ImGui::Checkbox(fmt::format("Mouse##{}", client.actor_name).c_str(), &client.is_mouse_enabled)) {
                     UpdateClientActorState(client);
                 }
@@ -172,6 +182,10 @@ void HostSettingsActor::Present() {
                     UpdateClientActorState(client);
                 }
                 if (!client.is_controller_connected) {
+                    ImGui::PopItemFlag();
+                    ImGui::PopStyleVar();
+                }
+                if (!client.is_ready) {
                     ImGui::PopItemFlag();
                     ImGui::PopStyleVar();
                 }

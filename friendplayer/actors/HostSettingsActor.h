@@ -23,6 +23,7 @@ public:
 private:
     struct Client {
         std::string actor_name;
+        std::string client_name;
         uint64_t address;
         std::string ip;
         unsigned short port;
@@ -30,6 +31,7 @@ private:
         bool is_keyboard_enabled;
         bool is_controller_enabled;
         bool is_controller_connected;
+        bool is_ready;
         uint32_t ping;
     };
 

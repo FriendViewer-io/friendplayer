@@ -6,6 +6,21 @@
 #include <asio/ip/udp.hpp>
 #include <fmt/format.h>
 
+namespace {
+void SafeReleaseHandle(DataBufferMap& buffer_map, const fp_network::Network& net_msg) {
+    if (net_msg.has_data_msg() &&
+        net_msg.data_msg().has_host_frame()) {
+        if (net_msg.data_msg().host_frame().has_video() &&
+            net_msg.data_msg().host_frame().video().DataBacking_case() == fp_network::VideoFrame::kDataHandle) {
+            buffer_map.Decrement(net_msg.data_msg().host_frame().video().data_handle());
+        } else if (net_msg.data_msg().host_frame().has_audio() &&
+            net_msg.data_msg().host_frame().audio().DataBacking_case() == fp_network::VideoFrame::kDataHandle) {
+            buffer_map.Decrement(net_msg.data_msg().host_frame().audio().data_handle());
+        }
+    }
+}
+}
+
 ClientManagerActor::~ClientManagerActor() {}
 
 void ClientManagerActor::OnInit(const std::optional<any_msg>& init_msg) {
@@ -32,6 +47,11 @@ void ClientManagerActor::OnMessage(const any_msg& msg) {
 
         // Check if this client exists
         if (address_to_client.find(recv_msg.address()) == address_to_client.end()) {
+            if (!recv_msg.msg().has_hs_msg() ||
+                !recv_msg.msg().hs_msg().has_phase1()) {
+                SafeReleaseHandle(buffer_map, recv_msg.msg());
+                return;
+            }
             // If not check if we need to request client creation
             if (saved_messages.find(recv_msg.address()) == saved_messages.end()) {
                 // Ask admin to create a new client

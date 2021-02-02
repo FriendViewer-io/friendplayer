@@ -96,7 +96,6 @@ if __name__ == '__main__':
             elif connect_msg.HasField("heartbeat"):
                 heartbeat_msg = connect_msg.heartbeat
                 session = host_sessions[heartbeat_msg.host_name]
-                if session["token"] == heartbeat_msg["token"]:
+                if session["token"] == heartbeat_msg.token:
                     print("Heartbeat received from host {}".format(heartbeat_msg.host_name))
                     session["last_heartbeat"] = time.time()
-                s.sendto(response.SerializeToString(), conn_addr)

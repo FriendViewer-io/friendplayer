@@ -240,5 +240,7 @@ message RemoveClientSettings {
 message UpdateClientSetting {
     string actor_name = 1;
     optional uint32 ping = 2;
-    optional bool has_controller = 3;
+    optional string client_name = 3;
+    optional bool has_controller = 4;
+    optional bool finished_handshake = 5;
 }

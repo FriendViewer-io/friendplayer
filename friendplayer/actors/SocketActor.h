@@ -1,6 +1,6 @@
 #pragma once
 
-#include "actors/Actor.h"
+#include "actors/TimerActor.h"
 
 #include <asio/io_service.hpp>
 #include <asio/ip/udp.hpp>
@@ -8,7 +8,7 @@
 
 #include "protobuf/actor_messages.pb.h"
 
-class SocketActor : public Actor {
+class SocketActor : public TimerActor {
 private:
     static constexpr size_t BLOCK_SIZE = 16;
     // maximum chunk size over UDP accounding for proto overhead
@@ -16,7 +16,7 @@ private:
     static constexpr size_t MAX_DATA_CHUNK = 476;
 public:
     SocketActor(const ActorMap& actor_map, DataBufferMap& buffer_map, std::string&& name)
-      : Actor(actor_map, buffer_map, std::move(name)),
+      : TimerActor(actor_map, buffer_map, std::move(name)),
         network_thread(nullptr),
         network_is_running(false),
         socket(io_service) {}
@@ -26,6 +26,7 @@ public:
     void OnMessage(const any_msg& msg) override;
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnFinish() override;
+    void OnTimerFire() override {}
 
     void NetworkWorker();
     virtual void OnPuncherMessage(const fp_puncher::ServerMessage& msg) = 0;
@@ -62,6 +63,7 @@ public:
 
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnPuncherMessage(const fp_puncher::ServerMessage& msg) override;
+    void OnTimerFire() override;
 };
 
 DEFINE_ACTOR_GENERATOR(HostSocketActor)

@@ -87,7 +87,7 @@ void ClientActor::OnMessage(const any_msg& msg) {
         fp_network::Network dc_msg;
         dc_msg.mutable_state_msg()->mutable_host_state()->set_state(fp_network::HostState::DISCONNECTING);
         SendToSocket(dc_msg);
-    } else { 
+    } else {
         ProtocolActor::OnMessage(msg);
     }
 }
@@ -218,6 +218,12 @@ bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
             SendToSocket(stream_info_msg);            
             protocol_state = HandshakeState::HS_READY;
             handshake_success = true;
+
+            fp_actor::UpdateClientSetting update_msg;
+            update_msg.set_actor_name(GetName());
+            update_msg.set_client_name(client_name);
+            update_msg.set_finished_handshake(true);
+            SendTo(SETTINGS_ACTOR_NAME, update_msg);
         } else {
             LOG_ERROR("Invalid handshake magic in state HS_WAITING_SHAKE_ACK");
         }
