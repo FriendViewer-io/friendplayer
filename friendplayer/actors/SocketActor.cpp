@@ -50,6 +50,16 @@ void SocketActor::OnFinish() {
     TimerActor::OnFinish();
 }
 
+void HostSocketActor::OnFinish() {
+    if (use_holepunching) {
+        fp_puncher::ConnectMessage die_msg;
+        die_msg.mutable_exit()->set_host_name(holepunch_identity);
+        die_msg.mutable_exit()->set_token(session_token);
+        socket.send_to(asio::buffer(die_msg.SerializeAsString()), holepunch_endpoint);
+    }
+    SocketActor::OnFinish();
+}
+
 void SocketActor::NetworkWorker() {
     std::string recv_buffer;
     recv_buffer.resize(1500);
@@ -131,6 +141,12 @@ void HostSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
 
 void HostSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
     if (msg.has_host()) {
+        if (!msg.host().succeeded()) {
+            LOG_ERROR("Failed to create host session!");
+            fp_actor::Kill kill_msg;
+            SendTo(CLIENT_MANAGER_ACTOR_NAME, kill_msg);
+            return;
+        }
         session_token = msg.host().token();
         LOG_INFO("Got token message from holepuncher: {}", msg.host().token());
     } else if (msg.has_new_client()) {
@@ -158,6 +174,7 @@ void ClientSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
             uint64_t host_address = static_cast<uint64_t>(msg.port()) << 32;
             host_address |= asio::ip::address::from_string(msg.ip()).to_v4().to_uint();
             create.set_host_address(host_address);
+            create.set_client_identity(msg.name());
             SendTo(CLIENT_MANAGER_ACTOR_NAME, create);
         } else if (init_msg->Is<fp_actor::SocketInitHolepunch>()) {
             fp_actor::SocketInitHolepunch msg;
@@ -179,6 +196,13 @@ void ClientSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
 void ClientSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
     if (!msg.has_client()) {
         LOG_CRITICAL("ClientSocketActor did not receive ClientResponse from holepuncher");
+        return;
+    }
+
+    if (!msg.client().succeeded()) {
+        LOG_ERROR("Failed to connect to host!");
+        fp_actor::Kill kill_msg;
+        SendTo(CLIENT_MANAGER_ACTOR_NAME, kill_msg);
         return;
     }
 

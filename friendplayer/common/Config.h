@@ -15,6 +15,6 @@ namespace Config {
 	extern bool SaveControllers;
 	
 	extern std::string HolepuncherIP;
-	extern std::string HolepunchName;
-	extern std::string HostName;
+	extern std::string Identifier;
+	extern std::string HostIdentifier;
 }

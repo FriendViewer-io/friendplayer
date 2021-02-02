@@ -81,6 +81,7 @@ message CreateHostActor {
 message SocketInitDirect {
     optional string ip = 1;
     uint32 port = 2;
+    string name = 3;
 }
 
 message SocketInitHolepunch {

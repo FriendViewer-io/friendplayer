@@ -8,7 +8,8 @@ message HostConnect {
 }
 
 message HostResponse {
-    string token = 1;
+    bool succeeded = 1;
+    string token = 2;
 }
 
 message HostNewClient {
@@ -21,15 +22,21 @@ message HostHeartbeat {
     string token = 2;
 }
 
+message HostExit {
+    string host_name = 1;
+    string token = 2;
+}
+
 message ClientConnect {
     string host_name = 1;
     optional string password = 2;
 }
 
 message ClientResponse {
-    string host_token = 1;
-    string ip = 2;
-    uint32 port = 3;
+    bool succeeded = 1;
+    string host_token = 2;
+    string ip = 3;
+    uint32 port = 4;
 }
 
 message PunchOpen { }
@@ -39,6 +46,7 @@ message ConnectMessage {
         HostConnect host = 1;
         ClientConnect client = 2;
         HostHeartbeat heartbeat = 3;
+        HostExit exit = 4;
     }
 }
 

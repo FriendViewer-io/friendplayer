@@ -64,6 +64,7 @@ public:
     void OnInit(const std::optional<any_msg>& init_msg) override;
     void OnPuncherMessage(const fp_puncher::ServerMessage& msg) override;
     void OnTimerFire() override;
+    void OnFinish() override;
 };
 
 DEFINE_ACTOR_GENERATOR(HostSocketActor)

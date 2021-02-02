@@ -21,26 +21,29 @@ int main(int argc, char** argv) {
     std::string socket_type;
 
     if (Config::HolepuncherIP.empty()) {
-        LOG_INFO("Initializing {} for direct connection to {}:{}", Config::IsHost ? "Hosting" : "Watching", Config::ServerIP, Config::Port);
         fp_actor::SocketInitDirect socket_init;
         socket_init.set_port(Config::Port);
         if (!Config::IsHost) {
+            LOG_INFO("Initializing watching for direct connection to {}:{}", Config::ServerIP, Config::Port);
             socket_init.set_ip(Config::ServerIP);
+            socket_init.set_name(Config::Identifier);
             socket_type = "ClientSocketActor";
         } else {
+            LOG_INFO("Initializing hosting for direct connection");
             socket_type = "HostSocketActor";
         }
         any_msg.PackFrom(socket_init);
     } else {
-        LOG_INFO("Initializing {} for hole-punch to {}:{} under name {}", Config::IsHost ? "Hosting" : "Watching", Config::HolepuncherIP, Config::Port, Config::HolepunchName);
         fp_actor::SocketInitHolepunch socket_init;
         socket_init.set_hp_ip(Config::HolepuncherIP);
         socket_init.set_port(Config::Port);
-        socket_init.set_name(Config::HolepunchName);
+        socket_init.set_name(Config::Identifier);
         if (!Config::IsHost) {
-            socket_init.set_target_name(Config::HostName);
+            LOG_INFO("Initializing watching host {} under name {} with puncher={}:{}", Config::HostIdentifier, Config::Identifier, Config::HolepuncherIP, Config::Port);
+            socket_init.set_target_name(Config::HostIdentifier);
             socket_type = "ClientSocketActor";
         } else {
+            LOG_INFO("Initializing hosting under name {} with puncher={}:{}", Config::Identifier, Config::HolepuncherIP, Config::Port);
             socket_type = "HostSocketActor";
         }
         any_msg.PackFrom(socket_init);
