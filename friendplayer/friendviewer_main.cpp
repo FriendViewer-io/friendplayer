@@ -7,8 +7,54 @@
 #include "protobuf/actor_messages.pb.h"
 #include <puncher_messages.pb.h>
 
+#include <chrono>
+#include <minidumpapiset.h>
+
+void CreateMiniDump(EXCEPTION_POINTERS* pep) {
+    // Open the file
+    typedef BOOL(*PDUMPFN)(
+        HANDLE hProcess,
+        DWORD ProcessId,
+        HANDLE hFile,
+        MINIDUMP_TYPE DumpType,
+        PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
+        PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
+        PMINIDUMP_CALLBACK_INFORMATION CallbackParam
+        );
+
+
+    HANDLE hFile = CreateFile(fmt::format("crash_{}.dmp", std::chrono::system_clock::now().time_since_epoch().count()).c_str(), GENERIC_READ | GENERIC_WRITE,
+        0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    HMODULE h = ::LoadLibrary("DbgHelp.dll");
+    PDUMPFN pFn = (PDUMPFN)GetProcAddress(h, "MiniDumpWriteDump");
+
+    if ((hFile != NULL) && (hFile != INVALID_HANDLE_VALUE)) {
+        // Create the minidump
+
+        MINIDUMP_EXCEPTION_INFORMATION mdei;
+
+        mdei.ThreadId = GetCurrentThreadId();
+        mdei.ExceptionPointers = pep;
+        mdei.ClientPointers = TRUE;
+        MINIDUMP_TYPE mdt = MiniDumpNormal;
+        BOOL rv = (*pFn)(GetCurrentProcess(), GetCurrentProcessId(),
+            hFile, mdt, (pep != 0) ? &mdei : 0, 0, 0);
+
+        // Close the file
+        CloseHandle(hFile);
+    }
+}
+
+LONG WINAPI MyUnhandledExceptionFilter(struct _EXCEPTION_POINTERS* ExceptionInfo) {
+    CreateMiniDump(ExceptionInfo);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
+
+    SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
 
     if (Config::LoadConfig(argc, argv) >= 0) {
         return 1;
