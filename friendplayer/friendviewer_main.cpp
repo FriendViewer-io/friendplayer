@@ -6,12 +6,47 @@
 
 #include "protobuf/actor_messages.pb.h"
 #include <puncher_messages.pb.h>
+#include <minidumpapiset.h>
+
+#include <DbgHelp.h>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#pragma comment(lib, "DbgHelp.lib")
+
+void CreateMiniDump(EXCEPTION_POINTERS* pep) {
+    char dumpfile_name[64];
+    auto time_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::strftime(dumpfile_name, 63, "fp_crash_%Y-%m-%d_%H_%M_%S.dmp", std::localtime(&time_t));
+    dumpfile_name[63] = 0;
+
+    HANDLE dumpfile = CreateFile(dumpfile_name, GENERIC_READ | GENERIC_WRITE, 
+        0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if ((dumpfile != nullptr) && (dumpfile != INVALID_HANDLE_VALUE)) {
+        MINIDUMP_EXCEPTION_INFORMATION mdei = { 0 }; 
+        mdei.ThreadId = GetCurrentThreadId(); 
+        mdei.ExceptionPointers = pep; 
+        mdei.ClientPointers = TRUE; 
+
+        BOOL rv = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
+            dumpfile, MiniDumpNormal, (pep != nullptr) ? &mdei : nullptr, nullptr, nullptr);
+        CloseHandle(dumpfile); 
+    }
+}
+
+LONG WINAPI CrashdumpFilter(EXCEPTION_POINTERS *exception_info) {
+    CreateMiniDump(exception_info);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
 
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
+    SetUnhandledExceptionFilter(CrashdumpFilter);
 
-    if (Config::LoadConfig(argc, argv) >= 0) {
-        return 1;
+    if (int config_rc; config_rc = Config::LoadConfig(argc, argv) >= 0) {
+        return config_rc;
     }
 
     Log::init_stdout_logging(LogOptions{Config::EnableTracing});

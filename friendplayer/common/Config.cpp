@@ -20,11 +20,13 @@ namespace Config {
 		AverageBitrate = 2000000;
 		EnableTracing = false;
 		SaveControllers = false;
-		bool direct_enabled = false;
 		HolepuncherIP = "198.199.81.165";
 		
 		CLI::App parser{ "FriendPlayer" };
 		
+		CLI::AsNumberWithUnit bitrate_validator(std::map<std::string, int>{{"b", 1}, {"kb", 1000}, {"mb", 1000 * 1000}});
+		bitrate_validator.description("(b, kb, mb)");
+
 		parser.add_flag("--trace,-T", EnableTracing, "Enable trace logging");
 
 		CLI::App* host = parser.add_subcommand("host", "Host the FriendPlayer session using a holepunching server");
@@ -36,7 +38,8 @@ namespace Config {
 		host->add_option("--port,-p", Port, "Port to connect to on the holepunching server")
 			->default_str("40040");
 		host->add_option("--bitrate,-b", AverageBitrate, "Average bitrate for stream")
-			->default_str("2000000");
+			->default_str("2mb")
+			->transform(bitrate_validator);
 		host->add_option("--monitor,-m", MonitorIndecies, "Monitor index to stream")
 			->default_str("0");
 		host->add_flag("--save-controllers,-s", SaveControllers, "Reuse controllers after disconnections")
@@ -47,7 +50,8 @@ namespace Config {
 		host_direct->add_option("--port,-p", Port, "Port to listen on for incoming connections")
 			->default_str("40040");
 		host_direct->add_option("--bitrate,-b", AverageBitrate, "Average bitrate for stream")
-			->default_str("2000000");
+			->default_str("2mb")
+			->transform(bitrate_validator);
 		host_direct->add_option("--monitor,-m", MonitorIndecies, "Monitor index to stream")
 			->default_str("0");
 		host_direct->add_flag("--save-controllers,-s", SaveControllers, "Reuse controllers after disconnections")
@@ -70,6 +74,8 @@ namespace Config {
 			->required(true);
 		client_direct->add_option("--ip,-i", ServerIP, "IP to directly connect to")
 			->excludes(punch_opt);
+
+		parser.require_subcommand(1);
 
 		CLI11_PARSE(parser, argc, argv);
 		if (MonitorIndecies.size() == 0) {
