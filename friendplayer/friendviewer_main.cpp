@@ -40,7 +40,6 @@ LONG WINAPI CrashdumpFilter(EXCEPTION_POINTERS *exception_info) {
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
-
 int main(int argc, char** argv) {
     using namespace std::chrono_literals;
     SetUnhandledExceptionFilter(CrashdumpFilter);
