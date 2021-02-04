@@ -57,7 +57,7 @@ CUdeviceptr FramePresenterGL::RegisterContext(CUcontext context, int width, int 
     new_info.frame = device_frame;
     new_info.width = width;
     new_info.height = height;
-    new_info.text = "Windoww";
+    new_info.frame_check = 300;
     new_info.stream_num = stream_num;
     new_info.fullscreen_state = false;
     new_presenter_queue.enqueue(new_info);
@@ -257,7 +257,7 @@ void FramePresenterGL::Run(int num_presenters) {
         LOG_INFO("Got new presenter {}x{} = {}", new_info.width, new_info.height, new_info.stream_num);
         float aspect_ratio = static_cast<float>(new_info.width) / new_info.height;
         int width = static_cast<int>(GetSystemMetrics(SM_CXSCREEN) * 0.75f);
-        int height = static_cast<int>(new_info.width / aspect_ratio);
+        int height = static_cast<int>(width / aspect_ratio);
         glfwWindowHint(GLFW_AUTO_ICONIFY, GL_FALSE);
         new_info.window = glfwCreateWindow(width, height, fmt::format("Monitor Stream {}", new_info.stream_num).c_str(), NULL, main_window);
 
@@ -477,14 +477,34 @@ void FramePresenterGL::Render(PresenterInfo& info) {
                 }
             }
         }
+        static bool show_info = true;
+        ImGui::Checkbox("Stream Info", &show_info);
         if (ImGui::Button("Disconnect")) {
             callback_inst->OnWindowClosed();
         }
         ImGui::End();
-        ImGui::Render();
 
+        if (show_info) {
+            ImGui::SetNextWindowSize(ImVec2(0, 0));
+            ImGui::SetNextWindowPos(ImVec2(25, 25));
+            ImGui::Begin("", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs);
+            ImGui::Text(fmt::format("Ping: {}ms", callback_inst->GetPing()).c_str());
+            for (auto& [id, draw_info] : presenters) {
+                ImGui::Text(fmt::format("FPS: {:.1f}", draw_info.fps).c_str());
+            }
+            ImGui::End();
+        }
+        ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glFlush();
+        
+    }
+
+    if (info.frame_check == 0) {
+        info.frame_check = 600;
+        info.fps = callback_inst->GetFPS(true, info.stream_num);
+    } else {
+        info.frame_check--;
     }
 
     glfwSwapBuffers(info.window);

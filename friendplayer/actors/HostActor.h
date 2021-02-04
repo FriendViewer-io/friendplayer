@@ -35,6 +35,8 @@ public:
     void MuteState(bool state);
     void VolumeState(float volume);
 
+    double GetFPS(bool is_video, int stream_num);
+
 private:
     void SendVideoFrameToDecoder(uint32_t stream_num);
     void SendAudioFrameToDecoder(uint32_t stream_num);

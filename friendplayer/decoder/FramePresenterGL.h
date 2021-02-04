@@ -36,7 +36,8 @@ private:
         CUdeviceptr frame;
         CUgraphicsResource cuResource;
         int stream_num;
-        std::string text;
+        int frame_check;
+        double fps;
         GLuint pbo;
         GLuint tex;
         GLuint shader;
@@ -77,7 +78,6 @@ public:
 
     static CUdeviceptr RegisterContext(CUcontext context, int width, int height, int stream_num);
 
-private:
      /**
      *   @brief  Registered with glutDisplayFunc() as rendering function
      *   @return void

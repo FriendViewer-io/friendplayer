@@ -9,6 +9,7 @@ FrameRingBuffer::FrameRingBuffer(std::string name, size_t num_frames, size_t fra
         buffer[i].data.resize(frame_capacity);
         buffer[i].num = i;
     }
+    last_fps_check = std::chrono::system_clock::now();
 }
 
 bool FrameRingBuffer::AddFrameChunk(const fp_network::HostDataFrame& frame) {
@@ -80,4 +81,13 @@ bool FrameRingBuffer::GetFront(std::string& buffer_out) {
     frame_number++;
 
     return frame_was_corrupt;
+}
+
+double FrameRingBuffer::GetFPS() {
+    auto now = std::chrono::system_clock::now();
+    double fps = static_cast<double>(frame_number - last_frame_number) / std::chrono::duration_cast<std::chrono::milliseconds>(now - last_fps_check).count();
+    fps *= 1000;
+    last_frame_number = frame_number;
+    last_fps_check = now;
+    return fps;
 }

@@ -234,6 +234,14 @@ void HostActor::SendAudioFrameToDecoder(uint32_t stream_num) {
     SendTo(audio_stream_num_to_name[stream_num], audio_data);
 }
 
+double HostActor::GetFPS(bool is_video, int stream_num) {
+    if (is_video) {
+        return video_streams[stream_num]->GetFPS();
+    } else {
+        return audio_streams[stream_num]->GetFPS();
+    }
+}
+
 void HostActor::OnWindowClosed() {
     fp_actor::Kill kill_msg;
     SendTo(CLIENT_MANAGER_ACTOR_NAME, kill_msg);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <stdint.h>
 #include <string_view>
 #include <vector>
@@ -30,6 +31,7 @@ public:
 
     bool AddFrameChunk(const fp_network::HostDataFrame& frame);
     bool GetFront(std::string& buffer_out);
+    double GetFPS();
     
 private:
     std::vector<Frame> buffer;
@@ -37,6 +39,9 @@ private:
     uint32_t frame_count;
     uint32_t frame_number;
     constexpr uint32_t frame_index() const { return frame_number % frame_count; }
+
+    std::chrono::time_point<std::chrono::system_clock> last_fps_check;
+    uint32_t last_frame_number;
 
     std::string buffer_name;
 

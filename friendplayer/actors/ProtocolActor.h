@@ -25,6 +25,8 @@ public:
     void OnMessage(const any_msg& msg) override;
     void OnTimerFire() override {}
 
+    uint32_t GetPing() { return RTT_milliseconds; }
+
 protected:
     uint64_t address;
 
