@@ -1,0 +1,12 @@
+add_library(nvcuvid SHARED IMPORTED)
+add_library(nvencodeapi SHARED IMPORTED)
+
+if (WIN32)
+  set_target_properties(nvcuvid PROPERTIES IMPORTED_IMPLIB "${CMAKE_CURRENT_LIST_DIR}/lib/windows/nvcuvid.lib")
+  set_target_properties(nvencodeapi PROPERTIES IMPORTED_IMPLIB "${CMAKE_CURRENT_LIST_DIR}/lib/windows/nvencodeapi.lib")
+else()
+  set_target_properties(nvcuvid PROPERTIES IMPORTED_IMPLIB "${CMAKE_CURRENT_LIST_DIR}/lib/linux/libnvcuvid.so")
+  set_target_properties(nvencodeapi PROPERTIES IMPORTED_IMPLIB "${CMAKE_CURRENT_LIST_DIR}/lib/windows/libnvidia-encode.so")
+endif()
+set_target_properties(nvcuvid PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/include")
+set_target_properties(nvencodeapi PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/include")

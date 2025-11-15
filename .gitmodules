@@ -1,0 +1,24 @@
+[submodule "externals/CLI11"]
+	path = externals/CLI11
+	url = https://github.com/CLIUtils/CLI11.git
+[submodule "externals/imgui/imgui"]
+	path = externals/imgui/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "externals/glfw"]
+	path = externals/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "externals/cryptopp-cmake"]
+	path = externals/cryptopp-cmake
+	url = https://github.com/abdes/cryptopp-cmake.git
+[submodule "externals/opus"]
+	path = externals/opus
+	url = https://github.com/xiph/opus.git
+[submodule "externals/spdlog"]
+	path = externals/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "externals/protobuf"]
+	path = externals/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
+[submodule "externals/concurrentqueue"]
+	path = externals/concurrentqueue
+	url = https://github.com/cameron314/concurrentqueue.git
