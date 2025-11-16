@@ -232,7 +232,7 @@ void NvEncoder::EncodeActiveFrame(std::string &packets_out, NV_ENC_PIC_PARAMS *p
     if (status == NV_ENC_SUCCESS || status == NV_ENC_ERR_NEED_MORE_INPUT) {
         GetEncodedPacket(packets_out);
     } else {
-        LOG_CRITICAL("nvEncEncodePicture API failed");
+        LOG_CRITICAL("nvEncEncodePicture API failed, err={}", static_cast<int>(status));
     }
 }
 

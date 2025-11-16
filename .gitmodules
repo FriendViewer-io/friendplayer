@@ -22,3 +22,12 @@
 [submodule "externals/concurrentqueue"]
 	path = externals/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue.git
+[submodule "externals/ViGEmClient"]
+	path = externals/ViGEmClient
+	url = https://github.com/nefarius/ViGEmClient.git
+[submodule "externals/fmt"]
+	path = externals/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "externals/glew-cmake"]
+	path = externals/glew-cmake
+	url = https://github.com/Perlmint/glew-cmake.git

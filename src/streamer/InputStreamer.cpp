@@ -68,7 +68,7 @@ bool InputStreamer::RegisterVirtualController(std::string actor_name)
         
         if (!VIGEM_SUCCESS(retval))
         {
-            LOG_CRITICAL("ViGEm Bus connection failed with error code: {}", retval);
+            LOG_CRITICAL("ViGEm Bus connection failed with error code: {}", static_cast<int>(retval));
             return false;
         }
     }
@@ -82,7 +82,7 @@ bool InputStreamer::RegisterVirtualController(std::string actor_name)
         const auto err = vigem_target_add(vigem_client, controller);
         if(!VIGEM_SUCCESS(err)) {
             vigem_target_free(controller);
-            LOG_CRITICAL("Target plugin failed with error code: {}, actor name: {}", err, actor_name);
+            LOG_CRITICAL("Target plugin failed with error code: {}, actor name: {}", static_cast<int>(err), actor_name);
             return false;
         }
     }

@@ -94,22 +94,32 @@ PRIVATE
   streamer/VideoStreamer.cpp
   streamer/VideoStreamer.h)
 
+if (TARGET imgui_impl_glfw)
+  message("glfw backend present\n\n\n\n")
+endif()
+
 # TODO: ViGEm
 target_link_libraries(friendplayer
 PUBLIC
-  cli11
+  asio
+  CLI11
   concurrentqueue
-  cpp-protobuf-objects
+  cpp-proto-objects
   cryptopp
+  fmt
+  libglew_static
   glfw
   imgui
   imgui_impl_glfw
+  imgui_impl_opengl3
   libprotobuf
   nvcuvid
   nvencodeapi
   opus
+  puncher-proto-objects
   spdlog)
 
 if (WIN32)
-  target_link_libraries(friendplayer PUBLIC d3d11.lib dxgi.lib winmm.lib)
+  target_link_libraries(friendplayer PUBLIC d3d11.lib dxgi.lib winmm.lib cuda.lib XInput.lib XInput9_1_0.lib Setupapi.lib)
+  target_link_libraries(friendplayer PUBLIC ViGEmClient)
 endif()

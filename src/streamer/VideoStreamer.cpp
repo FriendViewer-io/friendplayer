@@ -222,7 +222,7 @@ bool VideoStreamer::InitDecode() {
     else {
         LOG_WARNING("Could not find GPU device");
     }
-    if (!check(cuCtxCreate(&cuda_context, CU_CTX_SCHED_BLOCKING_SYNC, cuDevice))) {
+    if (!check(cuCtxCreate(&cuda_context, nullptr, CU_CTX_SCHED_BLOCKING_SYNC, cuDevice))) {
         LOG_CRITICAL("Failed to create cuda context");
         return false;
     }

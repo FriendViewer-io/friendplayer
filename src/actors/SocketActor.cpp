@@ -4,6 +4,8 @@
 #include "protobuf/actor_messages.pb.h"
 #include "common/Log.h"
 
+#include <asio/ip/address.hpp>
+
 void SocketActor::OnInit(const std::optional<any_msg>& init_msg) {
     TimerActor::OnInit(init_msg);
     network_is_running = true;
@@ -123,7 +125,7 @@ void HostSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
         } else if (init_msg->Is<fp_actor::SocketInitHolepunch>()) {
             fp_actor::SocketInitHolepunch msg;
             init_msg->UnpackTo(&msg);
-            holepunch_endpoint = asio_endpoint(asio::ip::address::from_string(msg.hp_ip()), msg.port());
+            holepunch_endpoint = asio_endpoint(asio::ip::make_address(msg.hp_ip()), msg.port());
             socket.open(asio::ip::udp::v4());
             holepunch_identity = msg.name();
             use_holepunching = true;
@@ -150,7 +152,7 @@ void HostSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
         session_token = msg.host().token();
         LOG_INFO("Got token message from holepuncher: {}", msg.host().token());
     } else if (msg.has_new_client()) {
-        asio_endpoint client_ep(asio::ip::address::from_string(msg.new_client().ip()), msg.new_client().port());
+        asio_endpoint client_ep(asio::ip::make_address(msg.new_client().ip()), msg.new_client().port());
     
         for (int i = 0; i < 2; i++) {
             fp_puncher::PunchOpen nil;
@@ -172,14 +174,14 @@ void ClientSocketActor::OnInit(const std::optional<any_msg>& init_msg) {
 
             fp_actor::CreateHostActor create;
             uint64_t host_address = static_cast<uint64_t>(msg.port()) << 32;
-            host_address |= asio::ip::address::from_string(msg.ip()).to_v4().to_uint();
+            host_address |= asio::ip::make_address(msg.ip()).to_v4().to_uint();
             create.set_host_address(host_address);
             create.set_client_identity(msg.name());
             SendTo(CLIENT_MANAGER_ACTOR_NAME, create);
         } else if (init_msg->Is<fp_actor::SocketInitHolepunch>()) {
             fp_actor::SocketInitHolepunch msg;
             init_msg->UnpackTo(&msg);
-            holepunch_endpoint = asio_endpoint(asio::ip::address::from_string(msg.hp_ip()), msg.port());
+            holepunch_endpoint = asio_endpoint(asio::ip::make_address(msg.hp_ip()), msg.port());
             socket.open(asio::ip::udp::v4());
             holepunch_identity = msg.name();
             use_holepunching = true;
@@ -206,7 +208,7 @@ void ClientSocketActor::OnPuncherMessage(const fp_puncher::ServerMessage& msg) {
         return;
     }
 
-    asio_endpoint host_ep(asio::ip::address::from_string(msg.client().ip()), msg.client().port());
+    asio_endpoint host_ep(asio::ip::make_address(msg.client().ip()), msg.client().port());
     
     for (int i = 0; i < 2; i++) {
         fp_puncher::PunchOpen nil;

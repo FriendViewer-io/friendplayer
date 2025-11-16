@@ -17,7 +17,7 @@
 #include <thread>
 #include <GL/glew.h>
 #include <cuda.h>
-#include <concurrentqueue/blockingconcurrentqueue.h>
+#include <blockingconcurrentqueue.h>
 
 class HostActor;
 struct GLFWwindow;

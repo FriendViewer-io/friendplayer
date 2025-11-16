@@ -187,7 +187,7 @@ void ClientActor::OnActorState(const fp_actor::ChangeClientActorState& msg) {
 
 bool ClientActor::OnHandshakeMessage(const fp_network::Handshake& msg) {
     bool handshake_success = false;
-    LOG_INFO("Client actor {} received handshake, current state={}", GetName(), protocol_state);
+    LOG_INFO("Client actor {} received handshake, current state={}", GetName(), static_cast<int>(protocol_state));
     if (protocol_state == HandshakeState::HS_UNINITIALIZED) {
         if (msg.has_phase1() && msg.phase1().magic() == 0x46524E44504C5952ull) {
             LOG_INFO("Client actor {} received first handshake", GetName());

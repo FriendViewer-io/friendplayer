@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "nvEncodeAPI.h"
+#include <nvEncodeApi.h>
 
 class NvEncoder;
 struct ID3D11Device;

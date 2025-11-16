@@ -1,6 +1,6 @@
 #pragma once
 
-#include <concurrentqueue/blockingconcurrentqueue.h>
+#include <blockingconcurrentqueue.h>
 #include <google/protobuf/any.pb.h>
 
 #include <optional>

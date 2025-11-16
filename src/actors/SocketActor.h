@@ -2,7 +2,7 @@
 
 #include "actors/TimerActor.h"
 
-#include <asio/io_service.hpp>
+#include <asio/any_io_executor.hpp>
 #include <asio/ip/udp.hpp>
 #include <puncher_messages.pb.h>
 
@@ -32,7 +32,7 @@ public:
     virtual void OnPuncherMessage(const fp_puncher::ServerMessage& msg) = 0;
 
 protected:
-    using asio_service = asio::io_service;
+    using asio_service = asio::io_context;
     using asio_socket = asio::ip::udp::socket;
     using asio_endpoint = asio::ip::udp::endpoint;
     using asio_address = asio::ip::address_v4;

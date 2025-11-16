@@ -1,5 +1,6 @@
 #include "Config.h"
 #include <CLI/App.hpp>
+#include <CLI/ExtraValidators.hpp>
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
 

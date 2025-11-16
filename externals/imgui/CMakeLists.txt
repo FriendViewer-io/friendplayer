@@ -6,6 +6,8 @@ set(CMAKE_DEBUG_POSTFIX d)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED)
 
+find_package(OpenGL REQUIRED)
+
 add_library(imgui STATIC
 	${IMGUI_DIR}/imgui.cpp
 	${IMGUI_DIR}/imgui.h
@@ -25,7 +27,7 @@ target_include_directories(imgui PUBLIC
 set(INSTALL_TARGETS imgui)
 set(INSTALL_HEADERS ${IMGUI_DIR}/imgui.h ${IMGUI_DIR}/imconfig.h)
 
-foreach(BACKEND glfw)
+foreach(BACKEND glfw opengl3)
 	set(NAME imgui_impl_${BACKEND})
 	set(HEADER ${IMGUI_DIR}/backends/${NAME}.h)
 	add_library(${NAME} STATIC ${IMGUI_DIR}/backends/${NAME}.cpp ${HEADER})
@@ -38,4 +40,5 @@ foreach(BACKEND glfw)
 endforeach()
 
 target_link_libraries(imgui_impl_glfw PRIVATE glfw)
-
+target_sources(imgui_impl_opengl3 PRIVATE ${IMGUI_DIR}/backends/imgui_impl_opengl3_loader.h)
+target_link_libraries(imgui_impl_opengl3 PRIVATE OpenGL::GL)

@@ -16,4 +16,4 @@ protobuf_generate(
   IMPORT_DIRS ${CPP_PROTOBUF_IMPORT_DIRS}
   PROTOC_OPTIONS "--experimental_allow_proto3_optional")
 
-target_include_directories(cpp-proto-objects PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/src")
+target_include_directories(cpp-proto-objects PUBLIC "${CMAKE_BINARY_DIR}/src")

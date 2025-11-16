@@ -4,15 +4,9 @@
 #include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <stdint.h>
-#include <opus/opus.h>
+#include <opus.h>
 #include <string>
 #include <vector>
-extern "C" {
-#include <libavutil/channel_layout.h>
-#include <libavformat/avformat.h>
-#include <libswresample/swresample.h>
-#include <libavutil/opt.h>
-}
 
 class AudioStreamer {
 public:
@@ -52,8 +46,6 @@ private:
 	OpusDecoder* decoder;
 	WAVEFORMATEX* system_format;
 
-	SwrContext* context;
-	
 	int system_frame_size;
 	
 	std::vector<opus_int16> decode_output_buffer;

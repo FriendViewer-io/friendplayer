@@ -1,5 +1,5 @@
-add_library(nvcuvid SHARED IMPORTED)
-add_library(nvencodeapi SHARED IMPORTED)
+add_library(nvcuvid SHARED IMPORTED GLOBAL)
+add_library(nvencodeapi SHARED IMPORTED GLOBAL)
 
 if (WIN32)
   set_target_properties(nvcuvid PROPERTIES IMPORTED_IMPLIB "${CMAKE_CURRENT_LIST_DIR}/lib/windows/nvcuvid.lib")
